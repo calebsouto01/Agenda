@@ -6,6 +6,8 @@ import { CalendarCheck } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { resolveEmail, resolvePassword } from "@/lib/credentials";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,9 +34,10 @@ export const Route = createFileRoute("/auth")({
 });
 
 const credentialsSchema = z.object({
-  email: z.string().trim().email("E-mail inválido").max(200),
-  password: z.string().min(6, "A senha deve ter ao menos 6 caracteres").max(72),
+  email: z.string().trim().min(3, "Informe usuário ou e-mail").max(200),
+  password: z.string().min(4, "A senha deve ter ao menos 4 caracteres").max(72),
 });
+
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -57,10 +60,13 @@ function AuthPage() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: resolveEmail(parsed.data.email),
+      password: resolvePassword(parsed.data.password),
+    });
     setLoading(false);
     if (error) {
-      toast.error("E-mail ou senha inválidos");
+      toast.error("Usuário ou senha inválidos");
       return;
     }
     navigate({ to: target, replace: true });
@@ -74,7 +80,8 @@ function AuthPage() {
     }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
-      ...parsed.data,
+      email: resolveEmail(parsed.data.email),
+      password: resolvePassword(parsed.data.password),
       options: { emailRedirectTo: `${window.location.origin}${target}` },
     });
     setLoading(false);
@@ -85,6 +92,7 @@ function AuthPage() {
     toast.success("Conta criada! Você já pode configurar seu estabelecimento.");
     navigate({ to: target, replace: true });
   }
+
 
   async function signInWithGoogle() {
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -114,14 +122,17 @@ function AuthPage() {
               </TabsList>
               <div className="grid gap-3">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="email">E-mail</Label>
+                  <Label htmlFor="email">Usuário ou e-mail</Label>
                   <Input
                     id="email"
-                    type="email"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Admin"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
+
                 <div className="grid gap-1.5">
                   <Label htmlFor="password">Senha</Label>
                   <Input
@@ -131,11 +142,15 @@ function AuthPage() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
-                <TabsContent value="signin" className="m-0">
+                <TabsContent value="signin" className="m-0 grid gap-2">
                   <Button className="w-full" disabled={loading} onClick={signIn}>
                     Entrar
                   </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Acesso padrão: usuário <strong>Admin</strong> · senha <strong>Admin</strong>
+                  </p>
                 </TabsContent>
+
                 <TabsContent value="signup" className="m-0">
                   <Button className="w-full" disabled={loading} onClick={signUp}>
                     Criar conta
