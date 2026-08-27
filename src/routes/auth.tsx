@@ -32,9 +32,10 @@ export const Route = createFileRoute("/auth")({
 });
 
 const credentialsSchema = z.object({
-  email: z.string().trim().email("E-mail inválido").max(200),
-  password: z.string().min(6, "A senha deve ter ao menos 6 caracteres").max(72),
+  email: z.string().trim().min(3, "Informe usuário ou e-mail").max(200),
+  password: z.string().min(4, "A senha deve ter ao menos 4 caracteres").max(72),
 });
+
 
 function AuthPage() {
   const navigate = useNavigate();
