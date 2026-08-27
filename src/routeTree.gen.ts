@@ -18,6 +18,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminBlocksRouteImport } from './routes/_authenticated/admin.blocks'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin.customers'
 import { Route as AuthenticatedAdminHoursRouteImport } from './routes/_authenticated/admin.hours'
+import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminProfessionalsRouteImport } from './routes/_authenticated/admin.professionals'
 import { Route as AuthenticatedAdminServicesRouteImport } from './routes/_authenticated/admin.services'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -68,6 +69,11 @@ const AuthenticatedAdminHoursRoute = AuthenticatedAdminHoursRouteImport.update({
   path: '/hours',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminNewRoute = AuthenticatedAdminNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminProfessionalsRoute =
   AuthenticatedAdminProfessionalsRouteImport.update({
     id: '/professionals',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/admin/blocks': typeof AuthenticatedAdminBlocksRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
+  '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/admin/blocks': typeof AuthenticatedAdminBlocksRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
+  '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/blocks': typeof AuthenticatedAdminBlocksRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/hours': typeof AuthenticatedAdminHoursRoute
+  '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
   '/_authenticated/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/_authenticated/admin/services': typeof AuthenticatedAdminServicesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/admin/blocks'
     | '/admin/customers'
     | '/admin/hours'
+    | '/admin/new'
     | '/admin/professionals'
     | '/admin/services'
     | '/admin/settings'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/admin/blocks'
     | '/admin/customers'
     | '/admin/hours'
+    | '/admin/new'
     | '/admin/professionals'
     | '/admin/services'
     | '/admin/settings'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/blocks'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/hours'
+    | '/_authenticated/admin/new'
     | '/_authenticated/admin/professionals'
     | '/_authenticated/admin/services'
     | '/_authenticated/admin/settings'
@@ -241,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminHoursRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/new': {
+      id: '/_authenticated/admin/new'
+      path: '/new'
+      fullPath: '/admin/new'
+      preLoaderRoute: typeof AuthenticatedAdminNewRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/professionals': {
       id: '/_authenticated/admin/professionals'
       path: '/professionals'
@@ -269,6 +288,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBlocksRoute: typeof AuthenticatedAdminBlocksRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminHoursRoute: typeof AuthenticatedAdminHoursRoute
+  AuthenticatedAdminNewRoute: typeof AuthenticatedAdminNewRoute
   AuthenticatedAdminProfessionalsRoute: typeof AuthenticatedAdminProfessionalsRoute
   AuthenticatedAdminServicesRoute: typeof AuthenticatedAdminServicesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -279,6 +299,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBlocksRoute: AuthenticatedAdminBlocksRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminHoursRoute: AuthenticatedAdminHoursRoute,
+  AuthenticatedAdminNewRoute: AuthenticatedAdminNewRoute,
   AuthenticatedAdminProfessionalsRoute: AuthenticatedAdminProfessionalsRoute,
   AuthenticatedAdminServicesRoute: AuthenticatedAdminServicesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
