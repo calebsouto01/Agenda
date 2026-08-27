@@ -25,23 +25,32 @@ import {
 } from "@/lib/booking";
 
 export const Route = createFileRoute("/b/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `Agendar online — ${params.slug}` },
-      {
-        name: "description",
-        content:
-          "Escolha o serviço, o profissional e um horário disponível para confirmar seu agendamento.",
-      },
-      { property: "og:title", content: `Agendar online — ${params.slug}` },
-      {
-        property: "og:description",
-        content: "Veja os horários livres e confirme seu agendamento em poucos toques.",
-      },
-    ],
-  }),
+  loader: async ({ params }) => {
+    const { data } = await supabase
+      .from("establishments")
+      .select("name, description")
+      .eq("slug", params.slug)
+      .maybeSingle();
+    return { name: data?.name ?? null, description: data?.description ?? null };
+  },
+  head: ({ loaderData, params }) => {
+    const name = loaderData?.name ?? params.slug;
+    const title = `Agendar online — ${name}`;
+    const description =
+      loaderData?.description ??
+      "Escolha o serviço, o profissional e um horário disponível para confirmar seu agendamento.";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+      ],
+    };
+  },
   component: PublicBooking,
 });
+
 
 const customerSchema = z.object({
   name: z.string().trim().min(2, "Informe seu nome").max(120, "Nome muito longo"),
