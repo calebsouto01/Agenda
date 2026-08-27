@@ -122,14 +122,17 @@ function AuthPage() {
               </TabsList>
               <div className="grid gap-3">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="email">E-mail</Label>
+                  <Label htmlFor="email">Usuário ou e-mail</Label>
                   <Input
                     id="email"
-                    type="email"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Admin"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
+
                 <div className="grid gap-1.5">
                   <Label htmlFor="password">Senha</Label>
                   <Input
