@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
 });
 
-const NAV = [
+const NAV: { to: string; label: string; icon: typeof CalendarDays; exact?: boolean }[] = [
   { to: "/admin", label: "Agenda", icon: CalendarDays, exact: true },
   { to: "/admin/services", label: "Serviços", icon: Scissors },
   { to: "/admin/professionals", label: "Profissionais", icon: UserRound },
@@ -37,7 +37,7 @@ const NAV = [
   { to: "/admin/blocks", label: "Bloqueios", icon: Ban },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/settings", label: "Estabelecimento", icon: Settings },
-] as const;
+];
 
 function AdminLayout() {
   const { data: establishment, isLoading } = useEstablishment();
@@ -122,9 +122,15 @@ function Onboarding({ onSignOut }: { onSignOut: () => void }) {
 
   async function create() {
     const name = form.name.trim();
-    if (name.length < 2) return toast.error("Informe o nome do estabelecimento");
+    if (name.length < 2) {
+      toast.error("Informe o nome do estabelecimento");
+      return;
+    }
     const slug = slugify(form.slug || name);
-    if (!slug) return toast.error("Informe um link público válido");
+    if (!slug) {
+      toast.error("Informe um link público válido");
+      return;
+    }
     setSaving(true);
     const { data: auth } = await supabase.auth.getUser();
     const { data, error } = await supabase
@@ -142,9 +148,10 @@ function Onboarding({ onSignOut }: { onSignOut: () => void }) {
 
     if (error || !data) {
       setSaving(false);
-      return toast.error(
+      toast.error(
         error?.code === "23505" ? "Este link público já está em uso" : "Não foi possível criar",
       );
+      return;
     }
 
     // Default opening hours: Monday to Saturday, 09:00 - 18:00

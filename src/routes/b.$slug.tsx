@@ -126,7 +126,7 @@ function PublicBooking() {
         p_service_id: serviceId!,
         p_professional_id: professionalId,
         p_date: date!,
-      });
+      } as never);
       if (error) throw error;
       return (data ?? []) as unknown as string[];
     },
@@ -145,7 +145,7 @@ function PublicBooking() {
         p_customer_phone: parsed.data.phone,
         p_customer_email: parsed.data.email || null,
         p_notes: parsed.data.notes || null,
-      });
+      } as never);
       if (error) throw new Error(error.message);
       return data as unknown as { starts_at: string };
     },
@@ -478,7 +478,7 @@ function SelectChip({
   active: boolean;
   onClick: () => void;
   label: string;
-  hint?: string;
+  hint?: string | undefined;
 }) {
   return (
     <button

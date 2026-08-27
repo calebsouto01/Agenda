@@ -52,24 +52,36 @@ function AuthPage() {
 
   async function signIn() {
     const parsed = credentialsSchema.safeParse({ email, password });
-    if (!parsed.success) return toast.error(parsed.error.issues[0]!.message);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]!.message);
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     setLoading(false);
-    if (error) return toast.error("E-mail ou senha inválidos");
+    if (error) {
+      toast.error("E-mail ou senha inválidos");
+      return;
+    }
     navigate({ to: target, replace: true });
   }
 
   async function signUp() {
     const parsed = credentialsSchema.safeParse({ email, password });
-    if (!parsed.success) return toast.error(parsed.error.issues[0]!.message);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]!.message);
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       ...parsed.data,
       options: { emailRedirectTo: `${window.location.origin}${target}` },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Conta criada! Você já pode configurar seu estabelecimento.");
     navigate({ to: target, replace: true });
   }
@@ -78,7 +90,10 @@ function AuthPage() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) return toast.error("Não foi possível entrar com o Google");
+    if (result.error) {
+      toast.error("Não foi possível entrar com o Google");
+      return;
+    }
     if (result.redirected) return;
     navigate({ to: target, replace: true });
   }
