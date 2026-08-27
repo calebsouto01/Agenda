@@ -58,10 +58,13 @@ function AuthPage() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: resolveEmail(parsed.data.email),
+      password: resolvePassword(parsed.data.password),
+    });
     setLoading(false);
     if (error) {
-      toast.error("E-mail ou senha inválidos");
+      toast.error("Usuário ou senha inválidos");
       return;
     }
     navigate({ to: target, replace: true });
@@ -75,7 +78,8 @@ function AuthPage() {
     }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
-      ...parsed.data,
+      email: resolveEmail(parsed.data.email),
+      password: resolvePassword(parsed.data.password),
       options: { emailRedirectTo: `${window.location.origin}${target}` },
     });
     setLoading(false);
@@ -86,6 +90,7 @@ function AuthPage() {
     toast.success("Conta criada! Você já pode configurar seu estabelecimento.");
     navigate({ to: target, replace: true });
   }
+
 
   async function signInWithGoogle() {
     const result = await lovable.auth.signInWithOAuth("google", {
