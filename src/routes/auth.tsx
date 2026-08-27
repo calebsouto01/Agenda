@@ -142,11 +142,15 @@ function AuthPage() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
-                <TabsContent value="signin" className="m-0">
+                <TabsContent value="signin" className="m-0 grid gap-2">
                   <Button className="w-full" disabled={loading} onClick={signIn}>
                     Entrar
                   </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Acesso padrão: usuário <strong>Admin</strong> · senha <strong>Admin</strong>
+                  </p>
                 </TabsContent>
+
                 <TabsContent value="signup" className="m-0">
                   <Button className="w-full" disabled={loading} onClick={signUp}>
                     Criar conta
