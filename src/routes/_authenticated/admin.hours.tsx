@@ -42,7 +42,11 @@ function HoursPage() {
   const [rows, setRows] = useState<Hour[]>([]);
   const [copySource, setCopySource] = useState<Record<number, string>>({});
 
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    error: loadError,
+  } = useQuery({
     queryKey: ["business-hours", establishment?.id],
     enabled: Boolean(establishment?.id),
     queryFn: async () => {
@@ -51,7 +55,7 @@ function HoursPage() {
         .select("weekday, opens_at, closes_at, closed, break_start, break_end")
         .eq("establishment_id", establishment!.id)
         .order("weekday");
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       return (data ?? []) as Hour[];
     },
   });
@@ -115,6 +119,20 @@ function HoursPage() {
   });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+
+  if (loadError) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-extrabold">Horários de funcionamento</h1>
+        <Card className="shadow-soft">
+          <CardContent className="space-y-1 p-6 text-sm">
+            <p className="font-semibold text-destructive">Não foi possível carregar os horários</p>
+            <p className="text-muted-foreground">{loadError.message}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
