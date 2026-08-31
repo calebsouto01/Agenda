@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Phone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,7 +14,6 @@ import {
   formatPrice,
   hourInZone,
   isoDateInZone,
-  minuteInZone,
   timeInZone,
   weekdayOf,
   type AppointmentStatus,
@@ -51,24 +50,13 @@ const STATUS_CHIP: Record<AppointmentStatus, string> = {
   cancelled: "bg-destructive/10 text-destructive line-through",
 };
 
-/** Whether the 30-minute slot at `hour:minute` falls within business hours for that weekday. */
-function isSlotAvailable(hours: BusinessHour | undefined, hour: number, minute: number) {
+/** Whether `hour` falls within the establishment's configured business hours for that weekday. */
+function isHourAvailable(hours: BusinessHour | undefined, hour: number) {
   if (!hours || hours.closed) return false;
-  const [openHh, openMm] = hours.opens_at.split(":").map(Number);
+  const openHour = Number(hours.opens_at.slice(0, 2));
   const [closeHh, closeMm] = hours.closes_at.split(":").map(Number);
-  const slotStart = hour * 60 + minute;
-  const openStart = (openHh ?? 0) * 60 + (openMm ?? 0);
-  const closeEnd = (closeHh ?? 0) * 60 + (closeMm ?? 0);
-  return slotStart >= openStart && slotStart < closeEnd;
-}
-
-type Shift = "Manhã" | "Tarde" | "Noite";
-
-/** Shift (turno) a given hour of the day belongs to. */
-function shiftOf(hour: number): Shift {
-  if (hour < 12) return "Manhã";
-  if (hour < 18) return "Tarde";
-  return "Noite";
+  const closeHour = (closeMm ?? 0) > 0 ? (closeHh ?? 0) + 1 : (closeHh ?? 0);
+  return hour >= openHour && hour < closeHour;
 }
 
 function rangeBounds(anchor: string, range: Range) {
@@ -193,23 +181,16 @@ function Agenda() {
     return { start, end: Math.max(start + 1, ...ends) };
   }, [businessHours]);
 
-  /** 30-minute slots covering the business-hours range, e.g. { hour: 9, minute: 30 }. */
-  const slots = useMemo(() => {
-    const list: { hour: number; minute: number }[] = [];
-    for (let h = hourRange.start; h < hourRange.end; h++) {
-      list.push({ hour: h, minute: 0 });
-      list.push({ hour: h, minute: 30 });
-    }
-    return list;
-  }, [hourRange]);
+  const hours = useMemo(
+    () => Array.from({ length: hourRange.end - hourRange.start }, (_, i) => hourRange.start + i),
+    [hourRange],
+  );
 
   const cellMap = useMemo(() => {
     const map = new Map<string, Row[]>();
     for (const a of appointments ?? []) {
       const day = isoDateInZone(new Date(a.starts_at), tz);
-      const hour = hourInZone(a.starts_at, tz);
-      const minute = minuteInZone(a.starts_at, tz) < 30 ? 0 : 30;
-      const key = `${day}-${hour}-${minute}`;
+      const key = `${day}-${hourInZone(a.starts_at, tz)}`;
       map.set(key, [...(map.get(key) ?? []), a]);
     }
     return map;
@@ -250,7 +231,7 @@ function Agenda() {
       ) : range === "week" ? (
         <WeekGrid
           days={weekDays}
-          slots={slots}
+          hours={hours}
           cellMap={cellMap}
           today={today}
           tz={tz}
@@ -297,7 +278,7 @@ function Agenda() {
 
 function WeekGrid({
   days,
-  slots,
+  hours,
   cellMap,
   today,
   tz,
@@ -305,7 +286,7 @@ function WeekGrid({
   onSelect,
 }: {
   days: string[];
-  slots: { hour: number; minute: number }[];
+  hours: number[];
   cellMap: Map<string, Row[]>;
   today: string;
   tz: string;
@@ -316,7 +297,7 @@ function WeekGrid({
     <div className="select-none overflow-x-auto rounded-xl border bg-card">
       <div
         className="grid min-w-[720px]"
-        style={{ gridTemplateColumns: "72px repeat(7, minmax(0, 1fr))" }}
+        style={{ gridTemplateColumns: "56px repeat(7, minmax(0, 1fr))" }}
       >
         <div className="sticky left-0 z-10 border-b border-r bg-card" />
         {days.map((day) => {
@@ -340,40 +321,25 @@ function WeekGrid({
           );
         })}
 
-        {slots.map((slot, i) => {
-          const shift = shiftOf(slot.hour);
-          const showShiftDivider = i === 0 || shiftOf(slots[i - 1]!.hour) !== shift;
-          return (
-            <Fragment key={`${slot.hour}-${slot.minute}`}>
-              {showShiftDivider ? (
-                <div
-                  className="cursor-default border-b bg-muted/50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground"
-                  style={{ gridColumn: "1 / -1" }}
-                >
-                  {shift}
-                </div>
-              ) : null}
-              <SlotRow
-                hour={slot.hour}
-                minute={slot.minute}
-                days={days}
-                cellMap={cellMap}
-                today={today}
-                tz={tz}
-                hoursByWeekday={hoursByWeekday}
-                onSelect={onSelect}
-              />
-            </Fragment>
-          );
-        })}
+        {hours.map((hour) => (
+          <HourRow
+            key={hour}
+            hour={hour}
+            days={days}
+            cellMap={cellMap}
+            today={today}
+            tz={tz}
+            hoursByWeekday={hoursByWeekday}
+            onSelect={onSelect}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function SlotRow({
+function HourRow({
   hour,
-  minute,
   days,
   cellMap,
   today,
@@ -382,7 +348,6 @@ function SlotRow({
   onSelect,
 }: {
   hour: number;
-  minute: number;
   days: string[];
   cellMap: Map<string, Row[]>;
   today: string;
@@ -392,16 +357,16 @@ function SlotRow({
 }) {
   return (
     <>
-      <div className="sticky left-0 z-10 border-b border-r bg-card px-1 py-1.5 text-right text-[10px] font-semibold text-muted-foreground">
-        {String(hour).padStart(2, "0")}:{String(minute).padStart(2, "0")}
+      <div className="sticky left-0 z-10 border-b border-r bg-card px-1 py-2 text-right text-[10px] font-semibold text-muted-foreground">
+        {String(hour).padStart(2, "0")}:00
       </div>
       {days.map((day) => {
-        const items = cellMap.get(`${day}-${hour}-${minute}`) ?? [];
-        const available = isSlotAvailable(hoursByWeekday.get(weekdayOf(day)), hour, minute);
+        const items = cellMap.get(`${day}-${hour}`) ?? [];
+        const available = isHourAvailable(hoursByWeekday.get(weekdayOf(day)), hour);
         return (
           <div
             key={day}
-            className={`min-h-[40px] cursor-default border-b border-r p-1 last:border-r-0 ${
+            className={`min-h-[52px] cursor-default border-b border-r p-1 last:border-r-0 ${
               available ? (day === today ? "bg-primary/5" : "") : "bg-muted/20"
             }`}
           >

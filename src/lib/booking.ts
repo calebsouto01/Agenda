@@ -50,13 +50,6 @@ export function hourInZone(iso: string, timeZone: string) {
   );
 }
 
-/** Minute (0-59) of an ISO instant in the establishment timezone. */
-export function minuteInZone(iso: string, timeZone: string) {
-  return Number(
-    new Intl.DateTimeFormat("en-GB", { minute: "2-digit", timeZone }).format(new Date(iso)),
-  );
-}
-
 export function dateTimeInZone(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
