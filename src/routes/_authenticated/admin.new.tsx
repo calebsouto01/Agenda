@@ -83,6 +83,9 @@ function ManualBooking() {
   const booking = useMutation({
     mutationFn: async () => {
       if (!serviceId) throw new Error("Escolha um serviço");
+      if (professionals && professionals.length > 0 && !professionalId) {
+        throw new Error("Escolha um profissional");
+      }
       if (!slot) throw new Error("Escolha um horário");
       if (form.name.trim().length < 2) throw new Error("Informe o nome do cliente");
       if (form.phone.replace(/\D/g, "").length < 10) throw new Error("Informe um telefone válido");
@@ -151,20 +154,6 @@ function ManualBooking() {
             <div className="space-y-2">
               <Label>Profissional</Label>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfessionalId(null);
-                    setSlot(null);
-                  }}
-                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                    professionalId === null
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-card hover:bg-muted"
-                  }`}
-                >
-                  Qualquer
-                </button>
                 {professionals.map((p) => (
                   <button
                     key={p.id}
@@ -266,7 +255,11 @@ function ManualBooking() {
 
           <Button
             className="w-full"
-            disabled={booking.isPending || !slot}
+            disabled={
+              booking.isPending ||
+              !slot ||
+              Boolean(professionals && professionals.length > 0 && !professionalId)
+            }
             onClick={() => booking.mutate()}
           >
             {booking.isPending ? "Salvando…" : "Criar agendamento"}
