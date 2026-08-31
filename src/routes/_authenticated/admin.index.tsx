@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Phone } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -200,12 +200,20 @@ function Agenda() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-extrabold">Agenda</h1>
-        <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
-          <TabsList>
-            <TabsTrigger value="week">Semana</TabsTrigger>
-            <TabsTrigger value="month">Mês</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
+            <TabsList>
+              <TabsTrigger value="week">Semana</TabsTrigger>
+              <TabsTrigger value="month">Mês</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button asChild size="sm">
+            <Link to="/admin/new" className="flex items-center gap-1.5">
+              <Plus className="size-4" />
+              Novo agendamento
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between rounded-xl border bg-card p-2">
