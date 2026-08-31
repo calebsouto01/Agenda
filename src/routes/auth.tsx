@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { CalendarCheck } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { resolveEmail, resolvePassword } from "@/lib/credentials";
 
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,6 @@ const credentialsSchema = z.object({
   email: z.string().trim().min(3, "Informe usuário ou e-mail").max(200),
   password: z.string().min(4, "A senha deve ter ao menos 4 caracteres").max(72),
 });
-
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -93,17 +91,12 @@ function AuthPage() {
     navigate({ to: target, replace: true });
   }
 
-
   async function signInWithGoogle() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}${target}` },
     });
-    if (result.error) {
-      toast.error("Não foi possível entrar com o Google");
-      return;
-    }
-    if (result.redirected) return;
-    navigate({ to: target, replace: true });
+    if (error) toast.error("Não foi possível entrar com o Google");
   }
 
   return (
