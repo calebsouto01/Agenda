@@ -52,7 +52,14 @@ type Row = {
   customers: { name: string; phone: string; email: string | null } | null;
 };
 
-type BusinessHour = { weekday: number; opens_at: string; closes_at: string; closed: boolean };
+type BusinessHour = {
+  weekday: number;
+  opens_at: string;
+  closes_at: string;
+  closed: boolean;
+  break_start: string | null;
+  break_end: string | null;
+};
 
 const STATUS_CHIP: Record<AppointmentStatus, string> = {
   pending: "bg-warning/20 text-warning-foreground",
@@ -61,13 +68,26 @@ const STATUS_CHIP: Record<AppointmentStatus, string> = {
   cancelled: "bg-destructive/10 text-destructive line-through",
 };
 
+function toMinutes(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
 /** Whether `hour` falls within the establishment's configured business hours for that weekday. */
 function isHourAvailable(hours: BusinessHour | undefined, hour: number) {
   if (!hours || hours.closed) return false;
   const openHour = Number(hours.opens_at.slice(0, 2));
   const [closeHh, closeMm] = hours.closes_at.split(":").map(Number);
   const closeHour = (closeMm ?? 0) > 0 ? (closeHh ?? 0) + 1 : (closeHh ?? 0);
-  return hour >= openHour && hour < closeHour;
+  if (hour < openHour || hour >= closeHour) return false;
+  if (hours.break_start && hours.break_end) {
+    const breakStart = toMinutes(hours.break_start);
+    const breakEnd = toMinutes(hours.break_end);
+    const slotStart = hour * 60;
+    const slotEnd = slotStart + 60;
+    if (slotStart < breakEnd && slotEnd > breakStart) return false;
+  }
+  return true;
 }
 
 function rangeBounds(anchor: string, range: Range) {
@@ -136,7 +156,7 @@ function Agenda() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("business_hours")
-        .select("weekday, opens_at, closes_at, closed")
+        .select("weekday, opens_at, closes_at, closed, break_start, break_end")
         .eq("establishment_id", establishment!.id);
       if (error) throw error;
       return (data ?? []) as BusinessHour[];
