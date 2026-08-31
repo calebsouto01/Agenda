@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Phone, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Phone, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: Agenda,
@@ -153,6 +164,19 @@ function Agenda() {
 
   const setStatus = (id: string, status: AppointmentStatus) => updateStatus.mutate({ id, status });
 
+  const deleteAppointment = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("appointments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Agendamento excluído");
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      setSelected(null);
+    },
+    onError: () => toast.error("Não foi possível excluir"),
+  });
+
   const step = range === "week" ? 7 : 30;
 
   const dayMap = useMemo(() => {
@@ -274,7 +298,11 @@ function Agenda() {
               </DialogHeader>
               <div className="space-y-3">
                 <AppointmentInfo appointment={selected} tz={tz} />
-                <AppointmentActions appointment={selected} onUpdateStatus={setStatus} />
+                <AppointmentActions
+                  appointment={selected}
+                  onUpdateStatus={setStatus}
+                  onDelete={(id) => deleteAppointment.mutate(id)}
+                />
               </div>
             </>
           ) : null}
@@ -485,9 +513,11 @@ function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: string 
 function AppointmentActions({
   appointment: a,
   onUpdateStatus,
+  onDelete,
 }: {
   appointment: Row;
   onUpdateStatus: (id: string, status: AppointmentStatus) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="flex shrink-0 flex-wrap gap-2">
@@ -511,6 +541,32 @@ function AppointmentActions({
           Cancelar
         </Button>
       ) : null}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button size="sm" variant="ghost" className="text-destructive">
+            <Trash2 className="size-4" />
+            Excluir
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove o agendamento de {a.customers?.name} permanentemente e não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => onDelete(a.id)}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
