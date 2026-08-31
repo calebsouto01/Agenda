@@ -41,7 +41,7 @@ type Row = {
   customers: { name: string; phone: string; email: string | null } | null;
 };
 
-type BusinessHour = { opens_at: string; closes_at: string; closed: boolean };
+type BusinessHour = { weekday: number; opens_at: string; closes_at: string; closed: boolean };
 
 const STATUS_CHIP: Record<AppointmentStatus, string> = {
   pending: "bg-warning/20 text-warning-foreground",
@@ -49,6 +49,15 @@ const STATUS_CHIP: Record<AppointmentStatus, string> = {
   completed: "bg-success/20 text-success",
   cancelled: "bg-destructive/10 text-destructive line-through",
 };
+
+/** Whether `hour` falls within the establishment's configured business hours for that weekday. */
+function isHourAvailable(hours: BusinessHour | undefined, hour: number) {
+  if (!hours || hours.closed) return false;
+  const openHour = Number(hours.opens_at.slice(0, 2));
+  const [closeHh, closeMm] = hours.closes_at.split(":").map(Number);
+  const closeHour = (closeMm ?? 0) > 0 ? (closeHh ?? 0) + 1 : (closeHh ?? 0);
+  return hour >= openHour && hour < closeHour;
+}
 
 function rangeBounds(anchor: string, range: Range) {
   if (range === "week") {
@@ -116,12 +125,18 @@ function Agenda() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("business_hours")
-        .select("opens_at, closes_at, closed")
+        .select("weekday, opens_at, closes_at, closed")
         .eq("establishment_id", establishment!.id);
       if (error) throw error;
       return (data ?? []) as BusinessHour[];
     },
   });
+
+  const hoursByWeekday = useMemo(() => {
+    const map = new Map<number, BusinessHour>();
+    for (const h of businessHours ?? []) map.set(h.weekday, h);
+    return map;
+  }, [businessHours]);
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
@@ -220,6 +235,7 @@ function Agenda() {
           cellMap={cellMap}
           today={today}
           tz={tz}
+          hoursByWeekday={hoursByWeekday}
           onSelect={setSelected}
         />
       ) : month ? (
@@ -266,6 +282,7 @@ function WeekGrid({
   cellMap,
   today,
   tz,
+  hoursByWeekday,
   onSelect,
 }: {
   days: string[];
@@ -273,6 +290,7 @@ function WeekGrid({
   cellMap: Map<string, Row[]>;
   today: string;
   tz: string;
+  hoursByWeekday: Map<number, BusinessHour>;
   onSelect: (a: Row) => void;
 }) {
   return (
@@ -282,19 +300,26 @@ function WeekGrid({
         style={{ gridTemplateColumns: "56px repeat(7, minmax(0, 1fr))" }}
       >
         <div className="sticky left-0 z-10 border-b border-r bg-card" />
-        {days.map((day) => (
-          <div
-            key={day}
-            className={`cursor-default border-b border-r p-2 text-center last:border-r-0 ${
-              day === today ? "bg-primary/5" : ""
-            }`}
-          >
-            <p className="text-[10px] font-bold uppercase text-muted-foreground">
-              {WEEKDAYS_SHORT[weekdayOf(day)]}
-            </p>
-            <p className="text-sm font-bold">{Number(day.slice(8, 10))}</p>
-          </div>
-        ))}
+        {days.map((day) => {
+          const dayHours = hoursByWeekday.get(weekdayOf(day));
+          const closed = !dayHours || dayHours.closed;
+          return (
+            <div
+              key={day}
+              className={`cursor-default border-b border-r p-2 text-center last:border-r-0 ${
+                closed ? "bg-muted/30" : day === today ? "bg-primary/5" : ""
+              }`}
+            >
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                {WEEKDAYS_SHORT[weekdayOf(day)]}
+              </p>
+              <p className="text-sm font-bold">{Number(day.slice(8, 10))}</p>
+              {closed ? (
+                <p className="text-[9px] font-semibold text-muted-foreground">Fechado</p>
+              ) : null}
+            </div>
+          );
+        })}
 
         {hours.map((hour) => (
           <HourRow
@@ -304,6 +329,7 @@ function WeekGrid({
             cellMap={cellMap}
             today={today}
             tz={tz}
+            hoursByWeekday={hoursByWeekday}
             onSelect={onSelect}
           />
         ))}
@@ -318,6 +344,7 @@ function HourRow({
   cellMap,
   today,
   tz,
+  hoursByWeekday,
   onSelect,
 }: {
   hour: number;
@@ -325,6 +352,7 @@ function HourRow({
   cellMap: Map<string, Row[]>;
   today: string;
   tz: string;
+  hoursByWeekday: Map<number, BusinessHour>;
   onSelect: (a: Row) => void;
 }) {
   return (
@@ -334,11 +362,12 @@ function HourRow({
       </div>
       {days.map((day) => {
         const items = cellMap.get(`${day}-${hour}`) ?? [];
+        const available = isHourAvailable(hoursByWeekday.get(weekdayOf(day)), hour);
         return (
           <div
             key={day}
             className={`min-h-[52px] cursor-default border-b border-r p-1 last:border-r-0 ${
-              day === today ? "bg-primary/5" : ""
+              available ? (day === today ? "bg-primary/5" : "") : "bg-muted/20"
             }`}
           >
             {items.map((a) => (
