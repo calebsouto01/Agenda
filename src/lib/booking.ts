@@ -41,6 +41,15 @@ export function timeInZone(iso: string, timeZone: string) {
   }).format(new Date(iso));
 }
 
+/** Hour (0-23) of an ISO instant in the establishment timezone. */
+export function hourInZone(iso: string, timeZone: string) {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone }).format(
+      new Date(iso),
+    ),
+  );
+}
+
 export function dateTimeInZone(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
