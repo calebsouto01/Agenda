@@ -85,7 +85,7 @@ function Agenda() {
   const { data: establishment } = useEstablishment();
   const queryClient = useQueryClient();
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
-  const [range, setRange] = useState<Range>("day");
+  const [range, setRange] = useState<Range>("week");
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
   const [selected, setSelected] = useState<Row | null>(null);
 
