@@ -19,7 +19,6 @@ import {
   type AppointmentStatus,
 } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
   component: Agenda,
 });
 
-type Range = "day" | "week" | "month";
+type Range = "week" | "month";
 
 type Row = {
   id: string;
@@ -52,7 +51,6 @@ const STATUS_CHIP: Record<AppointmentStatus, string> = {
 };
 
 function rangeBounds(anchor: string, range: Range) {
-  if (range === "day") return { from: anchor, to: addDays(anchor, 1) };
   if (range === "week") {
     const start = addDays(anchor, -weekdayOf(anchor));
     return { from: start, to: addDays(start, 7) };
@@ -140,7 +138,7 @@ function Agenda() {
 
   const setStatus = (id: string, status: AppointmentStatus) => updateStatus.mutate({ id, status });
 
-  const step = range === "day" ? 1 : range === "week" ? 7 : 30;
+  const step = range === "week" ? 7 : 30;
 
   const dayMap = useMemo(() => {
     const map = new Map<string, Row[]>();
@@ -150,11 +148,6 @@ function Agenda() {
     }
     return map;
   }, [appointments, tz]);
-
-  const grouped = useMemo(
-    () => [...dayMap.entries()].sort(([a], [b]) => a.localeCompare(b)),
-    [dayMap],
-  );
 
   const weekDays = useMemo(
     () => (range === "week" ? Array.from({ length: 7 }, (_, i) => addDays(bounds.from, i)) : []),
@@ -194,7 +187,6 @@ function Agenda() {
         <h1 className="text-xl font-extrabold">Agenda</h1>
         <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
           <TabsList>
-            <TabsTrigger value="day">Dia</TabsTrigger>
             <TabsTrigger value="week">Semana</TabsTrigger>
             <TabsTrigger value="month">Mês</TabsTrigger>
           </TabsList>
@@ -230,40 +222,18 @@ function Agenda() {
           tz={tz}
           onSelect={setSelected}
         />
-      ) : range === "month" && month ? (
+      ) : month ? (
         <MonthGrid
           weeks={month.weeks}
           monthStart={month.monthStart}
           dayMap={dayMap}
           today={today}
           onPickDay={(day) => {
-            setRange("day");
+            setRange("week");
             setAnchor(day);
           }}
         />
-      ) : grouped.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum agendamento neste período.
-          </CardContent>
-        </Card>
-      ) : (
-        grouped.map(([day, rows]) => (
-          <section key={day} className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              {new Intl.DateTimeFormat("pt-BR", {
-                weekday: "long",
-                day: "2-digit",
-                month: "2-digit",
-                timeZone: "UTC",
-              }).format(new Date(`${day}T12:00:00Z`))}
-            </h2>
-            {rows.map((a) => (
-              <AppointmentCard key={a.id} appointment={a} tz={tz} onUpdateStatus={setStatus} />
-            ))}
-          </section>
-        ))
-      )}
+      ) : null}
       {appointments && appointments.length > 0 ? (
         <p className="text-center text-xs text-muted-foreground">
           {appointments.length} agendamento(s) · último criado em{" "}
@@ -306,7 +276,7 @@ function WeekGrid({
   onSelect: (a: Row) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div className="select-none overflow-x-auto rounded-xl border bg-card">
       <div
         className="grid min-w-[720px]"
         style={{ gridTemplateColumns: "56px repeat(7, minmax(0, 1fr))" }}
@@ -315,7 +285,7 @@ function WeekGrid({
         {days.map((day) => (
           <div
             key={day}
-            className={`border-b border-r p-2 text-center last:border-r-0 ${
+            className={`cursor-default border-b border-r p-2 text-center last:border-r-0 ${
               day === today ? "bg-primary/5" : ""
             }`}
           >
@@ -367,7 +337,7 @@ function HourRow({
         return (
           <div
             key={day}
-            className={`min-h-[52px] border-b border-r p-1 last:border-r-0 ${
+            className={`min-h-[52px] cursor-default border-b border-r p-1 last:border-r-0 ${
               day === today ? "bg-primary/5" : ""
             }`}
           >
@@ -376,7 +346,7 @@ function HourRow({
                 key={a.id}
                 type="button"
                 onClick={() => onSelect(a)}
-                className={`mb-1 block w-full truncate rounded-md px-1.5 py-1 text-left text-[10px] font-semibold transition-opacity hover:opacity-80 ${STATUS_CHIP[a.status]}`}
+                className={`mb-1 block w-full cursor-pointer truncate rounded-md px-1.5 py-1 text-left text-[10px] font-semibold outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring ${STATUS_CHIP[a.status]}`}
               >
                 {timeInZone(a.starts_at, tz)} {a.customers?.name}
               </button>
@@ -403,12 +373,12 @@ function MonthGrid({
 }) {
   const monthPrefix = monthStart.slice(0, 7);
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="select-none overflow-hidden rounded-xl border bg-card">
       <div className="grid grid-cols-7 border-b bg-muted/40">
         {WEEKDAYS_SHORT.map((wd) => (
           <div
             key={wd}
-            className="p-2 text-center text-[10px] font-bold uppercase text-muted-foreground"
+            className="cursor-default p-2 text-center text-[10px] font-bold uppercase text-muted-foreground"
           >
             {wd}
           </div>
@@ -424,7 +394,7 @@ function MonthGrid({
                 key={day}
                 type="button"
                 onClick={() => onPickDay(day)}
-                className={`flex min-h-[76px] flex-col items-start gap-1 border-b border-r p-1.5 text-left last:border-r-0 hover:bg-muted/40 ${
+                className={`flex min-h-[76px] cursor-pointer flex-col items-start gap-1 border-b border-r p-1.5 text-left outline-none last:border-r-0 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring ${
                   inMonth ? "" : "text-muted-foreground/50"
                 } ${day === today ? "bg-primary/5" : ""}`}
               >
@@ -443,25 +413,6 @@ function MonthGrid({
         </div>
       ))}
     </div>
-  );
-}
-
-function AppointmentCard({
-  appointment,
-  tz,
-  onUpdateStatus,
-}: {
-  appointment: Row;
-  tz: string;
-  onUpdateStatus: (id: string, status: AppointmentStatus) => void;
-}) {
-  return (
-    <Card className="shadow-soft">
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <AppointmentInfo appointment={appointment} tz={tz} />
-        <AppointmentActions appointment={appointment} onUpdateStatus={onUpdateStatus} />
-      </CardContent>
-    </Card>
   );
 }
 
