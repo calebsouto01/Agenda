@@ -21,12 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { WeekGrid, type CellItem } from "@/components/agenda/week-grid";
 import { MonthGrid } from "@/components/agenda/month-grid";
 import { AppointmentList } from "@/components/agenda/appointment-list";
-import {
-  AppointmentInfo,
-  AppointmentActions,
-  PaymentActions,
-  PendingConfirmation,
-} from "@/components/agenda/appointment-details";
+import { AppointmentInfo, PendingConfirmation } from "@/components/agenda/appointment-details";
 import { rangeBounds, monthGrid } from "@/components/agenda/utils";
 import type { BusinessHour, Range, Row } from "@/components/agenda/types";
 
@@ -355,7 +350,7 @@ function Agenda() {
               <DialogHeader>
                 <DialogTitle>
                   {selected.status === "pending"
-                    ? "Confirmar agendamento"
+                    ? "Aceitar agendamento"
                     : "Detalhes do agendamento"}
                 </DialogTitle>
               </DialogHeader>
@@ -364,19 +359,10 @@ function Agenda() {
                 {selected.status === "pending" ? (
                   <PendingConfirmation
                     appointment={selected}
-                    onUpdateStatus={setStatus}
+                    onRefuse={(id) => deleteAppointment.mutate(id)}
                     onConfirm={confirmWithInterval}
                   />
-                ) : (
-                  <>
-                    <PaymentActions appointment={selected} onUpdatePayment={setPayment} />
-                    <AppointmentActions
-                      appointment={selected}
-                      onUpdateStatus={setStatus}
-                      onDelete={(id) => deleteAppointment.mutate(id)}
-                    />
-                  </>
-                )}
+                ) : null}
               </div>
             </>
           ) : null}

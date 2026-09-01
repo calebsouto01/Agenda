@@ -128,11 +128,11 @@ const INTERVAL_OPTIONS = [5, 10, 15, 20, 30];
 
 export function PendingConfirmation({
   appointment: a,
-  onUpdateStatus,
+  onRefuse,
   onConfirm,
 }: {
   appointment: Row;
-  onUpdateStatus: (id: string, status: AppointmentStatus) => void;
+  onRefuse: (id: string) => void;
   onConfirm: (appointment: Row, intervalMinutes: number) => void;
 }) {
   const serviceCount = a.service_names ? a.service_names.split(" + ").length : 1;
@@ -162,22 +162,22 @@ export function PendingConfirmation({
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning-foreground">
-        Este agendamento está aguardando confirmação.
+        Este agendamento está aguardando aceite.
       </div>
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
           onClick={() => (serviceCount > 1 ? setAskInterval(true) : onConfirm(a, 0))}
         >
-          Confirmar
+          Aceitar
         </Button>
         <Button
           size="sm"
           variant="ghost"
           className="text-destructive"
-          onClick={() => onUpdateStatus(a.id, "cancelled")}
+          onClick={() => onRefuse(a.id)}
         >
-          Cancelar
+          Recusar
         </Button>
       </div>
     </div>
