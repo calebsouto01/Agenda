@@ -2,6 +2,9 @@ import { WEEKDAYS_SHORT, timeInZone, weekdayOf } from "@/lib/booking";
 import { isHourAvailable } from "./utils";
 import { STATUS_CHIP, type BusinessHour, type Row } from "./types";
 
+/** Uma linha de horário contém o início (isStart), a continuação e o fim (isLast) do atendimento. */
+export type CellItem = { appointment: Row; isStart: boolean; isLast: boolean };
+
 export function WeekGrid({
   days,
   hours,
@@ -13,7 +16,7 @@ export function WeekGrid({
 }: {
   days: string[];
   hours: number[];
-  cellMap: Map<string, Row[]>;
+  cellMap: Map<string, CellItem[]>;
   today: string;
   tz: string;
   hoursByWeekday: Map<number, BusinessHour>;
@@ -75,7 +78,7 @@ function HourRow({
 }: {
   hour: number;
   days: string[];
-  cellMap: Map<string, Row[]>;
+  cellMap: Map<string, CellItem[]>;
   today: string;
   tz: string;
   hoursByWeekday: Map<number, BusinessHour>;
@@ -96,14 +99,20 @@ function HourRow({
               available ? (day === today ? "bg-primary/5" : "") : "bg-muted/20"
             }`}
           >
-            {items.map((a) => (
+            {items.map(({ appointment: a, isStart, isLast }) => (
               <button
-                key={a.id}
+                key={`${a.id}-${hour}`}
                 type="button"
                 onClick={() => onSelect(a)}
-                className={`mb-1 block w-full cursor-pointer truncate rounded-md px-1.5 py-1 text-left text-[10px] font-semibold outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring ${STATUS_CHIP[a.status]}`}
+                className={`mb-1 block w-full cursor-pointer truncate rounded-md px-1.5 py-1 text-left text-[10px] font-semibold outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring ${STATUS_CHIP[a.status]} ${
+                  isStart ? "" : "opacity-70"
+                }`}
               >
-                {timeInZone(a.starts_at, tz)}–{timeInZone(a.ends_at, tz)} {a.customers?.name}
+                {isStart
+                  ? `${timeInZone(a.starts_at, tz)}–${timeInZone(a.ends_at, tz)} ${a.customers?.name ?? ""}`
+                  : isLast
+                    ? `↳ até ${timeInZone(a.ends_at, tz)}`
+                    : ""}
               </button>
             ))}
           </div>
