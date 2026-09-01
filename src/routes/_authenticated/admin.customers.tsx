@@ -44,11 +44,14 @@ const SEGMENT_BADGE: Record<Segment, string> = {
   inactive: "bg-muted text-muted-foreground",
 };
 
-const SEGMENT_FILTERS: { value: "all" | Segment; label: string }[] = [
+type CustomerFilter = "all" | "new" | "recurring" | "inactive30" | "inactive60";
+
+const CUSTOMER_FILTERS: { value: CustomerFilter; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "new", label: SEGMENT_LABEL.new },
   { value: "recurring", label: SEGMENT_LABEL.recurring },
-  { value: "inactive", label: SEGMENT_LABEL.inactive },
+  { value: "inactive30", label: "Inativos 30 dias" },
+  { value: "inactive60", label: "Inativos 60 dias" },
 ];
 
 /** Novo: sem visita ainda, ou só uma, recente. Recorrente: 2+ visitas recentes. Inativo: sem visita há muito tempo. */
@@ -63,7 +66,7 @@ function CustomersPage() {
   const { data: establishment } = useEstablishment();
   const [term, setTerm] = useState("");
   const [view, setView] = useState<View>("list");
-  const [segmentFilter, setSegmentFilter] = useState<"all" | Segment>("all");
+  const [filter, setFilter] = useState<CustomerFilter>("all");
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", establishment?.id],
@@ -90,10 +93,14 @@ function CustomersPage() {
               completed[0]!.starts_at,
             )
           : null;
+        const daysSinceLastVisit = lastVisitAt
+          ? (Date.now() - new Date(lastVisitAt).getTime()) / DAY_MS
+          : null;
         return {
           ...c,
           total: c.appointments.length,
           visits,
+          daysSinceLastVisit,
           segment: segmentOf(visits, lastVisitAt),
         };
       }),
@@ -104,8 +111,17 @@ function CustomersPage() {
     const matchesTerm = `${c.name} ${c.phone} ${c.email ?? ""}`
       .toLowerCase()
       .includes(term.trim().toLowerCase());
-    const matchesSegment = segmentFilter === "all" || c.segment === segmentFilter;
-    return matchesTerm && matchesSegment;
+    const matchesFilter =
+      filter === "all"
+        ? true
+        : filter === "new"
+          ? c.segment === "new"
+          : filter === "recurring"
+            ? c.segment === "recurring"
+            : filter === "inactive30"
+              ? c.daysSinceLastVisit !== null && c.daysSinceLastVisit > 30
+              : c.daysSinceLastVisit !== null && c.daysSinceLastVisit > 60;
+    return matchesTerm && matchesFilter;
   });
 
   const ranked = useMemo(
@@ -133,13 +149,13 @@ function CustomersPage() {
       />
 
       <div className="flex flex-wrap gap-2">
-        {SEGMENT_FILTERS.map((f) => (
+        {CUSTOMER_FILTERS.map((f) => (
           <button
             key={f.value}
             type="button"
-            onClick={() => setSegmentFilter(f.value)}
+            onClick={() => setFilter(f.value)}
             className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-              segmentFilter === f.value
+              filter === f.value
                 ? "border-primary bg-primary text-primary-foreground"
                 : "bg-card hover:bg-muted"
             }`}
