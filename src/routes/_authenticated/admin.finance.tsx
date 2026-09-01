@@ -34,10 +34,24 @@ type Row = {
   paid: boolean;
   payment_method: PaymentMethod | null;
   payment_note: string | null;
+  service_names: string | null;
+  total_price_cents: number | null;
   services: { name: string; price_cents: number } | null;
   professionals: { name: string } | null;
   customers: { name: string } | null;
 };
+
+/** Combinado de vários serviços tem preço somado override; um único serviço usa o join normal. */
+function priceOf(a: {
+  total_price_cents: number | null;
+  services: { price_cents: number } | null;
+}) {
+  return a.total_price_cents ?? a.services?.price_cents ?? 0;
+}
+
+function serviceLabelOf(a: { service_names: string | null; services: { name: string } | null }) {
+  return a.service_names ?? a.services?.name ?? "Sem serviço";
+}
 
 function rangeBounds(anchor: string, range: Range) {
   if (range === "day") return { from: anchor, to: addDays(anchor, 1) };
@@ -85,7 +99,7 @@ function FinancePage() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, paid, payment_method, payment_note, services(name, price_cents), professionals(name), customers(name)",
+          "id, starts_at, paid, payment_method, payment_note, service_names, total_price_cents, services(name, price_cents), professionals(name), customers(name)",
         )
         .eq("establishment_id", establishment!.id)
         .eq("status", "completed")
@@ -103,24 +117,24 @@ function FinancePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("services(price_cents)")
+        .select("total_price_cents, services(price_cents)")
         .eq("establishment_id", establishment!.id)
         .eq("status", "completed")
         .gte("starts_at", `${prevBounds.from}T00:00:00`)
         .lt("starts_at", `${prevBounds.to}T00:00:00`);
       if (error) throw error;
-      const rows = (data ?? []) as unknown as { services: { price_cents: number } | null }[];
-      return rows.reduce((sum, r) => sum + (r.services?.price_cents ?? 0), 0);
+      const rows = (data ?? []) as unknown as {
+        total_price_cents: number | null;
+        services: { price_cents: number } | null;
+      }[];
+      return rows.reduce((sum, r) => sum + priceOf(r), 0);
     },
   });
 
-  const totalCents = (appointments ?? []).reduce(
-    (sum, a) => sum + (a.services?.price_cents ?? 0),
-    0,
-  );
+  const totalCents = (appointments ?? []).reduce((sum, a) => sum + priceOf(a), 0);
   const receivedCents = (appointments ?? [])
     .filter((a) => a.paid)
-    .reduce((sum, a) => sum + (a.services?.price_cents ?? 0), 0);
+    .reduce((sum, a) => sum + priceOf(a), 0);
   const count = appointments?.length ?? 0;
   const avgTicketCents = count > 0 ? Math.round(totalCents / count) : 0;
   const change =
@@ -131,10 +145,10 @@ function FinancePage() {
   const byService = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
     for (const a of appointments ?? []) {
-      const name = a.services?.name ?? "Sem serviço";
+      const name = serviceLabelOf(a);
       const entry = map.get(name) ?? { count: 0, total: 0 };
       entry.count += 1;
-      entry.total += a.services?.price_cents ?? 0;
+      entry.total += priceOf(a);
       map.set(name, entry);
     }
     return [...map.entries()]
@@ -148,7 +162,7 @@ function FinancePage() {
       const name = a.professionals?.name ?? "Sem profissional";
       const entry = map.get(name) ?? { count: 0, total: 0 };
       entry.count += 1;
-      entry.total += a.services?.price_cents ?? 0;
+      entry.total += priceOf(a);
       map.set(name, entry);
     }
     return [...map.entries()]
@@ -163,7 +177,7 @@ function FinancePage() {
       const name = PAYMENT_METHOD_LABEL[a.payment_method];
       const entry = map.get(name) ?? { count: 0, total: 0 };
       entry.count += 1;
-      entry.total += a.services?.price_cents ?? 0;
+      entry.total += priceOf(a);
       map.set(name, entry);
     }
     return [...map.entries()]
@@ -182,7 +196,7 @@ function FinancePage() {
     const map = new Map<string, number>();
     for (const a of appointments ?? []) {
       const day = isoDateInZone(new Date(a.starts_at), tz);
-      map.set(day, (map.get(day) ?? 0) + (a.services?.price_cents ?? 0));
+      map.set(day, (map.get(day) ?? 0) + priceOf(a));
     }
     const days: { date: string; total: number }[] = [];
     for (let d = bounds.from; d < bounds.to; d = addDays(d, 1)) {
@@ -373,9 +387,7 @@ function FinancePage() {
                         {dateTimeInZone(a.starts_at, tz)} · {a.payment_note}
                       </p>
                     </div>
-                    <span className="shrink-0 font-semibold">
-                      {formatPrice(a.services?.price_cents ?? 0)}
-                    </span>
+                    <span className="shrink-0 font-semibold">{formatPrice(priceOf(a))}</span>
                   </div>
                 ))}
               </CardContent>

@@ -13,6 +13,8 @@ export type Row = {
   payment_note: string | null;
   service_id: string;
   professional_id: string | null;
+  service_names: string | null;
+  total_price_cents: number | null;
   services: { name: string; price_cents: number; duration_minutes: number } | null;
   professionals: { name: string } | null;
   customers: { id: string; name: string; phone: string; email: string | null } | null;

@@ -9,7 +9,9 @@ import {
   formatDuration,
   formatPrice,
   isoDateInZone,
+  serviceLabel,
   timeInZone,
+  totalPriceCents,
 } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,7 +54,7 @@ export function ConfirmedList({ establishmentId, tz }: { establishmentId: string
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, ends_at, status, notes, paid, payment_method, payment_note, service_id, professional_id, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email)",
+          "id, starts_at, ends_at, status, notes, paid, payment_method, payment_note, service_id, professional_id, service_names, total_price_cents, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email)",
         )
         .eq("establishment_id", establishmentId)
         .eq("status", "confirmed")
@@ -118,9 +120,9 @@ export function ConfirmedList({ establishmentId, tz }: { establishmentId: string
                 <p className="text-sm font-bold">{dateTimeInZone(a.starts_at, tz)}</p>
                 <p className="text-sm font-semibold">{a.customers?.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {a.services?.name}
+                  {serviceLabel(a)}
                   {a.professionals ? ` · ${a.professionals.name}` : ""}
-                  {a.services ? ` · ${formatPrice(a.services.price_cents)}` : ""}
+                  {` · ${formatPrice(totalPriceCents(a))}`}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
@@ -300,6 +302,10 @@ function EditForm({
           starts_at: slot,
           ends_at: endsAt,
           notes: form.notes.trim() || null,
+          // Editar sempre resulta em um único serviço selecionado, então qualquer
+          // combinação de vários serviços feita na reserva original é descartada.
+          service_names: null,
+          total_price_cents: null,
         })
         .eq("id", appointment.id);
       if (error) throw new Error(error.message);

@@ -51,7 +51,6 @@ export const Route = createFileRoute("/b/$slug")({
   component: PublicBooking,
 });
 
-
 const customerSchema = z.object({
   name: z.string().trim().min(2, "Informe seu nome").max(120, "Nome muito longo"),
   phone: z
@@ -66,7 +65,7 @@ const customerSchema = z.object({
 
 function PublicBooking() {
   const { slug } = Route.useParams();
-  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
@@ -127,14 +126,15 @@ function PublicBooking() {
   );
 
   const { data: slots, isFetching: loadingSlots } = useQuery({
-    queryKey: ["slots", shop?.establishment.id, serviceId, professionalId, date],
-    enabled: Boolean(shop?.establishment.id && serviceId && date),
+    queryKey: ["slots", shop?.establishment.id, serviceIds, professionalId, date],
+    enabled: Boolean(shop?.establishment.id && serviceIds.length > 0 && date),
     queryFn: async () => {
       const { data, error } = await supabase.rpc("available_slots", {
         p_establishment_id: shop!.establishment.id,
-        p_service_id: serviceId!,
+        p_service_id: serviceIds[0]!,
         p_professional_id: professionalId,
         p_date: date!,
+        p_service_ids: serviceIds,
       } as never);
       if (error) throw error;
       return (data ?? []) as unknown as string[];
@@ -147,13 +147,14 @@ function PublicBooking() {
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
       const { data, error } = await supabase.rpc("book_appointment", {
         p_establishment_id: shop!.establishment.id,
-        p_service_id: serviceId!,
+        p_service_id: serviceIds[0]!,
         p_professional_id: professionalId,
         p_starts_at: slot!,
         p_customer_name: parsed.data.name,
         p_customer_phone: parsed.data.phone,
         p_customer_email: parsed.data.email || null,
         p_notes: parsed.data.notes || null,
+        p_service_ids: serviceIds,
       } as never);
       if (error) throw new Error(error.message);
       return data as unknown as { starts_at: string };
@@ -182,7 +183,10 @@ function PublicBooking() {
     );
   }
 
-  const service = shop.services.find((s) => s.id === serviceId) ?? null;
+  const selectedServices = shop.services.filter((s) => serviceIds.includes(s.id));
+  const totalDurationMinutes = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
+  const totalPriceCents = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
+  const servicesLabel = selectedServices.map((s) => s.name).join(" + ");
   const professional = shop.professionals.find((p) => p.id === professionalId) ?? null;
 
   if (confirmed) {
@@ -194,7 +198,7 @@ function PublicBooking() {
             <h1 className="text-xl font-bold">Agendamento confirmado!</h1>
             <div className="rounded-xl border bg-muted/40 p-4 text-left text-sm">
               <p className="font-semibold">{shop.establishment.name}</p>
-              <p className="text-muted-foreground">{service?.name}</p>
+              <p className="text-muted-foreground">{servicesLabel}</p>
               {professional ? (
                 <p className="text-muted-foreground">com {professional.name}</p>
               ) : null}
@@ -209,7 +213,7 @@ function PublicBooking() {
               onClick={() => {
                 setConfirmed(null);
                 setSlot(null);
-                setServiceId(null);
+                setServiceIds([]);
                 setProfessionalId(null);
                 setDate(null);
                 setForm({ name: "", phone: "", email: "", notes: "" });
@@ -260,41 +264,67 @@ function PublicBooking() {
         </Card>
 
         {/* 1. Serviço */}
-        <Step number={1} title="Escolha o serviço">
+        <Step number={1} title="Escolha um ou mais serviços">
           {shop.services.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum serviço disponível no momento.</p>
           ) : (
             <div className="grid gap-2">
-              {shop.services.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    setServiceId(s.id);
-                    setSlot(null);
-                  }}
-                  className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors ${
-                    serviceId === s.id ? "border-primary bg-accent" : "bg-card hover:bg-muted/60"
-                  }`}
-                >
-                  <span>
-                    <span className="block text-sm font-semibold">{s.name}</span>
-                    {s.description ? (
-                      <span className="block text-xs text-muted-foreground">{s.description}</span>
-                    ) : null}
-                    <span className="block text-xs text-muted-foreground">
-                      {formatDuration(s.duration_minutes)}
+              {shop.services.map((s) => {
+                const active = serviceIds.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setServiceIds((prev) =>
+                        prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id],
+                      );
+                      setSlot(null);
+                    }}
+                    className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors ${
+                      active ? "border-primary bg-accent" : "bg-card hover:bg-muted/60"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-muted-foreground/40"
+                        }`}
+                      >
+                        {active ? "✓" : ""}
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold">{s.name}</span>
+                        {s.description ? (
+                          <span className="block text-xs text-muted-foreground">
+                            {s.description}
+                          </span>
+                        ) : null}
+                        <span className="block text-xs text-muted-foreground">
+                          {formatDuration(s.duration_minutes)}
+                        </span>
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-sm font-bold">{formatPrice(s.price_cents)}</span>
-                </button>
-              ))}
+                    <span className="text-sm font-bold">{formatPrice(s.price_cents)}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
+          {selectedServices.length > 1 ? (
+            <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-sm">
+              <span className="text-muted-foreground">
+                {selectedServices.length} serviços · {formatDuration(totalDurationMinutes)}
+              </span>
+              <span className="font-bold">{formatPrice(totalPriceCents)}</span>
+            </div>
+          ) : null}
         </Step>
 
         {/* 2. Profissional */}
-        {serviceId && shop.professionals.length > 0 ? (
+        {serviceIds.length > 0 && shop.professionals.length > 0 ? (
           <Step number={2} title="Escolha o profissional">
             <div className="grid grid-cols-2 gap-2">
               <SelectChip
@@ -322,7 +352,7 @@ function PublicBooking() {
         ) : null}
 
         {/* 3. Data */}
-        {serviceId ? (
+        {serviceIds.length > 0 ? (
           <Step number={shop.professionals.length > 0 ? 3 : 2} title="Escolha a data">
             <div className="flex gap-2 overflow-x-auto pb-2">
               {dates.map((d) => {
@@ -351,7 +381,7 @@ function PublicBooking() {
         ) : null}
 
         {/* 4. Horário */}
-        {serviceId && date ? (
+        {serviceIds.length > 0 && date ? (
           <Step
             number={shop.professionals.length > 0 ? 4 : 3}
             title={`Horários livres em ${formatDateLabel(date)}`}
@@ -386,7 +416,7 @@ function PublicBooking() {
           <Step
             number={shop.professionals.length > 0 ? 5 : 4}
             title="Seus dados"
-            subtitle={`${service?.name} · ${dateTimeInZone(slot, tz)}${
+            subtitle={`${servicesLabel} · ${dateTimeInZone(slot, tz)}${
               professional ? ` · ${professional.name}` : ""
             }`}
           >

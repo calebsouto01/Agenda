@@ -5,7 +5,9 @@ import {
   PAYMENT_METHOD_LABEL,
   STATUS_LABEL,
   formatPrice,
+  serviceLabel,
   timeInZone,
+  totalPriceCents,
   type AppointmentStatus,
   type PaymentMethod,
 } from "@/lib/booking";
@@ -35,9 +37,9 @@ export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: 
       </div>
       <p className="text-sm font-semibold">{a.customers?.name}</p>
       <p className="text-xs text-muted-foreground">
-        {a.services?.name}
+        {serviceLabel(a)}
         {a.professionals ? ` · ${a.professionals.name}` : ""}
-        {a.services ? ` · ${formatPrice(a.services.price_cents)}` : ""}
+        {` · ${formatPrice(totalPriceCents(a))}`}
       </p>
       {a.customers?.phone ? (
         <a
@@ -122,20 +124,51 @@ export function AppointmentActions({
   );
 }
 
+const INTERVAL_OPTIONS = [5, 10, 15, 20, 30];
+
 export function PendingConfirmation({
   appointment: a,
   onUpdateStatus,
+  onConfirm,
 }: {
   appointment: Row;
   onUpdateStatus: (id: string, status: AppointmentStatus) => void;
+  onConfirm: (appointment: Row, intervalMinutes: number) => void;
 }) {
+  const serviceCount = a.service_names ? a.service_names.split(" + ").length : 1;
+  const [askInterval, setAskInterval] = useState(false);
+
+  if (askInterval) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          Este agendamento tem {serviceCount} serviços ({a.service_names}). Deseja inserir um
+          intervalo entre eles?
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => onConfirm(a, 0)}>
+            Sem intervalo
+          </Button>
+          {INTERVAL_OPTIONS.map((minutes) => (
+            <Button key={minutes} size="sm" variant="outline" onClick={() => onConfirm(a, minutes)}>
+              {minutes} min
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning-foreground">
         Este agendamento está aguardando confirmação.
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => onUpdateStatus(a.id, "confirmed")}>
+        <Button
+          size="sm"
+          onClick={() => (serviceCount > 1 ? setAskInterval(true) : onConfirm(a, 0))}
+        >
           Confirmar
         </Button>
         <Button
