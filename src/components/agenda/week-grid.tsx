@@ -109,9 +109,13 @@ function HourRow({
                 }`}
               >
                 {isStart
-                  ? `${timeInZone(a.starts_at, tz)}–${timeInZone(a.ends_at, tz)} ${a.customers?.name ?? ""}`
+                  ? `${timeInZone(a.starts_at, tz)}–${timeInZone(a.ends_at, tz)} ${a.customers?.name ?? ""}${
+                      a.professionals ? ` · ${a.professionals.name}` : ""
+                    }`
                   : isLast
-                    ? `↳ até ${timeInZone(a.ends_at, tz)}`
+                    ? `↳ até ${timeInZone(a.ends_at, tz)}${
+                        a.professionals ? ` · ${a.professionals.name}` : ""
+                      }`
                     : ""}
               </button>
             ))}
