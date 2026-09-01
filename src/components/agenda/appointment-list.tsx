@@ -85,6 +85,11 @@ export function AppointmentList({
                     Finalizar
                   </Button>
                 ) : null}
+                {a.status === "completed" ? (
+                  <Button size="sm" variant="outline" onClick={() => setPayingId(a.id)}>
+                    Editar dados financeiros
+                  </Button>
+                ) : null}
                 {a.status !== "cancelled" ? (
                   <Button
                     size="sm"
@@ -132,23 +137,33 @@ export function AppointmentList({
           {payingAppointment ? (
             <>
               <DialogHeader>
-                <DialogTitle>Pagamento — {payingAppointment.customers?.name}</DialogTitle>
+                <DialogTitle>
+                  {payingAppointment.status === "completed"
+                    ? `Dados financeiros — ${payingAppointment.customers?.name}`
+                    : `Pagamento — ${payingAppointment.customers?.name}`}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <PaymentActions appointment={payingAppointment} onUpdatePayment={onUpdatePayment} />
-                <Button
-                  className="w-full"
-                  disabled={!payingAppointment.paid}
-                  title={
-                    !payingAppointment.paid ? "Marque o pagamento antes de finalizar" : undefined
-                  }
-                  onClick={() => {
-                    onFinalize(payingAppointment.id);
-                    setPayingId(null);
-                  }}
-                >
-                  Finalizar
-                </Button>
+                {payingAppointment.status === "completed" ? (
+                  <Button className="w-full" variant="outline" onClick={() => setPayingId(null)}>
+                    Fechar
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    disabled={!payingAppointment.paid}
+                    title={
+                      !payingAppointment.paid ? "Marque o pagamento antes de finalizar" : undefined
+                    }
+                    onClick={() => {
+                      onFinalize(payingAppointment.id);
+                      setPayingId(null);
+                    }}
+                  >
+                    Finalizar
+                  </Button>
+                )}
               </div>
             </>
           ) : null}
