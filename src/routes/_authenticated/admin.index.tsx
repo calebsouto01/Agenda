@@ -310,7 +310,14 @@ function Agenda() {
           <p className="text-muted-foreground">{appointmentsError.message}</p>
         </div>
       ) : viewMode === "list" ? (
-        <AppointmentList appointments={appointments ?? []} tz={tz} onSelect={setSelected} />
+        <AppointmentList
+          appointments={appointments ?? []}
+          tz={tz}
+          onSelect={setSelected}
+          onFinalize={(id) => setStatus(id, "completed")}
+          onCancel={(id) => setStatus(id, "cancelled")}
+          onDelete={(id) => deleteAppointment.mutate(id)}
+        />
       ) : range === "week" ? (
         <WeekGrid
           days={weekDays}
