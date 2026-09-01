@@ -163,22 +163,27 @@ export function PaymentActions({
     pix: "",
     outro: "",
   });
-  const [outroNote, setOutroNote] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     setAmounts({ dinheiro: "", cartao: "", pix: "", outro: "" });
-    setOutroNote("");
+    setNote("");
   }, [remainingCents]);
 
   const amountCentsOf = (m: PaymentMethod) =>
     Math.round(Number(amounts[m].replace(",", ".")) * 100) || 0;
   const hasAnyAmount = PAYMENT_METHODS.some((m) => amountCentsOf(m) > 0);
-  const canAdd = hasAnyAmount && (amountCentsOf("outro") === 0 || outroNote.trim().length > 0);
+  const sumEnteredCents = PAYMENT_METHODS.reduce((sum, m) => sum + amountCentsOf(m), 0);
+  const outroUsed = amountCentsOf("outro") > 0;
+  const willStayPartial = hasAnyAmount && paidCents + sumEnteredCents < totalCents;
+  const noteRequired = outroUsed || willStayPartial;
+  const canAdd = hasAnyAmount && (!noteRequired || note.trim().length > 0);
 
   const handleAdd = () => {
+    const entryNote = note.trim() || null;
     for (const m of PAYMENT_METHODS) {
       const cents = amountCentsOf(m);
-      if (cents > 0) onAddPayment(a.id, m, cents, m === "outro" ? outroNote.trim() : null);
+      if (cents > 0) onAddPayment(a.id, m, cents, entryNote);
     }
   };
 
@@ -238,14 +243,23 @@ export function PaymentActions({
               </Fragment>
             ))}
           </div>
-          {amountCentsOf("outro") > 0 ? (
-            <Input
-              placeholder="Descreva a forma de pagamento (Outro)"
-              maxLength={200}
-              className="h-8 text-xs"
-              value={outroNote}
-              onChange={(e) => setOutroNote(e.target.value)}
-            />
+          {noteRequired ? (
+            <div className="space-y-1">
+              <p className="text-xs text-warning-foreground">
+                {outroUsed && willStayPartial
+                  ? `O valor lançado (${formatPrice(sumEnteredCents)}) é menor que o total (${formatPrice(totalCents)}) e a forma "Outro" precisa de descrição. Explique o motivo.`
+                  : willStayPartial
+                    ? `O valor lançado (${formatPrice(sumEnteredCents)}) é menor que o total (${formatPrice(totalCents)}). Descreva o motivo do pagamento parcial (ex.: fiado, desconto, entrada).`
+                    : `Descreva a forma de pagamento "Outro".`}
+              </p>
+              <Input
+                placeholder="Observação"
+                maxLength={200}
+                className="h-8 text-xs"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
           ) : null}
           <Button size="sm" className="w-full" disabled={!canAdd} onClick={handleAdd}>
             Adicionar pagamento
