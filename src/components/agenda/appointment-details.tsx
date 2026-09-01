@@ -114,6 +114,35 @@ export function AppointmentActions({
   );
 }
 
+export function PendingConfirmation({
+  appointment: a,
+  onUpdateStatus,
+}: {
+  appointment: Row;
+  onUpdateStatus: (id: string, status: AppointmentStatus) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning-foreground">
+        Este agendamento está aguardando confirmação.
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => onUpdateStatus(a.id, "confirmed")}>
+          Confirmar
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive"
+          onClick={() => onUpdateStatus(a.id, "cancelled")}
+        >
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: AppointmentStatus }) {
   const styles: Record<AppointmentStatus, string> = {
     pending: "bg-warning/20 text-warning-foreground",
