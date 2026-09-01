@@ -14,13 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { Row } from "./types";
 
 export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: string }) {
@@ -216,25 +209,24 @@ export function PaymentActions({
 
       {remainingCents > 0 ? (
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
-              <SelectTrigger className="h-8 w-32 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {PAYMENT_METHOD_LABEL[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            {PAYMENT_METHODS.map((m) => (
+              <Button
+                key={m}
+                type="button"
+                size="sm"
+                variant={method === m ? "secondary" : "outline"}
+                onClick={() => setMethod(m)}
+              >
+                {PAYMENT_METHOD_LABEL[m]}
+              </Button>
+            ))}
             <Input
               type="number"
               step="0.01"
               min="0"
               placeholder="0,00"
-              className="h-8 flex-1 text-xs"
+              className="h-8 w-24 text-xs"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
