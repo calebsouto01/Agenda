@@ -2,6 +2,13 @@ import type { AppointmentStatus, PaymentMethod } from "@/lib/booking";
 
 export type Range = "week" | "month";
 
+export type PaymentEntry = {
+  id: string;
+  method: PaymentMethod;
+  amount_cents: number;
+  note: string | null;
+};
+
 export type Row = {
   id: string;
   starts_at: string;
@@ -9,8 +16,6 @@ export type Row = {
   status: AppointmentStatus;
   notes: string | null;
   paid: boolean;
-  payment_method: PaymentMethod | null;
-  payment_note: string | null;
   service_id: string;
   professional_id: string | null;
   service_names: string | null;
@@ -18,6 +23,7 @@ export type Row = {
   services: { name: string; price_cents: number; duration_minutes: number } | null;
   professionals: { name: string } | null;
   customers: { id: string; name: string; phone: string; email: string | null } | null;
+  payment_entries: PaymentEntry[];
 };
 
 export type BusinessHour = {

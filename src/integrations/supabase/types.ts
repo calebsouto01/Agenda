@@ -18,8 +18,6 @@ export type Database = {
           notes: string | null;
           paid: boolean;
           paid_at: string | null;
-          payment_method: string | null;
-          payment_note: string | null;
           professional_id: string | null;
           service_id: string;
           service_names: string | null;
@@ -37,8 +35,6 @@ export type Database = {
           notes?: string | null;
           paid?: boolean;
           paid_at?: string | null;
-          payment_method?: string | null;
-          payment_note?: string | null;
           professional_id?: string | null;
           service_id: string;
           service_names?: string | null;
@@ -56,8 +52,6 @@ export type Database = {
           notes?: string | null;
           paid?: boolean;
           paid_at?: string | null;
-          payment_method?: string | null;
-          payment_note?: string | null;
           professional_id?: string | null;
           service_id?: string;
           service_names?: string | null;
@@ -259,6 +253,51 @@ export type Database = {
           },
           {
             foreignKeyName: "notification_queue_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: false;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payment_entries: {
+        Row: {
+          amount_cents: number;
+          appointment_id: string;
+          created_at: string;
+          establishment_id: string;
+          id: string;
+          method: string;
+          note: string | null;
+        };
+        Insert: {
+          amount_cents: number;
+          appointment_id: string;
+          created_at?: string;
+          establishment_id: string;
+          id?: string;
+          method: string;
+          note?: string | null;
+        };
+        Update: {
+          amount_cents?: number;
+          appointment_id?: string;
+          created_at?: string;
+          establishment_id?: string;
+          id?: string;
+          method?: string;
+          note?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_entries_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payment_entries_establishment_id_fkey";
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";

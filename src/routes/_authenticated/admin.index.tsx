@@ -54,7 +54,7 @@ function Agenda() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, ends_at, status, notes, paid, payment_method, payment_note, service_id, professional_id, service_names, total_price_cents, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email)",
+          "id, starts_at, ends_at, status, notes, paid, service_id, professional_id, service_names, total_price_cents, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email), payment_entries(id, method, amount_cents, note)",
         )
         .eq("establishment_id", establishment!.id)
         .gte("starts_at", `${fetchBounds.from}T00:00:00`)
@@ -155,45 +155,45 @@ function Agenda() {
     onError: () => toast.error("Não foi possível excluir"),
   });
 
-  const updatePayment = useMutation({
+  const addPayment = useMutation({
     mutationFn: async ({
-      id,
+      appointmentId,
       method,
+      amountCents,
       note,
     }: {
-      id: string;
-      method: PaymentMethod | null;
+      appointmentId: string;
+      method: PaymentMethod;
+      amountCents: number;
       note: string | null;
     }) => {
-      const { error } = await supabase
-        .from("appointments")
-        .update(
-          method
-            ? {
-                paid: true,
-                payment_method: method,
-                payment_note: note,
-                paid_at: new Date().toISOString(),
-              }
-            : { paid: false, payment_method: null, payment_note: null, paid_at: null },
-        )
-        .eq("id", id);
-      if (error) throw error;
+      const { error } = await supabase.from("payment_entries").insert({
+        establishment_id: establishment!.id,
+        appointment_id: appointmentId,
+        method,
+        amount_cents: amountCents,
+        note,
+      });
+      if (error) throw new Error(error.message);
     },
-    onSuccess: (_, { method, note }) => {
-      toast.success(method ? "Pagamento registrado" : "Pagamento desfeito");
+    onSuccess: () => {
+      toast.success("Pagamento registrado");
       invalidateAppointmentQueries();
-      setSelected((prev) =>
-        prev
-          ? { ...prev, paid: Boolean(method), payment_method: method, payment_note: note }
-          : prev,
-      );
     },
-    onError: () => toast.error("Não foi possível atualizar o pagamento"),
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  const setPayment = (id: string, method: PaymentMethod | null, note: string | null) =>
-    updatePayment.mutate({ id, method, note });
+  const removePayment = useMutation({
+    mutationFn: async (entryId: string) => {
+      const { error } = await supabase.from("payment_entries").delete().eq("id", entryId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Pagamento removido");
+      invalidateAppointmentQueries();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const step = range === "week" ? 7 : 30;
 
@@ -312,7 +312,10 @@ function Agenda() {
           onFinalize={(id) => setStatus(id, "completed")}
           onCancel={(id) => setStatus(id, "cancelled")}
           onDelete={(id) => deleteAppointment.mutate(id)}
-          onUpdatePayment={setPayment}
+          onAddPayment={(appointmentId, method, amountCents, note) =>
+            addPayment.mutate({ appointmentId, method, amountCents, note })
+          }
+          onRemovePayment={(entryId) => removePayment.mutate(entryId)}
         />
       ) : range === "week" ? (
         <WeekGrid

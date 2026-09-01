@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Phone, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Phone, X } from "lucide-react";
 
 import {
   PAYMENT_METHOD_LABEL,
@@ -15,16 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Row } from "./types";
 
 export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: string }) {
@@ -33,7 +29,7 @@ export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-base font-bold">{timeInZone(a.starts_at, tz)}</span>
         <StatusBadge status={a.status} />
-        {a.status !== "pending" ? <PaymentBadge paid={a.paid} method={a.payment_method} /> : null}
+        {a.status !== "pending" ? <PaymentBadge paid={a.paid} entries={a.payment_entries} /> : null}
       </div>
       <p className="text-sm font-semibold">{a.customers?.name}</p>
       <p className="text-xs text-muted-foreground">
@@ -53,73 +49,6 @@ export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: 
         </a>
       ) : null}
       {a.notes ? <p className="mt-1 text-xs italic text-muted-foreground">{a.notes}</p> : null}
-    </div>
-  );
-}
-
-export function AppointmentActions({
-  appointment: a,
-  onUpdateStatus,
-  onDelete,
-}: {
-  appointment: Row;
-  onUpdateStatus: (id: string, status: AppointmentStatus) => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <div className="flex shrink-0 flex-wrap gap-2">
-      {a.status !== "confirmed" && a.status !== "completed" ? (
-        <Button size="sm" onClick={() => onUpdateStatus(a.id, "confirmed")}>
-          Confirmar
-        </Button>
-      ) : null}
-      {a.status !== "completed" && a.status !== "cancelled" ? (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!a.paid}
-          title={!a.paid ? "Marque o pagamento antes de finalizar" : undefined}
-          onClick={() => onUpdateStatus(a.id, "completed")}
-        >
-          Finalizar
-        </Button>
-      ) : null}
-      {a.status !== "cancelled" ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-destructive"
-          onClick={() => onUpdateStatus(a.id, "cancelled")}
-        >
-          Cancelar
-        </Button>
-      ) : null}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button size="sm" variant="ghost" className="text-destructive">
-            <Trash2 className="size-4" />
-            Excluir
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação remove o agendamento de {a.customers?.name} permanentemente e não pode ser
-              desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => onDelete(a.id)}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
@@ -198,7 +127,7 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
   );
 }
 
-function PaymentBadge({ paid, method }: { paid: boolean; method: PaymentMethod | null }) {
+function PaymentBadge({ paid, entries }: { paid: boolean; entries: Row["payment_entries"] }) {
   if (!paid) {
     return (
       <Badge variant="outline" className="border-0 bg-muted text-muted-foreground">
@@ -206,79 +135,128 @@ function PaymentBadge({ paid, method }: { paid: boolean; method: PaymentMethod |
       </Badge>
     );
   }
+  const label =
+    entries.length > 1 ? "dividido" : entries[0] ? PAYMENT_METHOD_LABEL[entries[0].method] : "";
   return (
     <Badge variant="outline" className="border-0 bg-success/20 text-success">
-      Pago{method ? ` · ${PAYMENT_METHOD_LABEL[method]}` : ""}
+      Pago{label ? ` · ${label}` : ""}
     </Badge>
   );
 }
 
+const PAYMENT_METHODS: PaymentMethod[] = ["dinheiro", "cartao", "pix", "outro"];
+
 export function PaymentActions({
   appointment: a,
-  onUpdatePayment,
+  onAddPayment,
+  onRemovePayment,
 }: {
   appointment: Row;
-  onUpdatePayment: (id: string, method: PaymentMethod | null, note: string | null) => void;
+  onAddPayment: (
+    appointmentId: string,
+    method: PaymentMethod,
+    amountCents: number,
+    note: string | null,
+  ) => void;
+  onRemovePayment: (entryId: string) => void;
 }) {
-  const [showNoteInput, setShowNoteInput] = useState(false);
+  const totalCents = totalPriceCents(a);
+  const paidCents = a.payment_entries.reduce((sum, e) => sum + e.amount_cents, 0);
+  const remainingCents = Math.max(0, totalCents - paidCents);
+
+  const [method, setMethod] = useState<PaymentMethod>("dinheiro");
+  const [amount, setAmount] = useState(remainingCents > 0 ? (remainingCents / 100).toFixed(2) : "");
   const [note, setNote] = useState("");
 
-  if (a.paid) {
-    return (
-      <div className="space-y-1">
-        {a.payment_method === "outro" && a.payment_note ? (
-          <p className="text-xs text-muted-foreground">Obs: {a.payment_note}</p>
-        ) : null}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-muted-foreground"
-          onClick={() => onUpdatePayment(a.id, null, null)}
-        >
-          Desfazer pagamento
-        </Button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    setAmount(remainingCents > 0 ? (remainingCents / 100).toFixed(2) : "");
+    setNote("");
+  }, [remainingCents]);
 
-  const methods: PaymentMethod[] = ["dinheiro", "cartao", "pix"];
+  const amountCents = Math.round(Number(amount.replace(",", ".")) * 100) || 0;
+  const canAdd = amountCents > 0 && (method !== "outro" || note.trim().length > 0);
+
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Marcar como pago:</span>
-        {methods.map((m) => (
+    <div className="space-y-3">
+      {a.payment_entries.length > 0 ? (
+        <div className="space-y-1.5">
+          {a.payment_entries.map((entry) => (
+            <div
+              key={entry.id}
+              className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5 text-xs"
+            >
+              <span className="min-w-0 truncate">
+                <span className="font-semibold">{PAYMENT_METHOD_LABEL[entry.method]}</span>
+                {entry.note ? <span className="text-muted-foreground"> · {entry.note}</span> : null}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="font-semibold">{formatPrice(entry.amount_cents)}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemovePayment(entry.id)}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="text-muted-foreground">
+              Pago {formatPrice(paidCents)} de {formatPrice(totalCents)}
+            </span>
+            {remainingCents === 0 ? (
+              <span className="text-success">Quitado</span>
+            ) : (
+              <span className="text-warning-foreground">Falta {formatPrice(remainingCents)}</span>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {remainingCents > 0 ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+              <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_METHODS.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {PAYMENT_METHOD_LABEL[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0,00"
+              className="h-8 flex-1 text-xs"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          {method === "outro" ? (
+            <Input
+              placeholder="Descreva a forma de pagamento"
+              maxLength={200}
+              className="h-8 text-xs"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          ) : null}
           <Button
-            key={m}
             size="sm"
-            variant="outline"
-            onClick={() => onUpdatePayment(a.id, m, null)}
+            className="w-full"
+            disabled={!canAdd}
+            onClick={() =>
+              onAddPayment(a.id, method, amountCents, method === "outro" ? note.trim() : null)
+            }
           >
-            {PAYMENT_METHOD_LABEL[m]}
-          </Button>
-        ))}
-        <Button
-          size="sm"
-          variant={showNoteInput ? "secondary" : "outline"}
-          onClick={() => setShowNoteInput((v) => !v)}
-        >
-          Outro
-        </Button>
-      </div>
-      {showNoteInput ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Descreva a forma de pagamento"
-            maxLength={200}
-            className="h-8 max-w-xs text-xs"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-          <Button
-            size="sm"
-            disabled={note.trim().length === 0}
-            onClick={() => onUpdatePayment(a.id, "outro", note.trim())}
-          >
-            Confirmar
+            Adicionar pagamento
           </Button>
         </div>
       ) : null}

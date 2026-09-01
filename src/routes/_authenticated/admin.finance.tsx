@@ -32,13 +32,19 @@ type Row = {
   id: string;
   starts_at: string;
   paid: boolean;
-  payment_method: PaymentMethod | null;
-  payment_note: string | null;
   service_names: string | null;
   total_price_cents: number | null;
   services: { name: string; price_cents: number } | null;
   professionals: { name: string } | null;
   customers: { name: string } | null;
+};
+
+type PaymentEntryRow = {
+  id: string;
+  method: PaymentMethod;
+  amount_cents: number;
+  note: string | null;
+  appointments: { starts_at: string; customers: { name: string } | null } | null;
 };
 
 /** Combinado de vários serviços tem preço somado override; um único serviço usa o join normal. */
@@ -99,7 +105,7 @@ function FinancePage() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, paid, payment_method, payment_note, service_names, total_price_cents, services(name, price_cents), professionals(name), customers(name)",
+          "id, starts_at, paid, service_names, total_price_cents, services(name, price_cents), professionals(name), customers(name)",
         )
         .eq("establishment_id", establishment!.id)
         .eq("status", "completed")
@@ -128,6 +134,21 @@ function FinancePage() {
         services: { price_cents: number } | null;
       }[];
       return rows.reduce((sum, r) => sum + priceOf(r), 0);
+    },
+  });
+
+  const appointmentIds = useMemo(() => (appointments ?? []).map((a) => a.id), [appointments]);
+
+  const { data: paymentEntries } = useQuery({
+    queryKey: ["finance-payment-entries", appointmentIds],
+    enabled: appointmentIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_entries")
+        .select("id, method, amount_cents, note, appointments(starts_at, customers(name))")
+        .in("appointment_id", appointmentIds);
+      if (error) throw error;
+      return (data ?? []) as unknown as PaymentEntryRow[];
     },
   });
 
@@ -172,23 +193,21 @@ function FinancePage() {
 
   const byPaymentMethod = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
-    for (const a of appointments ?? []) {
-      if (!a.paid || !a.payment_method) continue;
-      const name = PAYMENT_METHOD_LABEL[a.payment_method];
+    for (const e of paymentEntries ?? []) {
+      const name = PAYMENT_METHOD_LABEL[e.method];
       const entry = map.get(name) ?? { count: 0, total: 0 };
       entry.count += 1;
-      entry.total += priceOf(a);
+      entry.total += e.amount_cents;
       map.set(name, entry);
     }
     return [...map.entries()]
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total);
-  }, [appointments]);
+  }, [paymentEntries]);
 
   const paymentsWithNote = useMemo(
-    () =>
-      (appointments ?? []).filter((a) => a.paid && a.payment_method === "outro" && a.payment_note),
-    [appointments],
+    () => (paymentEntries ?? []).filter((e) => e.method === "outro" && e.note),
+    [paymentEntries],
   );
 
   const byDay = useMemo(() => {
@@ -379,15 +398,18 @@ function FinancePage() {
                 <p className="text-xs font-semibold text-muted-foreground">
                   Pagamentos com observação
                 </p>
-                {paymentsWithNote.map((a) => (
-                  <div key={a.id} className="flex items-start justify-between gap-3 text-sm">
+                {paymentsWithNote.map((e) => (
+                  <div key={e.id} className="flex items-start justify-between gap-3 text-sm">
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{a.customers?.name ?? "Cliente"}</p>
+                      <p className="truncate font-medium">
+                        {e.appointments?.customers?.name ?? "Cliente"}
+                      </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {dateTimeInZone(a.starts_at, tz)} · {a.payment_note}
+                        {e.appointments ? dateTimeInZone(e.appointments.starts_at, tz) : ""} ·{" "}
+                        {e.note}
                       </p>
                     </div>
-                    <span className="shrink-0 font-semibold">{formatPrice(priceOf(a))}</span>
+                    <span className="shrink-0 font-semibold">{formatPrice(e.amount_cents)}</span>
                   </div>
                 ))}
               </CardContent>
