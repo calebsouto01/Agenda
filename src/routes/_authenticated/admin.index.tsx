@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { WeekGrid } from "@/components/agenda/week-grid";
+import { WeekGrid, type CellItem } from "@/components/agenda/week-grid";
 import { MonthGrid } from "@/components/agenda/month-grid";
 import { ConfirmedList } from "@/components/agenda/confirmed-list";
 import {
@@ -234,11 +234,19 @@ function Agenda() {
   );
 
   const cellMap = useMemo(() => {
-    const map = new Map<string, Row[]>();
+    const map = new Map<string, CellItem[]>();
     for (const a of appointments ?? []) {
       const day = isoDateInZone(new Date(a.starts_at), tz);
-      const key = `${day}-${hourInZone(a.starts_at, tz)}`;
-      map.set(key, [...(map.get(key) ?? []), a]);
+      const startHour = hourInZone(a.starts_at, tz);
+      const lastInstant = new Date(new Date(a.ends_at).getTime() - 1);
+      const lastHour = Math.max(startHour, hourInZone(lastInstant.toISOString(), tz));
+      for (let h = startHour; h <= lastHour; h++) {
+        const key = `${day}-${h}`;
+        map.set(key, [
+          ...(map.get(key) ?? []),
+          { appointment: a, isStart: h === startHour, isLast: h === lastHour },
+        ]);
+      }
     }
     return map;
   }, [appointments, tz]);
