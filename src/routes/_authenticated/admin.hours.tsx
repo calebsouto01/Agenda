@@ -236,7 +236,6 @@ function HoursPage() {
 
       <Card className="shadow-soft">
         <CardContent className="space-y-3 p-4">
-          <p className="text-sm font-semibold">Edição global</p>
           <p className="text-xs text-muted-foreground">
             Defina um horário e aplique de uma vez a todos os dias da semana.
           </p>
