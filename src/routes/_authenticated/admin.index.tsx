@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WeekGrid, type CellItem } from "@/components/agenda/week-grid";
 import { MonthGrid } from "@/components/agenda/month-grid";
+import { AppointmentList } from "@/components/agenda/appointment-list";
 import {
   AppointmentInfo,
   AppointmentActions,
@@ -38,6 +39,7 @@ function Agenda() {
   const queryClient = useQueryClient();
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
   const [range, setRange] = useState<Range>("week");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
   const [selected, setSelected] = useState<Row | null>(null);
 
@@ -254,10 +256,21 @@ function Agenda() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-extrabold">Agenda</h1>
-          <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
+          <Tabs
+            value={viewMode === "list" ? "list" : range}
+            onValueChange={(v) => {
+              if (v === "list") {
+                setViewMode("list");
+              } else {
+                setViewMode("grid");
+                setRange(v as Range);
+              }
+            }}
+          >
             <TabsList>
               <TabsTrigger value="week">Semana</TabsTrigger>
               <TabsTrigger value="month">Mês</TabsTrigger>
+              <TabsTrigger value="list">Lista</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -296,6 +309,8 @@ function Agenda() {
           </p>
           <p className="text-muted-foreground">{appointmentsError.message}</p>
         </div>
+      ) : viewMode === "list" ? (
+        <AppointmentList appointments={appointments ?? []} tz={tz} onSelect={setSelected} />
       ) : range === "week" ? (
         <WeekGrid
           days={weekDays}
