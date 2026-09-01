@@ -102,7 +102,11 @@ function Agenda() {
     onSuccess: (_, { status }) => {
       toast.success("Agendamento atualizado");
       invalidateAppointmentQueries();
-      setSelected((prev) => (prev ? { ...prev, status } : prev));
+      if (status === "completed") {
+        setSelected(null);
+      } else {
+        setSelected((prev) => (prev ? { ...prev, status } : prev));
+      }
     },
     onError: () => toast.error("Não foi possível atualizar"),
   });
