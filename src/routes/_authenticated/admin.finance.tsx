@@ -56,6 +56,15 @@ function previousBounds(bounds: { from: string; to: string }) {
   return { from: addDays(bounds.from, -days), to: bounds.from };
 }
 
+/** Moves the anchor by one calendar unit (day/week/month), not a fixed day count. */
+function shiftAnchor(anchor: string, range: Range, direction: 1 | -1) {
+  if (range === "day") return addDays(anchor, direction);
+  if (range === "week") return addDays(anchor, direction * 7);
+  const d = new Date(`${anchor}T12:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + direction);
+  return d.toISOString().slice(0, 10);
+}
+
 function FinancePage() {
   const { data: establishment } = useEstablishment();
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
@@ -64,7 +73,6 @@ function FinancePage() {
 
   const bounds = useMemo(() => rangeBounds(anchor, range), [anchor, range]);
   const prevBounds = useMemo(() => previousBounds(bounds), [bounds]);
-  const step = range === "day" ? 1 : range === "week" ? 7 : 30;
 
   const { data: appointments, isLoading } = useQuery({
     queryKey: ["finance-appointments", establishment?.id, bounds.from, bounds.to],
@@ -185,7 +193,7 @@ function FinancePage() {
       </div>
 
       <div className="flex items-center justify-between rounded-xl border bg-card p-2">
-        <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, -step))}>
+        <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, -1))}>
           <ChevronLeft className="size-4" />
         </Button>
         <span className="text-sm font-semibold">
@@ -197,7 +205,7 @@ function FinancePage() {
           }).format(new Date(`${bounds.from}T12:00:00Z`))}
           {range === "week" ? " (semana)" : ""}
         </span>
-        <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, step))}>
+        <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, 1))}>
           <ChevronRight className="size-4" />
         </Button>
       </div>
