@@ -24,6 +24,7 @@ import {
   AppointmentInfo,
   AppointmentActions,
   PaymentActions,
+  PendingConfirmation,
 } from "@/components/agenda/appointment-details";
 import { rangeBounds, monthGrid } from "@/components/agenda/utils";
 import type { BusinessHour, Range, Row } from "@/components/agenda/types";
@@ -259,16 +260,26 @@ function Agenda() {
           {selected ? (
             <>
               <DialogHeader>
-                <DialogTitle>Detalhes do agendamento</DialogTitle>
+                <DialogTitle>
+                  {selected.status === "pending"
+                    ? "Confirmar agendamento"
+                    : "Detalhes do agendamento"}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <AppointmentInfo appointment={selected} tz={tz} />
-                <PaymentActions appointment={selected} onUpdatePayment={setPayment} />
-                <AppointmentActions
-                  appointment={selected}
-                  onUpdateStatus={setStatus}
-                  onDelete={(id) => deleteAppointment.mutate(id)}
-                />
+                {selected.status === "pending" ? (
+                  <PendingConfirmation appointment={selected} onUpdateStatus={setStatus} />
+                ) : (
+                  <>
+                    <PaymentActions appointment={selected} onUpdatePayment={setPayment} />
+                    <AppointmentActions
+                      appointment={selected}
+                      onUpdateStatus={setStatus}
+                      onDelete={(id) => deleteAppointment.mutate(id)}
+                    />
+                  </>
+                )}
               </div>
             </>
           ) : null}
