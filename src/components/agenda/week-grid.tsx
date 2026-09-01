@@ -103,7 +103,7 @@ function HourRow({
                 onClick={() => onSelect(a)}
                 className={`mb-1 block w-full cursor-pointer truncate rounded-md px-1.5 py-1 text-left text-[10px] font-semibold outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring ${STATUS_CHIP[a.status]}`}
               >
-                {timeInZone(a.starts_at, tz)} {a.customers?.name}
+                {timeInZone(a.starts_at, tz)}–{timeInZone(a.ends_at, tz)} {a.customers?.name}
               </button>
             ))}
           </div>
