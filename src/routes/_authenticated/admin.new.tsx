@@ -29,7 +29,7 @@ function ManualBooking() {
   const queryClient = useQueryClient();
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
 
-  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [date, setDate] = useState(() => isoDateInZone(new Date(), tz));
   const [slot, setSlot] = useState<string | null>(null);
@@ -65,15 +65,20 @@ function ManualBooking() {
     },
   });
 
+  const selectedServices = (services ?? []).filter((s) => serviceIds.includes(s.id));
+  const totalDurationMinutes = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
+  const totalPriceCents = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
+
   const { data: slots, isFetching: loadingSlots } = useQuery({
-    queryKey: ["admin-slots", establishment?.id, serviceId, professionalId, date],
-    enabled: Boolean(establishment?.id && serviceId && date),
+    queryKey: ["admin-slots", establishment?.id, serviceIds, professionalId, date],
+    enabled: Boolean(establishment?.id && serviceIds.length > 0 && date),
     queryFn: async () => {
       const { data, error } = await supabase.rpc("available_slots", {
         p_establishment_id: establishment!.id,
-        p_service_id: serviceId!,
+        p_service_id: serviceIds[0]!,
         p_professional_id: professionalId,
         p_date: date,
+        p_service_ids: serviceIds,
       } as never);
       if (error) throw error;
       return (data ?? []) as unknown as string[];
@@ -82,7 +87,7 @@ function ManualBooking() {
 
   const booking = useMutation({
     mutationFn: async () => {
-      if (!serviceId) throw new Error("Escolha um serviço");
+      if (serviceIds.length === 0) throw new Error("Escolha ao menos um serviço");
       if (professionals && professionals.length > 0 && !professionalId) {
         throw new Error("Escolha um profissional");
       }
@@ -91,13 +96,14 @@ function ManualBooking() {
       if (form.phone.replace(/\D/g, "").length < 10) throw new Error("Informe um telefone válido");
       const { data, error } = await supabase.rpc("book_appointment", {
         p_establishment_id: establishment!.id,
-        p_service_id: serviceId,
+        p_service_id: serviceIds[0]!,
         p_professional_id: professionalId,
         p_starts_at: slot,
         p_customer_name: form.name.trim(),
         p_customer_phone: form.phone.trim(),
         p_customer_email: form.email.trim() || null,
         p_notes: form.notes.trim() || null,
+        p_service_ids: serviceIds,
       } as never);
       if (error) throw new Error(error.message);
       return data;
@@ -122,32 +128,45 @@ function ManualBooking() {
       <Card className="shadow-soft">
         <CardContent className="space-y-5 p-5">
           <div className="space-y-2">
-            <Label>Serviço</Label>
+            <Label>Serviço(s)</Label>
             <div className="flex flex-wrap gap-2">
-              {(services ?? []).map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    setServiceId(s.id);
-                    setSlot(null);
-                  }}
-                  className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
-                    serviceId === s.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-card hover:bg-muted"
-                  }`}
-                >
-                  {s.name}
-                  <span className="block text-[11px] font-normal opacity-80">
-                    {formatDuration(s.duration_minutes)} · {formatPrice(s.price_cents)}
-                  </span>
-                </button>
-              ))}
+              {(services ?? []).map((s) => {
+                const active = serviceIds.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setServiceIds((prev) =>
+                        prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id],
+                      );
+                      setSlot(null);
+                    }}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-card hover:bg-muted"
+                    }`}
+                  >
+                    {s.name}
+                    <span className="block text-[11px] font-normal opacity-80">
+                      {formatDuration(s.duration_minutes)} · {formatPrice(s.price_cents)}
+                    </span>
+                  </button>
+                );
+              })}
               {services && services.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Cadastre um serviço primeiro.</p>
               ) : null}
             </div>
+            {selectedServices.length > 1 ? (
+              <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-xs">
+                <span className="text-muted-foreground">
+                  {selectedServices.length} serviços · {formatDuration(totalDurationMinutes)}
+                </span>
+                <span className="font-bold">{formatPrice(totalPriceCents)}</span>
+              </div>
+            ) : null}
           </div>
 
           {professionals && professionals.length > 0 ? (
@@ -190,7 +209,7 @@ function ManualBooking() {
 
           <div className="space-y-2">
             <Label>Horário — {formatDateLabel(date)}</Label>
-            {!serviceId ? (
+            {serviceIds.length === 0 ? (
               <p className="text-sm text-muted-foreground">Escolha um serviço para ver horários.</p>
             ) : loadingSlots ? (
               <Skeleton className="h-10 w-full" />
