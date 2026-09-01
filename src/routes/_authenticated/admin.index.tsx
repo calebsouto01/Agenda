@@ -82,6 +82,13 @@ function Agenda() {
     return map;
   }, [businessHours]);
 
+  /** Agendamentos são consultados sob chaves diferentes na Agenda e no Financeiro. */
+  const invalidateAppointmentQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: ["finance-appointments"] });
+    queryClient.invalidateQueries({ queryKey: ["finance-previous"] });
+  };
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
       const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
@@ -89,7 +96,7 @@ function Agenda() {
     },
     onSuccess: (_, { status }) => {
       toast.success("Agendamento atualizado");
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      invalidateAppointmentQueries();
       setSelected((prev) => (prev ? { ...prev, status } : prev));
     },
     onError: () => toast.error("Não foi possível atualizar"),
@@ -104,7 +111,7 @@ function Agenda() {
     },
     onSuccess: () => {
       toast.success("Agendamento excluído");
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      invalidateAppointmentQueries();
       setSelected(null);
     },
     onError: () => toast.error("Não foi possível excluir"),
@@ -124,7 +131,7 @@ function Agenda() {
     },
     onSuccess: (_, { method }) => {
       toast.success(method ? "Pagamento registrado" : "Pagamento desfeito");
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      invalidateAppointmentQueries();
       setSelected((prev) =>
         prev ? { ...prev, paid: Boolean(method), payment_method: method } : prev,
       );
