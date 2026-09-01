@@ -126,15 +126,40 @@ function HoursPage() {
           }
         }
       }
-      const { error } = await supabase.from("business_hours").upsert(
-        rowsToSave.map((r) => ({ ...r, establishment_id: establishment!.id })),
-        { onConflict: "establishment_id,weekday" },
-      );
+      const payload = rowsToSave.map((r) => ({
+        establishment_id: establishment!.id,
+        weekday: r.weekday,
+        opens_at: r.opens_at,
+        closes_at: r.closes_at,
+        closed: r.closed,
+        break_start: r.break_start,
+        break_end: r.break_end,
+      }));
+      const { data: saved, error } = await supabase
+        .from("business_hours")
+        .upsert(payload, { onConflict: "establishment_id,weekday" })
+        .select("weekday, opens_at, closes_at, closed, break_start, break_end");
       if (error) throw new Error(error.message);
+      return (saved ?? []) as Hour[];
     },
-    onSuccess: (_, rowsToSave) => {
+    onSuccess: (saved) => {
       toast.success("Horários de funcionamento salvos");
-      setRows(rowsToSave);
+      if (saved.length > 0) {
+        setRows(
+          WEEKDAYS.map((_, weekday) => {
+            const found = saved.find((h) => h.weekday === weekday);
+            return found
+              ? {
+                  ...found,
+                  opens_at: found.opens_at.slice(0, 5),
+                  closes_at: found.closes_at.slice(0, 5),
+                  break_start: found.break_start ? found.break_start.slice(0, 5) : null,
+                  break_end: found.break_end ? found.break_end.slice(0, 5) : null,
+                }
+              : rows[weekday]!;
+          }),
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["business-hours"] });
     },
     onError: (e: Error) => toast.error(e.message),
