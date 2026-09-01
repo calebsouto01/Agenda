@@ -15,7 +15,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as BSlugRouteImport } from './routes/b.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as AuthenticatedAdminBlocksRouteImport } from './routes/_authenticated/admin.blocks'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin.customers'
 import { Route as AuthenticatedAdminFinanceRouteImport } from './routes/_authenticated/admin.finance'
 import { Route as AuthenticatedAdminHoursRouteImport } from './routes/_authenticated/admin.hours'
@@ -53,12 +52,6 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedAdminBlocksRoute =
-  AuthenticatedAdminBlocksRouteImport.update({
-    id: '/blocks',
-    path: '/blocks',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminCustomersRoute =
   AuthenticatedAdminCustomersRouteImport.update({
     id: '/customers',
@@ -105,7 +98,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/b/$slug': typeof BSlugRoute
-  '/admin/blocks': typeof AuthenticatedAdminBlocksRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceRoute
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
@@ -119,7 +111,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/b/$slug': typeof BSlugRoute
-  '/admin/blocks': typeof AuthenticatedAdminBlocksRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceRoute
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
@@ -136,7 +127,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/b/$slug': typeof BSlugRoute
-  '/_authenticated/admin/blocks': typeof AuthenticatedAdminBlocksRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/finance': typeof AuthenticatedAdminFinanceRoute
   '/_authenticated/admin/hours': typeof AuthenticatedAdminHoursRoute
@@ -153,7 +143,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/b/$slug'
-    | '/admin/blocks'
     | '/admin/customers'
     | '/admin/finance'
     | '/admin/hours'
@@ -167,7 +156,6 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/b/$slug'
-    | '/admin/blocks'
     | '/admin/customers'
     | '/admin/finance'
     | '/admin/hours'
@@ -183,7 +171,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/b/$slug'
-    | '/_authenticated/admin/blocks'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/finance'
     | '/_authenticated/admin/hours'
@@ -245,13 +232,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/blocks': {
-      id: '/_authenticated/admin/blocks'
-      path: '/blocks'
-      fullPath: '/admin/blocks'
-      preLoaderRoute: typeof AuthenticatedAdminBlocksRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/customers': {
       id: '/_authenticated/admin/customers'
       path: '/customers'
@@ -305,7 +285,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminBlocksRoute: typeof AuthenticatedAdminBlocksRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminFinanceRoute: typeof AuthenticatedAdminFinanceRoute
   AuthenticatedAdminHoursRoute: typeof AuthenticatedAdminHoursRoute
@@ -317,7 +296,6 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminBlocksRoute: AuthenticatedAdminBlocksRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminFinanceRoute: AuthenticatedAdminFinanceRoute,
   AuthenticatedAdminHoursRoute: AuthenticatedAdminHoursRoute,
