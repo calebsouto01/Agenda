@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,7 +51,8 @@ export function AppointmentList({
   ) => void;
   onRemovePayment: (entryId: string) => void;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const payingAppointment = appointments.find((a) => a.id === payingId) ?? null;
 
   if (appointments.length === 0) {
     return (
@@ -61,10 +63,9 @@ export function AppointmentList({
   }
 
   return (
-    <div className="space-y-2">
-      {appointments.map((a) => {
-        const expanded = expandedId === a.id;
-        return (
+    <>
+      <div className="space-y-2">
+        {appointments.map((a) => (
           <Card key={a.id} className="shadow-soft">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
               <button
@@ -87,20 +88,12 @@ export function AppointmentList({
               </button>
               <div className="flex shrink-0 flex-wrap gap-2">
                 {a.status !== "completed" && a.status !== "cancelled" ? (
-                  <Button
-                    size="sm"
-                    variant={expanded ? "secondary" : "outline"}
-                    onClick={() => setExpandedId(expanded ? null : a.id)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => setPayingId(a.id)}>
                     Finalizar
                   </Button>
                 ) : null}
                 {a.status === "completed" ? (
-                  <Button
-                    size="sm"
-                    variant={expanded ? "secondary" : "outline"}
-                    onClick={() => setExpandedId(expanded ? null : a.id)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => setPayingId(a.id)}>
                     Editar dados financeiros
                   </Button>
                 ) : null}
@@ -142,36 +135,55 @@ export function AppointmentList({
                 </AlertDialog>
               </div>
             </CardContent>
+          </Card>
+        ))}
+      </div>
 
-            {expanded ? (
-              <CardContent className="space-y-3 border-t p-3">
+      <Dialog open={Boolean(payingAppointment)} onOpenChange={(open) => !open && setPayingId(null)}>
+        <DialogContent className="max-w-sm">
+          {payingAppointment ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {payingAppointment.status === "completed" ? "Dados financeiros" : "Pagamento"}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  {payingAppointment.customers?.name} · Valor total{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatPrice(totalPriceCents(payingAppointment))}
+                  </span>
+                </p>
+              </DialogHeader>
+              <div className="space-y-3">
                 <PaymentActions
-                  appointment={a}
+                  appointment={payingAppointment}
                   onAddPayment={onAddPayment}
                   onRemovePayment={onRemovePayment}
                 />
-                {a.status === "completed" ? (
-                  <Button className="w-full" variant="outline" onClick={() => setExpandedId(null)}>
+                {payingAppointment.status === "completed" ? (
+                  <Button className="w-full" variant="outline" onClick={() => setPayingId(null)}>
                     Fechar
                   </Button>
                 ) : (
                   <Button
                     className="w-full"
-                    disabled={!a.paid}
-                    title={!a.paid ? "Marque o pagamento antes de finalizar" : undefined}
+                    disabled={!payingAppointment.paid}
+                    title={
+                      !payingAppointment.paid ? "Marque o pagamento antes de finalizar" : undefined
+                    }
                     onClick={() => {
-                      onFinalize(a.id);
-                      setExpandedId(null);
+                      onFinalize(payingAppointment.id);
+                      setPayingId(null);
                     }}
                   >
                     Finalizar
                   </Button>
                 )}
-              </CardContent>
-            ) : null}
-          </Card>
-        );
-      })}
-    </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
