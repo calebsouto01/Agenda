@@ -20,7 +20,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WeekGrid, type CellItem } from "@/components/agenda/week-grid";
 import { MonthGrid } from "@/components/agenda/month-grid";
-import { ConfirmedList } from "@/components/agenda/confirmed-list";
 import {
   AppointmentInfo,
   AppointmentActions,
@@ -39,7 +38,6 @@ function Agenda() {
   const queryClient = useQueryClient();
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
   const [range, setRange] = useState<Range>("week");
-  const [showConfirmed, setShowConfirmed] = useState(false);
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
   const [selected, setSelected] = useState<Row | null>(null);
 
@@ -54,7 +52,7 @@ function Agenda() {
     error: appointmentsError,
   } = useQuery({
     queryKey: ["appointments", establishment?.id, fetchBounds.from, fetchBounds.to],
-    enabled: Boolean(establishment?.id) && !showConfirmed,
+    enabled: Boolean(establishment?.id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
@@ -256,21 +254,10 @@ function Agenda() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-extrabold">Agenda</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Tabs
-            value={showConfirmed ? "confirmed" : range}
-            onValueChange={(v) => {
-              if (v === "confirmed") {
-                setShowConfirmed(true);
-              } else {
-                setShowConfirmed(false);
-                setRange(v as Range);
-              }
-            }}
-          >
+          <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
             <TabsList>
               <TabsTrigger value="week">Semana</TabsTrigger>
               <TabsTrigger value="month">Mês</TabsTrigger>
-              <TabsTrigger value="confirmed">Confirmados</TabsTrigger>
             </TabsList>
           </Tabs>
           <Button asChild size="sm">
@@ -282,31 +269,25 @@ function Agenda() {
         </div>
       </div>
 
-      {showConfirmed ? null : (
-        <div className="flex items-center justify-between rounded-xl border bg-card p-2">
-          <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, -step))}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm font-semibold">
-            {new Intl.DateTimeFormat("pt-BR", {
-              day: range === "month" ? undefined : "2-digit",
-              month: "long",
-              year: "numeric",
-              timeZone: "UTC",
-            }).format(new Date(`${bounds.from}T12:00:00Z`))}
-            {range === "week" ? " (semana)" : ""}
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, step))}>
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center justify-between rounded-xl border bg-card p-2">
+        <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, -step))}>
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="text-sm font-semibold">
+          {new Intl.DateTimeFormat("pt-BR", {
+            day: range === "month" ? undefined : "2-digit",
+            month: "long",
+            year: "numeric",
+            timeZone: "UTC",
+          }).format(new Date(`${bounds.from}T12:00:00Z`))}
+          {range === "week" ? " (semana)" : ""}
+        </span>
+        <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, step))}>
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
 
-      {showConfirmed ? (
-        establishment?.id ? (
-          <ConfirmedList establishmentId={establishment.id} tz={tz} />
-        ) : null
-      ) : isLoading ? (
+      {isLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : appointmentsError ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
