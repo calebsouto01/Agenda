@@ -77,7 +77,7 @@ function AuthPage() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: resolveEmail(parsed.data.email),
       password: resolvePassword(parsed.data.password),
       options: { emailRedirectTo: `${window.location.origin}${target}` },
@@ -85,6 +85,10 @@ function AuthPage() {
     setLoading(false);
     if (error) {
       toast.error(error.message);
+      return;
+    }
+    if (!data.session) {
+      toast.success("Conta criada! Confirme seu e-mail para poder entrar.");
       return;
     }
     toast.success("Conta criada! Você já pode configurar seu estabelecimento.");
