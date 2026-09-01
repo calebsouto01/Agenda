@@ -12,13 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/admin/hours")({
   component: HoursPage,
@@ -40,7 +33,6 @@ function HoursPage() {
   const { data: establishment } = useEstablishment();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Hour[]>([]);
-  const [copySource, setCopySource] = useState<Record<number, string>>({});
 
   const {
     data,
@@ -141,9 +133,6 @@ function HoursPage() {
         <CardContent className="divide-y p-0">
           {rows.map((row, index) => {
             const hasBreak = row.break_start !== null && row.break_end !== null;
-            const copyCandidates = rows.filter(
-              (r, i) => i !== index && r.break_start && r.break_end,
-            );
             return (
               <div key={row.weekday} className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center gap-3">
@@ -194,49 +183,21 @@ function HoursPage() {
                       Pausa
                     </Label>
                     {hasBreak ? (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="time"
-                            className="w-28"
-                            value={row.break_start ?? ""}
-                            onChange={(e) => updateRow(index, { break_start: e.target.value })}
-                          />
-                          <span className="text-xs text-muted-foreground">às</span>
-                          <Input
-                            type="time"
-                            className="w-28"
-                            value={row.break_end ?? ""}
-                            onChange={(e) => updateRow(index, { break_end: e.target.value })}
-                          />
-                        </div>
-                        {copyCandidates.length > 0 ? (
-                          <Select
-                            value={copySource[row.weekday] ?? ""}
-                            onValueChange={(weekdayStr) => {
-                              const source = rows[Number(weekdayStr)];
-                              if (source) {
-                                updateRow(index, {
-                                  break_start: source.break_start,
-                                  break_end: source.break_end,
-                                });
-                              }
-                              setCopySource((prev) => ({ ...prev, [row.weekday]: "" }));
-                            }}
-                          >
-                            <SelectTrigger className="w-52">
-                              <SelectValue placeholder="Copiar pausa de..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {copyCandidates.map((c) => (
-                                <SelectItem key={c.weekday} value={String(c.weekday)}>
-                                  {WEEKDAYS[c.weekday]} ({c.break_start}–{c.break_end})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : null}
-                      </>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          className="w-28"
+                          value={row.break_start ?? ""}
+                          onChange={(e) => updateRow(index, { break_start: e.target.value })}
+                        />
+                        <span className="text-xs text-muted-foreground">às</span>
+                        <Input
+                          type="time"
+                          className="w-28"
+                          value={row.break_end ?? ""}
+                          onChange={(e) => updateRow(index, { break_end: e.target.value })}
+                        />
+                      </div>
                     ) : null}
                   </div>
                 ) : null}
