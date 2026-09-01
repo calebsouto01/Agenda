@@ -33,6 +33,11 @@ function HoursPage() {
   const { data: establishment } = useEstablishment();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Hour[]>([]);
+  const [globalOpen, setGlobalOpen] = useState("09:00");
+  const [globalClose, setGlobalClose] = useState("18:00");
+  const [globalHasBreak, setGlobalHasBreak] = useState(false);
+  const [globalBreakStart, setGlobalBreakStart] = useState(DEFAULT_BREAK_START);
+  const [globalBreakEnd, setGlobalBreakEnd] = useState(DEFAULT_BREAK_END);
 
   const {
     data,
@@ -79,6 +84,19 @@ function HoursPage() {
 
   function updateRow(index: number, patch: Partial<Hour>) {
     setRows(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  }
+
+  function applyGlobalHours() {
+    setRows(
+      rows.map((r) => ({
+        ...r,
+        opens_at: globalOpen,
+        closes_at: globalClose,
+        break_start: globalHasBreak ? globalBreakStart : null,
+        break_end: globalHasBreak ? globalBreakEnd : null,
+      })),
+    );
+    toast.success("Horário aplicado a todos os dias — não esqueça de salvar");
   }
 
   const save = useMutation({
@@ -129,6 +147,62 @@ function HoursPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-extrabold">Horários de funcionamento</h1>
+
+      <Card className="shadow-soft">
+        <CardContent className="space-y-3 p-4">
+          <p className="text-sm font-semibold">Edição global</p>
+          <p className="text-xs text-muted-foreground">
+            Defina um horário e aplique de uma vez a todos os dias da semana.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Input
+                type="time"
+                className="w-28"
+                value={globalOpen}
+                onChange={(e) => setGlobalOpen(e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">às</span>
+              <Input
+                type="time"
+                className="w-28"
+                value={globalClose}
+                onChange={(e) => setGlobalClose(e.target.value)}
+              />
+            </div>
+            <Label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Switch checked={globalHasBreak} onCheckedChange={setGlobalHasBreak} />
+              Pausa
+            </Label>
+            {globalHasBreak ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  className="w-28"
+                  value={globalBreakStart}
+                  onChange={(e) => setGlobalBreakStart(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">às</span>
+                <Input
+                  type="time"
+                  className="w-28"
+                  value={globalBreakEnd}
+                  onChange={(e) => setGlobalBreakEnd(e.target.value)}
+                />
+              </div>
+            ) : null}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={globalClose <= globalOpen}
+            onClick={applyGlobalHours}
+          >
+            Aplicar a todos os dias
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="shadow-soft">
         <CardContent className="divide-y p-0">
           {rows.map((row, index) => {
