@@ -252,21 +252,21 @@ function Agenda() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-extrabold">Agenda</h1>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-xl font-extrabold">Agenda</h1>
           <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
             <TabsList>
               <TabsTrigger value="week">Semana</TabsTrigger>
               <TabsTrigger value="month">Mês</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button asChild size="sm">
-            <Link to="/admin/new" className="flex items-center gap-1.5">
-              <Plus className="size-4" />
-              Novo agendamento
-            </Link>
-          </Button>
         </div>
+        <Button asChild size="sm">
+          <Link to="/admin/new" className="flex items-center gap-1.5">
+            <Plus className="size-4" />
+            Novo agendamento
+          </Link>
+        </Button>
       </div>
 
       <div className="flex items-center justify-between rounded-xl border bg-card p-2">
