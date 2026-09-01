@@ -37,8 +37,6 @@ const TIMEZONES = [
   "UTC",
 ];
 
-const STEPS = ["10", "15", "20", "30", "60"];
-
 const schema = z.object({
   name: z.string().trim().min(2, "Informe o nome").max(120),
   slug: z.string().trim().min(2, "Informe o link público").max(48),
@@ -57,7 +55,6 @@ function SettingsPage() {
     phone: "",
     address: "",
     timezone: "America/Sao_Paulo",
-    step: "15",
   });
 
   useEffect(() => {
@@ -69,7 +66,6 @@ function SettingsPage() {
       phone: establishment.phone ?? "",
       address: establishment.address ?? "",
       timezone: establishment.timezone,
-      step: String(establishment.slot_step_minutes),
     });
   }, [establishment]);
 
@@ -86,7 +82,6 @@ function SettingsPage() {
           phone: parsed.data.phone || null,
           address: parsed.data.address || null,
           timezone: form.timezone,
-          slot_step_minutes: Number(form.step),
         })
         .eq("id", establishment!.id);
       if (error) throw new Error(error.message);
@@ -154,43 +149,20 @@ function SettingsPage() {
               />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label>Fuso horário</Label>
-              <Select
-                value={form.timezone}
-                onValueChange={(v) => setForm({ ...form, timezone: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz} value={tz}>
-                      {tz}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Intervalo entre agendamentos</Label>
-              <Select value={form.step} onValueChange={(v) => setForm({ ...form, step: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STEPS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s} minutos
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Tempo bloqueado após cada agendamento antes do próximo horário ficar disponível.
-              </p>
-            </div>
+          <div className="grid gap-1.5 sm:max-w-xs">
+            <Label>Fuso horário</Label>
+            <Select value={form.timezone} onValueChange={(v) => setForm({ ...form, timezone: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONES.map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? "Salvando..." : "Salvar alterações"}

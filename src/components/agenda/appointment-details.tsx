@@ -64,8 +64,9 @@ export function PendingConfirmation({
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-          Este agendamento tem {serviceCount} serviços ({a.service_names}). Deseja inserir um
-          intervalo entre eles?
+          {serviceCount > 1
+            ? `Este agendamento tem ${serviceCount} serviços (${a.service_names}). Deseja inserir um intervalo após o atendimento?`
+            : "Deseja inserir um intervalo após este atendimento?"}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => onConfirm(a, 0)}>
@@ -87,10 +88,7 @@ export function PendingConfirmation({
         Este agendamento está aguardando aceite.
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          onClick={() => (serviceCount > 1 ? setAskInterval(true) : onConfirm(a, 0))}
-        >
+        <Button size="sm" onClick={() => setAskInterval(true)}>
           Aceitar
         </Button>
         <Button
