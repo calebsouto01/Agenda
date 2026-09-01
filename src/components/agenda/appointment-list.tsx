@@ -34,7 +34,8 @@ export function AppointmentList({
   onFinalize,
   onCancel,
   onDelete,
-  onUpdatePayment,
+  onAddPayment,
+  onRemovePayment,
 }: {
   appointments: Row[];
   tz: string;
@@ -42,7 +43,13 @@ export function AppointmentList({
   onFinalize: (id: string) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
-  onUpdatePayment: (id: string, method: PaymentMethod | null, note: string | null) => void;
+  onAddPayment: (
+    appointmentId: string,
+    method: PaymentMethod,
+    amountCents: number,
+    note: string | null,
+  ) => void;
+  onRemovePayment: (entryId: string) => void;
 }) {
   const [payingId, setPayingId] = useState<string | null>(null);
   const payingAppointment = appointments.find((a) => a.id === payingId) ?? null;
@@ -144,7 +151,11 @@ export function AppointmentList({
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <PaymentActions appointment={payingAppointment} onUpdatePayment={onUpdatePayment} />
+                <PaymentActions
+                  appointment={payingAppointment}
+                  onAddPayment={onAddPayment}
+                  onRemovePayment={onRemovePayment}
+                />
                 {payingAppointment.status === "completed" ? (
                   <Button className="w-full" variant="outline" onClick={() => setPayingId(null)}>
                     Fechar
