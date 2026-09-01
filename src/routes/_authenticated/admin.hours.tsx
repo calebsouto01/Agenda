@@ -110,22 +110,9 @@ function HoursPage() {
     setRows(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
-  function applyGlobalHours() {
-    setRows(
-      rows.map((r) => ({
-        ...r,
-        opens_at: globalOpen,
-        closes_at: globalClose,
-        break_start: globalHasBreak ? globalBreakStart : null,
-        break_end: globalHasBreak ? globalBreakEnd : null,
-      })),
-    );
-    toast.success("Horário aplicado a todos os dias — não esqueça de salvar");
-  }
-
   const save = useMutation({
-    mutationFn: async () => {
-      for (const row of rows) {
+    mutationFn: async (rowsToSave: Hour[]) => {
+      for (const row of rowsToSave) {
         if (row.closed) continue;
         if (row.closes_at <= row.opens_at) {
           throw new Error(`${WEEKDAYS[row.weekday]}: horário de fechamento inválido`);
@@ -140,17 +127,30 @@ function HoursPage() {
         }
       }
       const { error } = await supabase.from("business_hours").upsert(
-        rows.map((r) => ({ ...r, establishment_id: establishment!.id })),
+        rowsToSave.map((r) => ({ ...r, establishment_id: establishment!.id })),
         { onConflict: "establishment_id,weekday" },
       );
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
+    onSuccess: (_, rowsToSave) => {
       toast.success("Horários de funcionamento salvos");
+      setRows(rowsToSave);
       queryClient.invalidateQueries({ queryKey: ["business-hours"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  function applyGlobalHours() {
+    const nextRows = rows.map((r) => ({
+      ...r,
+      opens_at: globalOpen,
+      closes_at: globalClose,
+      break_start: globalHasBreak ? globalBreakStart : null,
+      break_end: globalHasBreak ? globalBreakEnd : null,
+    }));
+    setRows(nextRows);
+    save.mutate(nextRows);
+  }
 
   const { data: professionals } = useQuery({
     queryKey: ["professionals", establishment?.id],
@@ -280,10 +280,10 @@ function HoursPage() {
           <Button
             size="sm"
             variant="outline"
-            disabled={globalClose <= globalOpen}
+            disabled={globalClose <= globalOpen || save.isPending}
             onClick={applyGlobalHours}
           >
-            Aplicar a todos os dias
+            {save.isPending ? "Salvando..." : "Aplicar a todos os dias e salvar"}
           </Button>
         </CardContent>
       </Card>
@@ -365,7 +365,7 @@ function HoursPage() {
           })}
         </CardContent>
       </Card>
-      <Button disabled={save.isPending} onClick={() => save.mutate()}>
+      <Button disabled={save.isPending} onClick={() => save.mutate(rows)}>
         {save.isPending ? "Salvando..." : "Salvar horários"}
       </Button>
 
