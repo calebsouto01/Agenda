@@ -78,10 +78,10 @@ export function AppointmentActions({
           size="sm"
           variant="outline"
           disabled={!a.paid}
-          title={!a.paid ? "Marque o pagamento antes de concluir" : undefined}
+          title={!a.paid ? "Marque o pagamento antes de finalizar" : undefined}
           onClick={() => onUpdateStatus(a.id, "completed")}
         >
-          Concluir
+          Finalizar
         </Button>
       ) : null}
       {a.status !== "cancelled" ? (
