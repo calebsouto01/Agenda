@@ -31,7 +31,7 @@ export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-base font-bold">{timeInZone(a.starts_at, tz)}</span>
         <StatusBadge status={a.status} />
-        <PaymentBadge paid={a.paid} method={a.payment_method} />
+        {a.status !== "pending" ? <PaymentBadge paid={a.paid} method={a.payment_method} /> : null}
       </div>
       <p className="text-sm font-semibold">{a.customers?.name}</p>
       <p className="text-xs text-muted-foreground">
