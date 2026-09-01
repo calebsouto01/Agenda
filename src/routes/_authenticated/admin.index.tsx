@@ -139,7 +139,7 @@ function Agenda() {
     onSuccess: () => {
       toast.success("Agendamento confirmado");
       invalidateAppointmentQueries();
-      setSelected((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
+      setSelected(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
