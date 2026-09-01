@@ -118,14 +118,10 @@ function Agenda() {
       appointment: Row;
       intervalMinutes: number;
     }) => {
-      const serviceCount = appointment.service_names
-        ? appointment.service_names.split(" + ").length
-        : 1;
-      const gaps = Math.max(0, serviceCount - 1);
       const update: { status: AppointmentStatus; ends_at?: string } = { status: "confirmed" };
-      if (intervalMinutes > 0 && gaps > 0) {
+      if (intervalMinutes > 0) {
         update.ends_at = new Date(
-          new Date(appointment.ends_at).getTime() + intervalMinutes * gaps * 60_000,
+          new Date(appointment.ends_at).getTime() + intervalMinutes * 60_000,
         ).toISOString();
       }
       const { error } = await supabase.from("appointments").update(update).eq("id", appointment.id);
