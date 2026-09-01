@@ -31,7 +31,8 @@ function ManualBooking() {
 
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
-  const [date, setDate] = useState(() => isoDateInZone(new Date(), tz));
+  const today = isoDateInZone(new Date(), tz);
+  const [date, setDate] = useState(today);
   const [slot, setSlot] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
 
@@ -199,9 +200,10 @@ function ManualBooking() {
             <Input
               id="date"
               type="date"
+              min={today}
               value={date}
               onChange={(e) => {
-                setDate(e.target.value);
+                setDate(e.target.value < today ? today : e.target.value);
                 setSlot(null);
               }}
             />
