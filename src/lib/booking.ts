@@ -28,6 +28,21 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   outro: "Outro",
 };
 
+/** Agendamento com vários serviços guarda o rótulo combinado e o preço somado; um único serviço usa o join normal. */
+export function serviceLabel(a: {
+  service_names: string | null;
+  services: { name: string } | null;
+}) {
+  return a.service_names ?? a.services?.name ?? "Sem serviço";
+}
+
+export function totalPriceCents(a: {
+  total_price_cents: number | null;
+  services: { price_cents: number } | null;
+}) {
+  return a.total_price_cents ?? a.services?.price_cents ?? 0;
+}
+
 export function formatPrice(cents: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     (cents ?? 0) / 100,

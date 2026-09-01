@@ -59,7 +59,7 @@ function Agenda() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, ends_at, status, notes, paid, payment_method, payment_note, service_id, professional_id, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email)",
+          "id, starts_at, ends_at, status, notes, paid, payment_method, payment_note, service_id, professional_id, service_names, total_price_cents, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email)",
         )
         .eq("establishment_id", establishment!.id)
         .gte("starts_at", `${fetchBounds.from}T00:00:00`)
@@ -114,6 +114,38 @@ function Agenda() {
   });
 
   const setStatus = (id: string, status: AppointmentStatus) => updateStatus.mutate({ id, status });
+
+  const confirmAppointment = useMutation({
+    mutationFn: async ({
+      appointment,
+      intervalMinutes,
+    }: {
+      appointment: Row;
+      intervalMinutes: number;
+    }) => {
+      const serviceCount = appointment.service_names
+        ? appointment.service_names.split(" + ").length
+        : 1;
+      const gaps = Math.max(0, serviceCount - 1);
+      const update: { status: AppointmentStatus; ends_at?: string } = { status: "confirmed" };
+      if (intervalMinutes > 0 && gaps > 0) {
+        update.ends_at = new Date(
+          new Date(appointment.ends_at).getTime() + intervalMinutes * gaps * 60_000,
+        ).toISOString();
+      }
+      const { error } = await supabase.from("appointments").update(update).eq("id", appointment.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Agendamento confirmado");
+      invalidateAppointmentQueries();
+      setSelected((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const confirmWithInterval = (appointment: Row, intervalMinutes: number) =>
+    confirmAppointment.mutate({ appointment, intervalMinutes });
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
@@ -318,7 +350,11 @@ function Agenda() {
               <div className="space-y-3">
                 <AppointmentInfo appointment={selected} tz={tz} />
                 {selected.status === "pending" ? (
-                  <PendingConfirmation appointment={selected} onUpdateStatus={setStatus} />
+                  <PendingConfirmation
+                    appointment={selected}
+                    onUpdateStatus={setStatus}
+                    onConfirm={confirmWithInterval}
+                  />
                 ) : (
                   <>
                     <PaymentActions appointment={selected} onUpdatePayment={setPayment} />

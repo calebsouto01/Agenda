@@ -22,8 +22,10 @@ export type Database = {
           payment_note: string | null;
           professional_id: string | null;
           service_id: string;
+          service_names: string | null;
           starts_at: string;
           status: Database["public"]["Enums"]["appointment_status"];
+          total_price_cents: number | null;
           updated_at: string;
         };
         Insert: {
@@ -39,8 +41,10 @@ export type Database = {
           payment_note?: string | null;
           professional_id?: string | null;
           service_id: string;
+          service_names?: string | null;
           starts_at: string;
           status?: Database["public"]["Enums"]["appointment_status"];
+          total_price_cents?: number | null;
           updated_at?: string;
         };
         Update: {
@@ -56,8 +60,10 @@ export type Database = {
           payment_note?: string | null;
           professional_id?: string | null;
           service_id?: string;
+          service_names?: string | null;
           starts_at?: string;
           status?: Database["public"]["Enums"]["appointment_status"];
+          total_price_cents?: number | null;
           updated_at?: string;
         };
         Relationships: [
@@ -392,6 +398,7 @@ export type Database = {
           p_establishment_id: string;
           p_professional_id: string;
           p_service_id: string;
+          p_service_ids?: string[];
         };
         Returns: string[];
       };
@@ -404,6 +411,7 @@ export type Database = {
           p_notes?: string;
           p_professional_id: string;
           p_service_id: string;
+          p_service_ids?: string[];
           p_starts_at: string;
         };
         Returns: Json;
