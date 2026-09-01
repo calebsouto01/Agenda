@@ -12,6 +12,7 @@ import {
   Clock,
   Ban,
   UserRound,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ const NAV: { to: string; label: string; icon: typeof CalendarDays; exact?: boole
   { to: "/admin/hours", label: "Funcionamento", icon: Clock },
   { to: "/admin/blocks", label: "Bloqueios", icon: Ban },
   { to: "/admin/customers", label: "Clientes", icon: Users },
+  { to: "/admin/finance", label: "Financeiro", icon: Wallet },
   { to: "/admin/settings", label: "Estabelecimento", icon: Settings },
 ];
 
