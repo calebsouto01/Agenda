@@ -1,6 +1,13 @@
 import { Phone, Trash2 } from "lucide-react";
 
-import { STATUS_LABEL, formatPrice, timeInZone, type AppointmentStatus } from "@/lib/booking";
+import {
+  PAYMENT_METHOD_LABEL,
+  STATUS_LABEL,
+  formatPrice,
+  timeInZone,
+  type AppointmentStatus,
+  type PaymentMethod,
+} from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,9 +26,10 @@ import type { Row } from "./types";
 export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: string }) {
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-base font-bold">{timeInZone(a.starts_at, tz)}</span>
         <StatusBadge status={a.status} />
+        <PaymentBadge paid={a.paid} method={a.payment_method} />
       </div>
       <p className="text-sm font-semibold">{a.customers?.name}</p>
       <p className="text-xs text-muted-foreground">
@@ -117,5 +125,52 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
     <Badge variant="outline" className={`border-0 ${styles[status]}`}>
       {STATUS_LABEL[status]}
     </Badge>
+  );
+}
+
+function PaymentBadge({ paid, method }: { paid: boolean; method: PaymentMethod | null }) {
+  if (!paid) {
+    return (
+      <Badge variant="outline" className="border-0 bg-muted text-muted-foreground">
+        Pendente
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="border-0 bg-success/20 text-success">
+      Pago{method ? ` · ${PAYMENT_METHOD_LABEL[method]}` : ""}
+    </Badge>
+  );
+}
+
+export function PaymentActions({
+  appointment: a,
+  onUpdatePayment,
+}: {
+  appointment: Row;
+  onUpdatePayment: (id: string, method: PaymentMethod | null) => void;
+}) {
+  if (a.paid) {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-muted-foreground"
+        onClick={() => onUpdatePayment(a.id, null)}
+      >
+        Desfazer pagamento
+      </Button>
+    );
+  }
+  const methods: PaymentMethod[] = ["dinheiro", "cartao", "pix"];
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-muted-foreground">Marcar como pago:</span>
+      {methods.map((m) => (
+        <Button key={m} size="sm" variant="outline" onClick={() => onUpdatePayment(a.id, m)}>
+          {PAYMENT_METHOD_LABEL[m]}
+        </Button>
+      ))}
+    </div>
   );
 }

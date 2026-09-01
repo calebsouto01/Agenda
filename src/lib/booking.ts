@@ -19,6 +19,14 @@ export const STATUS_LABEL: Record<AppointmentStatus, string> = {
   cancelled: "Cancelado",
 };
 
+export type PaymentMethod = "dinheiro" | "cartao" | "pix";
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  dinheiro: "Dinheiro",
+  cartao: "Cartão",
+  pix: "Pix",
+};
+
 export function formatPrice(cents: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     (cents ?? 0) / 100,

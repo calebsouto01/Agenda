@@ -1,4 +1,4 @@
-import type { AppointmentStatus } from "@/lib/booking";
+import type { AppointmentStatus, PaymentMethod } from "@/lib/booking";
 
 export type Range = "week" | "month";
 
@@ -8,6 +8,8 @@ export type Row = {
   ends_at: string;
   status: AppointmentStatus;
   notes: string | null;
+  paid: boolean;
+  payment_method: PaymentMethod | null;
   services: { name: string; price_cents: number; duration_minutes: number } | null;
   professionals: { name: string } | null;
   customers: { name: string; phone: string; email: string | null } | null;
