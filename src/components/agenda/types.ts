@@ -10,6 +10,7 @@ export type Row = {
   notes: string | null;
   paid: boolean;
   payment_method: PaymentMethod | null;
+  payment_note: string | null;
   services: { name: string; price_cents: number; duration_minutes: number } | null;
   professionals: { name: string } | null;
   customers: { name: string; phone: string; email: string | null } | null;

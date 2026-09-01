@@ -19,12 +19,13 @@ export const STATUS_LABEL: Record<AppointmentStatus, string> = {
   cancelled: "Cancelado",
 };
 
-export type PaymentMethod = "dinheiro" | "cartao" | "pix";
+export type PaymentMethod = "dinheiro" | "cartao" | "pix" | "outro";
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   dinheiro: "Dinheiro",
   cartao: "Cartão",
   pix: "Pix",
+  outro: "Outro",
 };
 
 export function formatPrice(cents: number) {

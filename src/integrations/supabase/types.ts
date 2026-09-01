@@ -19,6 +19,7 @@ export type Database = {
           paid: boolean;
           paid_at: string | null;
           payment_method: string | null;
+          payment_note: string | null;
           professional_id: string | null;
           service_id: string;
           starts_at: string;
@@ -35,6 +36,7 @@ export type Database = {
           paid?: boolean;
           paid_at?: string | null;
           payment_method?: string | null;
+          payment_note?: string | null;
           professional_id?: string | null;
           service_id: string;
           starts_at: string;
@@ -51,6 +53,7 @@ export type Database = {
           paid?: boolean;
           paid_at?: string | null;
           payment_method?: string | null;
+          payment_note?: string | null;
           professional_id?: string | null;
           service_id?: string;
           starts_at?: string;

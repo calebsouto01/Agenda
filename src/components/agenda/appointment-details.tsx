@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Phone, Trash2 } from "lucide-react";
 
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,7 +72,13 @@ export function AppointmentActions({
         </Button>
       ) : null}
       {a.status !== "completed" && a.status !== "cancelled" ? (
-        <Button size="sm" variant="outline" onClick={() => onUpdateStatus(a.id, "completed")}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!a.paid}
+          title={!a.paid ? "Marque o pagamento antes de concluir" : undefined}
+          onClick={() => onUpdateStatus(a.id, "completed")}
+        >
           Concluir
         </Button>
       ) : null}
@@ -177,29 +185,70 @@ export function PaymentActions({
   onUpdatePayment,
 }: {
   appointment: Row;
-  onUpdatePayment: (id: string, method: PaymentMethod | null) => void;
+  onUpdatePayment: (id: string, method: PaymentMethod | null, note: string | null) => void;
 }) {
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [note, setNote] = useState("");
+
   if (a.paid) {
     return (
-      <Button
-        size="sm"
-        variant="ghost"
-        className="text-muted-foreground"
-        onClick={() => onUpdatePayment(a.id, null)}
-      >
-        Desfazer pagamento
-      </Button>
+      <div className="space-y-1">
+        {a.payment_method === "outro" && a.payment_note ? (
+          <p className="text-xs text-muted-foreground">Obs: {a.payment_note}</p>
+        ) : null}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-muted-foreground"
+          onClick={() => onUpdatePayment(a.id, null, null)}
+        >
+          Desfazer pagamento
+        </Button>
+      </div>
     );
   }
+
   const methods: PaymentMethod[] = ["dinheiro", "cartao", "pix"];
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">Marcar como pago:</span>
-      {methods.map((m) => (
-        <Button key={m} size="sm" variant="outline" onClick={() => onUpdatePayment(a.id, m)}>
-          {PAYMENT_METHOD_LABEL[m]}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Marcar como pago:</span>
+        {methods.map((m) => (
+          <Button
+            key={m}
+            size="sm"
+            variant="outline"
+            onClick={() => onUpdatePayment(a.id, m, null)}
+          >
+            {PAYMENT_METHOD_LABEL[m]}
+          </Button>
+        ))}
+        <Button
+          size="sm"
+          variant={showNoteInput ? "secondary" : "outline"}
+          onClick={() => setShowNoteInput((v) => !v)}
+        >
+          Outro
         </Button>
-      ))}
+      </div>
+      {showNoteInput ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Descreva a forma de pagamento"
+            maxLength={200}
+            className="h-8 max-w-xs text-xs"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <Button
+            size="sm"
+            disabled={note.trim().length === 0}
+            onClick={() => onUpdatePayment(a.id, "outro", note.trim())}
+          >
+            Confirmar
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
