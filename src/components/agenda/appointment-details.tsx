@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Phone, X } from "lucide-react";
 
 import {
@@ -157,17 +157,30 @@ export function PaymentActions({
   const paidCents = a.payment_entries.reduce((sum, e) => sum + e.amount_cents, 0);
   const remainingCents = Math.max(0, totalCents - paidCents);
 
-  const [method, setMethod] = useState<PaymentMethod>("dinheiro");
-  const [amount, setAmount] = useState(remainingCents > 0 ? (remainingCents / 100).toFixed(2) : "");
-  const [note, setNote] = useState("");
+  const [amounts, setAmounts] = useState<Record<PaymentMethod, string>>({
+    dinheiro: "",
+    cartao: "",
+    pix: "",
+    outro: "",
+  });
+  const [outroNote, setOutroNote] = useState("");
 
   useEffect(() => {
-    setAmount(remainingCents > 0 ? (remainingCents / 100).toFixed(2) : "");
-    setNote("");
+    setAmounts({ dinheiro: "", cartao: "", pix: "", outro: "" });
+    setOutroNote("");
   }, [remainingCents]);
 
-  const amountCents = Math.round(Number(amount.replace(",", ".")) * 100) || 0;
-  const canAdd = amountCents > 0 && (method !== "outro" || note.trim().length > 0);
+  const amountCentsOf = (m: PaymentMethod) =>
+    Math.round(Number(amounts[m].replace(",", ".")) * 100) || 0;
+  const hasAnyAmount = PAYMENT_METHODS.some((m) => amountCentsOf(m) > 0);
+  const canAdd = hasAnyAmount && (amountCentsOf("outro") === 0 || outroNote.trim().length > 0);
+
+  const handleAdd = () => {
+    for (const m of PAYMENT_METHODS) {
+      const cents = amountCentsOf(m);
+      if (cents > 0) onAddPayment(a.id, m, cents, m === "outro" ? outroNote.trim() : null);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -209,45 +222,32 @@ export function PaymentActions({
 
       {remainingCents > 0 ? (
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2">
             {PAYMENT_METHODS.map((m) => (
-              <Button
-                key={m}
-                type="button"
-                size="sm"
-                variant={method === m ? "secondary" : "outline"}
-                onClick={() => setMethod(m)}
-              >
-                {PAYMENT_METHOD_LABEL[m]}
-              </Button>
+              <Fragment key={m}>
+                <span className="text-xs font-semibold">{PAYMENT_METHOD_LABEL[m]}</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  className="h-8 w-24 text-xs"
+                  value={amounts[m]}
+                  onChange={(e) => setAmounts({ ...amounts, [m]: e.target.value })}
+                />
+              </Fragment>
             ))}
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0,00"
-              className="h-8 w-24 text-xs"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
           </div>
-          {method === "outro" ? (
+          {amountCentsOf("outro") > 0 ? (
             <Input
-              placeholder="Descreva a forma de pagamento"
+              placeholder="Descreva a forma de pagamento (Outro)"
               maxLength={200}
               className="h-8 text-xs"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              value={outroNote}
+              onChange={(e) => setOutroNote(e.target.value)}
             />
           ) : null}
-          <Button
-            size="sm"
-            className="w-full"
-            disabled={!canAdd}
-            onClick={() =>
-              onAddPayment(a.id, method, amountCents, method === "outro" ? note.trim() : null)
-            }
-          >
+          <Button size="sm" className="w-full" disabled={!canAdd} onClick={handleAdd}>
             Adicionar pagamento
           </Button>
         </div>
