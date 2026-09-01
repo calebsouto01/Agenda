@@ -53,7 +53,7 @@ function Agenda() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, ends_at, status, notes, paid, payment_method, services(name, price_cents, duration_minutes), professionals(name), customers(name, phone, email)",
+          "id, starts_at, ends_at, status, notes, paid, payment_method, payment_note, services(name, price_cents, duration_minutes), professionals(name), customers(name, phone, email)",
         )
         .eq("establishment_id", establishment!.id)
         .gte("starts_at", `${fetchBounds.from}T00:00:00`)
@@ -119,29 +119,44 @@ function Agenda() {
   });
 
   const updatePayment = useMutation({
-    mutationFn: async ({ id, method }: { id: string; method: PaymentMethod | null }) => {
+    mutationFn: async ({
+      id,
+      method,
+      note,
+    }: {
+      id: string;
+      method: PaymentMethod | null;
+      note: string | null;
+    }) => {
       const { error } = await supabase
         .from("appointments")
         .update(
           method
-            ? { paid: true, payment_method: method, paid_at: new Date().toISOString() }
-            : { paid: false, payment_method: null, paid_at: null },
+            ? {
+                paid: true,
+                payment_method: method,
+                payment_note: note,
+                paid_at: new Date().toISOString(),
+              }
+            : { paid: false, payment_method: null, payment_note: null, paid_at: null },
         )
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: (_, { method }) => {
+    onSuccess: (_, { method, note }) => {
       toast.success(method ? "Pagamento registrado" : "Pagamento desfeito");
       invalidateAppointmentQueries();
       setSelected((prev) =>
-        prev ? { ...prev, paid: Boolean(method), payment_method: method } : prev,
+        prev
+          ? { ...prev, paid: Boolean(method), payment_method: method, payment_note: note }
+          : prev,
       );
     },
     onError: () => toast.error("Não foi possível atualizar o pagamento"),
   });
 
-  const setPayment = (id: string, method: PaymentMethod | null) =>
-    updatePayment.mutate({ id, method });
+  const setPayment = (id: string, method: PaymentMethod | null, note: string | null) =>
+    updatePayment.mutate({ id, method, note });
 
   const step = range === "week" ? 7 : 30;
 

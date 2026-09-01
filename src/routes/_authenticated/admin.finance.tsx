@@ -9,6 +9,7 @@ import { useEstablishment } from "@/hooks/use-establishment";
 import {
   PAYMENT_METHOD_LABEL,
   addDays,
+  dateTimeInZone,
   formatDateLabel,
   formatPrice,
   isoDateInZone,
@@ -28,11 +29,14 @@ export const Route = createFileRoute("/_authenticated/admin/finance")({
 type Range = "day" | "week" | "month";
 
 type Row = {
+  id: string;
   starts_at: string;
   paid: boolean;
   payment_method: PaymentMethod | null;
+  payment_note: string | null;
   services: { name: string; price_cents: number } | null;
   professionals: { name: string } | null;
+  customers: { name: string } | null;
 };
 
 function rangeBounds(anchor: string, range: Range) {
@@ -80,7 +84,9 @@ function FinancePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("starts_at, paid, payment_method, services(name, price_cents), professionals(name)")
+        .select(
+          "id, starts_at, paid, payment_method, payment_note, services(name, price_cents), professionals(name), customers(name)",
+        )
         .eq("establishment_id", establishment!.id)
         .eq("status", "completed")
         .gte("starts_at", `${bounds.from}T00:00:00`)
@@ -164,6 +170,12 @@ function FinancePage() {
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total);
   }, [appointments]);
+
+  const paymentsWithNote = useMemo(
+    () =>
+      (appointments ?? []).filter((a) => a.paid && a.payment_method === "outro" && a.payment_note),
+    [appointments],
+  );
 
   const byDay = useMemo(() => {
     if (range === "day") return [];
@@ -346,6 +358,29 @@ function FinancePage() {
               </CardContent>
             </Card>
           </div>
+
+          {paymentsWithNote.length > 0 ? (
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Pagamentos com observação
+                </p>
+                {paymentsWithNote.map((a) => (
+                  <div key={a.id} className="flex items-start justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{a.customers?.name ?? "Cliente"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {dateTimeInZone(a.starts_at, tz)} · {a.payment_note}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-semibold">
+                      {formatPrice(a.services?.price_cents ?? 0)}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       )}
     </div>
