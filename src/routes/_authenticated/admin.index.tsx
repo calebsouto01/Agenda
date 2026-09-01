@@ -317,6 +317,7 @@ function Agenda() {
           onFinalize={(id) => setStatus(id, "completed")}
           onCancel={(id) => setStatus(id, "cancelled")}
           onDelete={(id) => deleteAppointment.mutate(id)}
+          onUpdatePayment={setPayment}
         />
       ) : range === "week" ? (
         <WeekGrid
