@@ -96,16 +96,14 @@ function SettingsPage() {
       queryClient.invalidateQueries();
     },
     onError: (e: Error) =>
-      toast.error(
-        e.message.includes("duplicate") ? "Este link público já está em uso" : e.message,
-      ),
+      toast.error(e.message.includes("duplicate") ? "Este link público já está em uso" : e.message),
   });
 
   if (isLoading || !establishment) return <Skeleton className="h-64 w-full" />;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-extrabold">Estabelecimento</h1>
+      <h1 className="text-xl font-extrabold">Dados da empresa</h1>
       <Card className="shadow-soft">
         <CardContent className="grid gap-3 p-5">
           <div className="grid gap-1.5">

@@ -38,7 +38,7 @@ const NAV: { to: string; label: string; icon: typeof CalendarDays; exact?: boole
   { to: "/admin/blocks", label: "Bloqueios", icon: Ban },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/finance", label: "Financeiro", icon: Wallet },
-  { to: "/admin/settings", label: "Estabelecimento", icon: Settings },
+  { to: "/admin/settings", label: "Dados da empresa", icon: Settings },
 ];
 
 function AdminLayout() {
