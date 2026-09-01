@@ -174,7 +174,7 @@ function SettingsPage() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Intervalo entre horários</Label>
+              <Label>Intervalo entre agendamentos</Label>
               <Select value={form.step} onValueChange={(v) => setForm({ ...form, step: v })}>
                 <SelectTrigger>
                   <SelectValue />
@@ -187,6 +187,9 @@ function SettingsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Tempo bloqueado após cada agendamento antes do próximo horário ficar disponível.
+              </p>
             </div>
           </div>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
