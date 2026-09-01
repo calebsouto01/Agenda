@@ -46,7 +46,11 @@ function Agenda() {
   const month = useMemo(() => (range === "month" ? monthGrid(anchor) : null), [anchor, range]);
   const fetchBounds = month ?? bounds;
 
-  const { data: appointments, isLoading } = useQuery({
+  const {
+    data: appointments,
+    isLoading,
+    error: appointmentsError,
+  } = useQuery({
     queryKey: ["appointments", establishment?.id, fetchBounds.from, fetchBounds.to],
     enabled: Boolean(establishment?.id),
     queryFn: async () => {
@@ -59,7 +63,7 @@ function Agenda() {
         .gte("starts_at", `${fetchBounds.from}T00:00:00`)
         .lt("starts_at", `${fetchBounds.to}T00:00:00`)
         .order("starts_at");
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       return (data ?? []) as unknown as Row[];
     },
   });
@@ -241,6 +245,13 @@ function Agenda() {
 
       {isLoading ? (
         <Skeleton className="h-40 w-full" />
+      ) : appointmentsError ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p className="font-semibold text-destructive">
+            Não foi possível carregar os agendamentos
+          </p>
+          <p className="text-muted-foreground">{appointmentsError.message}</p>
+        </div>
       ) : range === "week" ? (
         <WeekGrid
           days={weekDays}
