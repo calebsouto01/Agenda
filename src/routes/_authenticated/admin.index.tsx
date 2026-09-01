@@ -12,6 +12,7 @@ import {
   hourInZone,
   isoDateInZone,
   type AppointmentStatus,
+  type PaymentMethod,
 } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +20,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WeekGrid } from "@/components/agenda/week-grid";
 import { MonthGrid } from "@/components/agenda/month-grid";
-import { AppointmentInfo, AppointmentActions } from "@/components/agenda/appointment-details";
+import {
+  AppointmentInfo,
+  AppointmentActions,
+  PaymentActions,
+} from "@/components/agenda/appointment-details";
 import { rangeBounds, monthGrid } from "@/components/agenda/utils";
 import type { BusinessHour, Range, Row } from "@/components/agenda/types";
 
@@ -47,7 +52,7 @@ function Agenda() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, ends_at, status, notes, services(name, price_cents, duration_minutes), professionals(name), customers(name, phone, email)",
+          "id, starts_at, ends_at, status, notes, paid, payment_method, services(name, price_cents, duration_minutes), professionals(name), customers(name, phone, email)",
         )
         .eq("establishment_id", establishment!.id)
         .gte("starts_at", `${fetchBounds.from}T00:00:00`)
@@ -104,6 +109,31 @@ function Agenda() {
     },
     onError: () => toast.error("Não foi possível excluir"),
   });
+
+  const updatePayment = useMutation({
+    mutationFn: async ({ id, method }: { id: string; method: PaymentMethod | null }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update(
+          method
+            ? { paid: true, payment_method: method, paid_at: new Date().toISOString() }
+            : { paid: false, payment_method: null, paid_at: null },
+        )
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, { method }) => {
+      toast.success(method ? "Pagamento registrado" : "Pagamento desfeito");
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      setSelected((prev) =>
+        prev ? { ...prev, paid: Boolean(method), payment_method: method } : prev,
+      );
+    },
+    onError: () => toast.error("Não foi possível atualizar o pagamento"),
+  });
+
+  const setPayment = (id: string, method: PaymentMethod | null) =>
+    updatePayment.mutate({ id, method });
 
   const step = range === "week" ? 7 : 30;
 
@@ -226,6 +256,7 @@ function Agenda() {
               </DialogHeader>
               <div className="space-y-3">
                 <AppointmentInfo appointment={selected} tz={tz} />
+                <PaymentActions appointment={selected} onUpdatePayment={setPayment} />
                 <AppointmentActions
                   appointment={selected}
                   onUpdateStatus={setStatus}

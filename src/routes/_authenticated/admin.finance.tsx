@@ -6,7 +6,15 @@ import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-reac
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
-import { addDays, formatDateLabel, formatPrice, isoDateInZone, weekdayOf } from "@/lib/booking";
+import {
+  PAYMENT_METHOD_LABEL,
+  addDays,
+  formatDateLabel,
+  formatPrice,
+  isoDateInZone,
+  weekdayOf,
+  type PaymentMethod,
+} from "@/lib/booking";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +29,8 @@ type Range = "day" | "week" | "month";
 
 type Row = {
   starts_at: string;
+  paid: boolean;
+  payment_method: PaymentMethod | null;
   services: { name: string; price_cents: number } | null;
   professionals: { name: string } | null;
 };
@@ -62,7 +72,7 @@ function FinancePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("starts_at, services(name, price_cents), professionals(name)")
+        .select("starts_at, paid, payment_method, services(name, price_cents), professionals(name)")
         .eq("establishment_id", establishment!.id)
         .eq("status", "completed")
         .gte("starts_at", `${bounds.from}T00:00:00`)
@@ -94,6 +104,9 @@ function FinancePage() {
     (sum, a) => sum + (a.services?.price_cents ?? 0),
     0,
   );
+  const receivedCents = (appointments ?? [])
+    .filter((a) => a.paid)
+    .reduce((sum, a) => sum + (a.services?.price_cents ?? 0), 0);
   const count = appointments?.length ?? 0;
   const avgTicketCents = count > 0 ? Math.round(totalCents / count) : 0;
   const change =
@@ -119,6 +132,21 @@ function FinancePage() {
     const map = new Map<string, { count: number; total: number }>();
     for (const a of appointments ?? []) {
       const name = a.professionals?.name ?? "Sem profissional";
+      const entry = map.get(name) ?? { count: 0, total: 0 };
+      entry.count += 1;
+      entry.total += a.services?.price_cents ?? 0;
+      map.set(name, entry);
+    }
+    return [...map.entries()]
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.total - a.total);
+  }, [appointments]);
+
+  const byPaymentMethod = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    for (const a of appointments ?? []) {
+      if (!a.paid || !a.payment_method) continue;
+      const name = PAYMENT_METHOD_LABEL[a.payment_method];
       const entry = map.get(name) ?? { count: 0, total: 0 };
       entry.count += 1;
       entry.total += a.services?.price_cents ?? 0;
@@ -178,11 +206,17 @@ function FinancePage() {
         <Skeleton className="h-64 w-full" />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">Faturamento</p>
+                <p className="text-xs font-medium text-muted-foreground">Faturado</p>
                 <p className="text-lg font-extrabold">{formatPrice(totalCents)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground">Recebido</p>
+                <p className="text-lg font-extrabold text-success">{formatPrice(receivedCents)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -249,7 +283,26 @@ function FinancePage() {
             </Card>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Por forma de pagamento
+                </p>
+                {byPaymentMethod.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nada recebido no período.</p>
+                ) : (
+                  byPaymentMethod.map((m) => (
+                    <div key={m.name} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="truncate">
+                        {m.name} <span className="text-muted-foreground">({m.count})</span>
+                      </span>
+                      <span className="shrink-0 font-semibold">{formatPrice(m.total)}</span>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
             <Card>
               <CardContent className="space-y-2 p-4">
                 <p className="text-xs font-semibold text-muted-foreground">Por serviço</p>
