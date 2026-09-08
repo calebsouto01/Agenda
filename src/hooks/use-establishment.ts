@@ -11,6 +11,7 @@ export type Establishment = {
   address: string | null;
   timezone: string;
   slot_step_minutes: number;
+  sells_products: boolean;
 };
 
 /** The establishment owned by the signed-in user (one per account in this version). */
@@ -22,7 +23,9 @@ export function useEstablishment() {
       if (!auth.user) return null;
       const { data, error } = await supabase
         .from("establishments")
-        .select("id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes")
+        .select(
+          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products",
+        )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })
         .limit(1)

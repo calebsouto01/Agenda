@@ -1,16 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Phone } from "lucide-react";
+import { NotebookPen, Phone } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import type { AppointmentStatus } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PipelineTab } from "@/components/crm/pipeline-tab";
+import { ActivitiesTab } from "@/components/crm/activities-tab";
 
 export const Route = createFileRoute("/_authenticated/admin/customers")({
   component: CustomersPage,
@@ -21,11 +26,13 @@ type Customer = {
   name: string;
   phone: string;
   email: string | null;
+  notes: string | null;
   created_at: string;
   appointments: { status: AppointmentStatus; starts_at: string }[];
 };
 
 type View = "list" | "rank";
+type Section = "clientes" | "pipeline" | "atividades";
 type Segment = "new" | "recurring" | "inactive";
 
 /** Days since the last completed visit after which a customer is considered inactive. */
@@ -64,9 +71,13 @@ function segmentOf(visits: number, lastVisitAt: string | null): Segment {
 
 function CustomersPage() {
   const { data: establishment } = useEstablishment();
+  const queryClient = useQueryClient();
+  const [section, setSection] = useState<Section>("clientes");
   const [term, setTerm] = useState("");
   const [view, setView] = useState<View>("list");
   const [filter, setFilter] = useState<CustomerFilter>("all");
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", establishment?.id],
@@ -74,12 +85,28 @@ function CustomersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, name, phone, email, created_at, appointments(status, starts_at)")
+        .select("id, name, phone, email, notes, created_at, appointments(status, starts_at)")
         .eq("establishment_id", establishment!.id)
         .order("name");
       if (error) throw error;
       return (data ?? []) as unknown as Customer[];
     },
+  });
+
+  const saveNotes = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("customers")
+        .update({ notes: noteDraft.trim() || null })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Notas salvas");
+      setEditingNotesId(null);
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const withCounts = useMemo(
@@ -131,117 +158,184 @@ function CustomersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-extrabold">Clientes</h1>
-        <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-          <TabsList>
-            <TabsTrigger value="list">Lista</TabsTrigger>
-            <TabsTrigger value="rank">Rank</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      <h1 className="text-xl font-extrabold">Clientes</h1>
 
-      <Input
-        placeholder="Buscar por nome, telefone ou e-mail"
-        maxLength={80}
-        value={term}
-        onChange={(e) => setTerm(e.target.value)}
-      />
+      <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+        <TabsList>
+          <TabsTrigger value="clientes">Clientes</TabsTrigger>
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="atividades">Atividades</TabsTrigger>
+        </TabsList>
 
-      <div className="flex flex-wrap gap-2">
-        {CUSTOMER_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-              filter === f.value
-                ? "border-primary bg-primary text-primary-foreground"
-                : "bg-card hover:bg-muted"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+        <TabsContent value="clientes" className="space-y-4 pt-4">
+          <div className="flex justify-end">
+            <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+              <TabsList>
+                <TabsTrigger value="list">Lista</TabsTrigger>
+                <TabsTrigger value="rank">Rank</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
-      {isLoading ? (
-        <Skeleton className="h-32 w-full" />
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum cliente encontrado.
-          </CardContent>
-        </Card>
-      ) : view === "list" ? (
-        <div className="grid gap-2">
-          {filtered.map((c) => (
-            <Card key={c.id}>
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold">{c.name}</p>
-                    <Badge variant="outline" className={`border-0 ${SEGMENT_BADGE[c.segment]}`}>
-                      {SEGMENT_LABEL[c.segment]}
-                    </Badge>
-                  </div>
-                  <a
-                    href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary"
-                  >
-                    <Phone className="size-3" />
-                    {c.phone}
-                  </a>
-                  {c.email ? (
-                    <p className="truncate text-xs text-muted-foreground">{c.email}</p>
-                  ) : null}
-                </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {c.total} agendamento(s)
-                </span>
+          <Input
+            placeholder="Buscar por nome, telefone ou e-mail"
+            maxLength={80}
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+          />
+
+          <div className="flex flex-wrap gap-2">
+            {CUSTOMER_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFilter(f.value)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                  filter === f.value
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "bg-card hover:bg-muted"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : filtered.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                Nenhum cliente encontrado.
               </CardContent>
             </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-2">
-          {ranked.map((c, i) => (
-            <Card key={c.id}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <span
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                    i === 0 ? "bg-warning/20 text-warning-foreground" : "bg-primary/10 text-primary"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold">{c.name}</p>
-                    <Badge variant="outline" className={`border-0 ${SEGMENT_BADGE[c.segment]}`}>
-                      {SEGMENT_LABEL[c.segment]}
-                    </Badge>
-                  </div>
-                  <a
-                    href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary"
-                  >
-                    <Phone className="size-3" />
-                    {c.phone}
-                  </a>
-                </div>
-                <span className="shrink-0 text-sm font-bold">
-                  {c.visits} visita{c.visits === 1 ? "" : "s"}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+          ) : view === "list" ? (
+            <div className="grid gap-2">
+              {filtered.map((c) => (
+                <Card key={c.id}>
+                  <CardContent className="space-y-2 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-semibold">{c.name}</p>
+                          <Badge
+                            variant="outline"
+                            className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
+                          >
+                            {SEGMENT_LABEL[c.segment]}
+                          </Badge>
+                        </div>
+                        <a
+                          href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary"
+                        >
+                          <Phone className="size-3" />
+                          {c.phone}
+                        </a>
+                        {c.email ? (
+                          <p className="truncate text-xs text-muted-foreground">{c.email}</p>
+                        ) : null}
+                        {c.notes && editingNotesId !== c.id ? (
+                          <p className="mt-1 truncate text-xs italic text-muted-foreground">
+                            {c.notes}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {c.total} agendamento(s)
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingNotesId(editingNotesId === c.id ? null : c.id);
+                            setNoteDraft(c.notes ?? "");
+                          }}
+                        >
+                          <NotebookPen className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {editingNotesId === c.id ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          placeholder="Observações sobre este cliente"
+                          maxLength={500}
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={saveNotes.isPending}
+                            onClick={() => saveNotes.mutate(c.id)}
+                          >
+                            Salvar notas
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setEditingNotesId(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {ranked.map((c, i) => (
+                <Card key={c.id}>
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <span
+                      className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                        i === 0
+                          ? "bg-warning/20 text-warning-foreground"
+                          : "bg-primary/10 text-primary"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold">{c.name}</p>
+                        <Badge variant="outline" className={`border-0 ${SEGMENT_BADGE[c.segment]}`}>
+                          {SEGMENT_LABEL[c.segment]}
+                        </Badge>
+                      </div>
+                      <a
+                        href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary"
+                      >
+                        <Phone className="size-3" />
+                        {c.phone}
+                      </a>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold">
+                      {c.visits} visita{c.visits === 1 ? "" : "s"}
+                    </span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="pipeline" className="pt-4">
+          {establishment ? <PipelineTab establishmentId={establishment.id} /> : null}
+        </TabsContent>
+
+        <TabsContent value="atividades" className="pt-4">
+          {establishment ? (
+            <ActivitiesTab establishmentId={establishment.id} tz={establishment.timezone} />
+          ) : null}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
