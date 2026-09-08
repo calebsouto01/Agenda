@@ -19,8 +19,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer } from "@/components/ui/chart";
+import { CashFlowTab } from "@/components/finance/cash-flow-tab";
+import { ForecastTab } from "@/components/finance/forecast-tab";
+import { InventoryTab } from "@/components/finance/inventory-tab";
 
 export const Route = createFileRoute("/_authenticated/admin/finance")({
   component: FinancePage,
@@ -94,6 +97,7 @@ function FinancePage() {
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
   const [range, setRange] = useState<Range>("month");
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
+  const [section, setSection] = useState<"resumo" | "caixa" | "previsao" | "estoque">("resumo");
 
   const bounds = useMemo(() => rangeBounds(anchor, range), [anchor, range]);
   const prevBounds = useMemo(() => previousBounds(bounds), [bounds]);
@@ -224,6 +228,26 @@ function FinancePage() {
     return days;
   }, [appointments, bounds, range, tz]);
 
+  const dateNav = (
+    <div className="flex items-center justify-between rounded-xl border bg-card p-2">
+      <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, -1))}>
+        <ChevronLeft className="size-4" />
+      </Button>
+      <span className="text-sm font-semibold">
+        {new Intl.DateTimeFormat("pt-BR", {
+          day: range === "month" ? undefined : "2-digit",
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        }).format(new Date(`${bounds.from}T12:00:00Z`))}
+        {range === "week" ? " (semana)" : ""}
+      </span>
+      <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, 1))}>
+        <ChevronRight className="size-4" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -237,186 +261,227 @@ function FinancePage() {
         </Tabs>
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border bg-card p-2">
-        <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, -1))}>
-          <ChevronLeft className="size-4" />
-        </Button>
-        <span className="text-sm font-semibold">
-          {new Intl.DateTimeFormat("pt-BR", {
-            day: range === "month" ? undefined : "2-digit",
-            month: "long",
-            year: "numeric",
-            timeZone: "UTC",
-          }).format(new Date(`${bounds.from}T12:00:00Z`))}
-          {range === "week" ? " (semana)" : ""}
-        </span>
-        <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, 1))}>
-          <ChevronRight className="size-4" />
-        </Button>
-      </div>
+      <Tabs value={section} onValueChange={(v) => setSection(v as typeof section)}>
+        <TabsList>
+          <TabsTrigger value="resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="caixa">Fluxo de caixa</TabsTrigger>
+          <TabsTrigger value="previsao">Previsão</TabsTrigger>
+          {establishment?.sells_products ? (
+            <TabsTrigger value="estoque">Estoque</TabsTrigger>
+          ) : null}
+        </TabsList>
 
-      {isLoading ? (
-        <Skeleton className="h-64 w-full" />
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">Faturado</p>
-                <p className="text-lg font-extrabold">{formatPrice(totalCents)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">Recebido</p>
-                <p className="text-lg font-extrabold text-success">{formatPrice(receivedCents)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">Atendimentos</p>
-                <p className="text-lg font-extrabold">{count}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">Ticket médio</p>
-                <p className="text-lg font-extrabold">{formatPrice(avgTicketCents)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs font-medium text-muted-foreground">Vs. período anterior</p>
-                {change === null ? (
-                  <p className="text-lg font-extrabold text-muted-foreground">—</p>
-                ) : (
-                  <p
-                    className={`flex items-center gap-1 text-lg font-extrabold ${
-                      change >= 0 ? "text-success" : "text-destructive"
-                    }`}
-                  >
-                    {change >= 0 ? (
-                      <TrendingUp className="size-4" />
+        <TabsContent value="resumo" className="space-y-4 pt-4">
+          {dateNav}
+
+          {isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Faturado</p>
+                    <p className="text-lg font-extrabold">{formatPrice(totalCents)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Recebido</p>
+                    <p className="text-lg font-extrabold text-success">
+                      {formatPrice(receivedCents)}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Atendimentos</p>
+                    <p className="text-lg font-extrabold">{count}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Ticket médio</p>
+                    <p className="text-lg font-extrabold">{formatPrice(avgTicketCents)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Vs. período anterior
+                    </p>
+                    {change === null ? (
+                      <p className="text-lg font-extrabold text-muted-foreground">—</p>
                     ) : (
-                      <TrendingDown className="size-4" />
+                      <p
+                        className={`flex items-center gap-1 text-lg font-extrabold ${
+                          change >= 0 ? "text-success" : "text-destructive"
+                        }`}
+                      >
+                        {change >= 0 ? (
+                          <TrendingUp className="size-4" />
+                        ) : (
+                          <TrendingDown className="size-4" />
+                        )}
+                        {change >= 0 ? "+" : ""}
+                        {change.toFixed(0)}%
+                      </p>
                     )}
-                    {change >= 0 ? "+" : ""}
-                    {change.toFixed(0)}%
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {byDay.length > 0 ? (
-            <Card>
-              <CardContent className="p-4">
-                <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                  Faturamento por dia
-                </p>
-                <ChartContainer config={{}} className="aspect-auto h-56 w-full">
-                  <BarChart data={byDay}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(d: string) => d.slice(8, 10)}
-                      tickLine={false}
-                      axisLine={false}
-                      fontSize={11}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => formatPrice(Math.round(value * 100))}
-                      labelFormatter={(label: string) => formatDateLabel(label)}
-                      cursor={{ fill: "var(--muted)" }}
-                    />
-                    <Bar dataKey="total" fill="var(--primary)" radius={4} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          ) : null}
+              {byDay.length > 0 ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                      Faturamento por dia
+                    </p>
+                    <ChartContainer config={{}} className="aspect-auto h-56 w-full">
+                      <BarChart data={byDay}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(d: string) => d.slice(8, 10)}
+                          tickLine={false}
+                          axisLine={false}
+                          fontSize={11}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => formatPrice(Math.round(value * 100))}
+                          labelFormatter={(label: string) => formatDateLabel(label)}
+                          cursor={{ fill: "var(--muted)" }}
+                        />
+                        <Bar dataKey="total" fill="var(--primary)" radius={4} />
+                      </BarChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardContent className="space-y-2 p-4">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Por forma de pagamento
-                </p>
-                {byPaymentMethod.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nada recebido no período.</p>
-                ) : (
-                  byPaymentMethod.map((m) => (
-                    <div key={m.name} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate">
-                        {m.name} <span className="text-muted-foreground">({m.count})</span>
-                      </span>
-                      <span className="shrink-0 font-semibold">{formatPrice(m.total)}</span>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="space-y-2 p-4">
-                <p className="text-xs font-semibold text-muted-foreground">Por serviço</p>
-                {byService.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum atendimento no período.</p>
-                ) : (
-                  byService.map((s) => (
-                    <div key={s.name} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate">
-                        {s.name} <span className="text-muted-foreground">({s.count})</span>
-                      </span>
-                      <span className="shrink-0 font-semibold">{formatPrice(s.total)}</span>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="space-y-2 p-4">
-                <p className="text-xs font-semibold text-muted-foreground">Por profissional</p>
-                {byProfessional.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum atendimento no período.</p>
-                ) : (
-                  byProfessional.map((p) => (
-                    <div key={p.name} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate">
-                        {p.name} <span className="text-muted-foreground">({p.count})</span>
-                      </span>
-                      <span className="shrink-0 font-semibold">{formatPrice(p.total)}</span>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {paymentsWithNote.length > 0 ? (
-            <Card>
-              <CardContent className="space-y-2 p-4">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Pagamentos com observação
-                </p>
-                {paymentsWithNote.map((e) => (
-                  <div key={e.id} className="flex items-start justify-between gap-3 text-sm">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {e.appointments?.customers?.name ?? "Cliente"}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Card>
+                  <CardContent className="space-y-2 p-4">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Por forma de pagamento
+                    </p>
+                    {byPaymentMethod.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nada recebido no período.</p>
+                    ) : (
+                      byPaymentMethod.map((m) => (
+                        <div
+                          key={m.name}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="truncate">
+                            {m.name} <span className="text-muted-foreground">({m.count})</span>
+                          </span>
+                          <span className="shrink-0 font-semibold">{formatPrice(m.total)}</span>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="space-y-2 p-4">
+                    <p className="text-xs font-semibold text-muted-foreground">Por serviço</p>
+                    {byService.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum atendimento no período.
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {e.appointments ? dateTimeInZone(e.appointments.starts_at, tz) : ""} ·{" "}
-                        {e.note}
+                    ) : (
+                      byService.map((s) => (
+                        <div
+                          key={s.name}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="truncate">
+                            {s.name} <span className="text-muted-foreground">({s.count})</span>
+                          </span>
+                          <span className="shrink-0 font-semibold">{formatPrice(s.total)}</span>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="space-y-2 p-4">
+                    <p className="text-xs font-semibold text-muted-foreground">Por profissional</p>
+                    {byProfessional.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum atendimento no período.
                       </p>
-                    </div>
-                    <span className="shrink-0 font-semibold">{formatPrice(e.amount_cents)}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                    ) : (
+                      byProfessional.map((p) => (
+                        <div
+                          key={p.name}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="truncate">
+                            {p.name} <span className="text-muted-foreground">({p.count})</span>
+                          </span>
+                          <span className="shrink-0 font-semibold">{formatPrice(p.total)}</span>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {paymentsWithNote.length > 0 ? (
+                <Card>
+                  <CardContent className="space-y-2 p-4">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Pagamentos com observação
+                    </p>
+                    {paymentsWithNote.map((e) => (
+                      <div key={e.id} className="flex items-start justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {e.appointments?.customers?.name ?? "Cliente"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {e.appointments ? dateTimeInZone(e.appointments.starts_at, tz) : ""} ·{" "}
+                            {e.note}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold">
+                          {formatPrice(e.amount_cents)}
+                        </span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="caixa" className="space-y-4 pt-4">
+          {dateNav}
+          {establishment ? (
+            <CashFlowTab establishmentId={establishment.id} tz={tz} bounds={bounds} />
           ) : null}
-        </>
-      )}
+        </TabsContent>
+
+        <TabsContent value="previsao" className="space-y-4 pt-4">
+          {dateNav}
+          {establishment ? (
+            <ForecastTab
+              establishmentId={establishment.id}
+              tz={tz}
+              bounds={bounds}
+              realizedCents={totalCents}
+            />
+          ) : null}
+        </TabsContent>
+
+        {establishment?.sells_products ? (
+          <TabsContent value="estoque" className="space-y-4 pt-4">
+            <InventoryTab establishmentId={establishment.id} />
+          </TabsContent>
+        ) : null}
+      </Tabs>
     </div>
   );
 }
