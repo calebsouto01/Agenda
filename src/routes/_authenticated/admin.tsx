@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   ExternalLink,
   LogOut,
+  Menu,
   Scissors,
   Settings,
   Users,
@@ -16,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useEstablishment } from "@/hooks/use-establishment";
+import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
@@ -44,6 +46,7 @@ function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -66,97 +69,104 @@ function AdminLayout() {
   return (
     <div className="min-h-screen bg-background md:flex">
       <aside className="hidden shrink-0 flex-col border-r bg-card md:sticky md:top-0 md:flex md:h-screen md:w-56">
-        <div className="flex items-center gap-2 border-b px-4 py-3.5">
-          <CalendarCheck className="size-5 shrink-0 text-primary" />
-          <span className="truncate text-sm font-bold">{establishment.name}</span>
-        </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => {
-            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                <item.icon className="size-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="space-y-1 border-t p-3">
-          <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-            <a
-              href={`/b/${establishment.slug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="size-4" />
-              Página pública
-            </a>
-          </Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-            <LogOut className="size-4" />
-            Sair
-          </Button>
-        </div>
+        <NavContent establishment={establishment} pathname={pathname} onSignOut={signOut} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur md:hidden">
-          <div className="flex items-center justify-between gap-2 px-4 py-3">
-            <span className="flex min-w-0 items-center gap-2">
-              <CalendarCheck className="size-5 shrink-0 text-primary" />
-              <span className="truncate text-sm font-bold">{establishment.name}</span>
-            </span>
-            <div className="flex items-center gap-1">
-              <Button asChild variant="ghost" size="sm">
-                <a
-                  href={`/b/${establishment.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1"
-                >
-                  <ExternalLink className="size-4" />
-                  <span className="hidden sm:inline">Página pública</span>
-                </a>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={signOut}>
-                <LogOut className="size-4" />
-              </Button>
-            </div>
-          </div>
-          <nav className="flex gap-1 overflow-x-auto px-3 pb-2">
-            {NAV.map((item) => {
-              const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <item.icon className="size-3.5" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+        <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-card/95 px-4 py-3 backdrop-blur md:hidden">
+          <Button variant="ghost" size="sm" onClick={() => setMobileNavOpen(true)}>
+            <Menu className="size-5" />
+          </Button>
+          <span className="flex min-w-0 items-center gap-2">
+            <CalendarCheck className="size-5 shrink-0 text-primary" />
+            <span className="truncate text-sm font-bold">{establishment.name}</span>
+          </span>
         </header>
+
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <SheetContent side="left" className="flex w-72 flex-col gap-0 p-0">
+            <SheetTitle className="sr-only">Menu</SheetTitle>
+            <NavContent
+              establishment={establishment}
+              pathname={pathname}
+              onSignOut={signOut}
+              onNavigate={() => setMobileNavOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
+
         <main className="mx-auto w-full max-w-5xl px-4 py-6">
           <Outlet />
         </main>
       </div>
     </div>
+  );
+}
+
+function NavContent({
+  establishment,
+  pathname,
+  onSignOut,
+  onNavigate,
+}: {
+  establishment: Establishment;
+  pathname: string;
+  onSignOut: () => void;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2 border-b px-4 py-3.5">
+        <CalendarCheck className="size-5 shrink-0 text-primary" />
+        <span className="truncate text-sm font-bold">{establishment.name}</span>
+      </div>
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        {NAV.map((item) => {
+          const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={onNavigate}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="space-y-1 border-t p-3">
+        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
+          <a
+            href={`/b/${establishment.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2"
+            onClick={onNavigate}
+          >
+            <ExternalLink className="size-4" />
+            Página pública
+          </a>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => {
+            onNavigate?.();
+            onSignOut();
+          }}
+        >
+          <LogOut className="size-4" />
+          Sair
+        </Button>
+      </div>
+    </>
   );
 }
 
