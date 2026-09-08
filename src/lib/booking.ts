@@ -115,6 +115,11 @@ export function formatDateLabel(dateIso: string) {
   }).format(d);
 }
 
+/** Last 11 digits of a phone number, ignoring formatting and country code, for loose matching. */
+export function normalizePhone(phone: string) {
+  return phone.replace(/\D/g, "").slice(-11);
+}
+
 export function slugify(value: string) {
   return value
     .normalize("NFD")

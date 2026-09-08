@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   Plus,
+  Smartphone,
   Sparkles,
   Target,
   Trophy,
@@ -14,7 +15,8 @@ import {
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice } from "@/lib/booking";
+import { formatPrice, normalizePhone } from "@/lib/booking";
+import { isNativeApp, pickAllDeviceContacts } from "@/lib/native-contacts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -184,6 +186,52 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const importContacts = useMutation({
+    mutationFn: async () => {
+      const deviceContacts = await pickAllDeviceContacts();
+      if (deviceContacts.length === 0) {
+        throw new Error("Nenhum contato com telefone encontrado no celular");
+      }
+
+      const [{ data: existingCustomers }, { data: existingLeads }] = await Promise.all([
+        supabase.from("customers").select("phone").eq("establishment_id", establishmentId),
+        supabase.from("crm_leads").select("phone").eq("establishment_id", establishmentId),
+      ]);
+      const known = new Set(
+        [...(existingCustomers ?? []), ...(existingLeads ?? [])]
+          .map((r) => (r.phone ? normalizePhone(r.phone) : null))
+          .filter((v): v is string => Boolean(v)),
+      );
+
+      const seen = new Set<string>();
+      const newLeads = deviceContacts.filter((c) => {
+        const key = normalizePhone(c.phone);
+        if (key.length < 8 || known.has(key) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (newLeads.length === 0) return 0;
+
+      const { error } = await supabase.from("crm_leads").insert(
+        newLeads.map((c) => ({
+          establishment_id: establishmentId,
+          name: c.name,
+          phone: c.phone,
+          origem: "Contatos importados",
+        })),
+      );
+      if (error) throw new Error(error.message);
+      return newLeads.length;
+    },
+    onSuccess: (count) => {
+      toast.success(
+        count > 0 ? `${count} novo(s) lead(s) importado(s)` : "Nenhum contato novo encontrado",
+      );
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const responsavelNome = (id: string | null) =>
     professionals?.find((p) => p.id === id)?.name ?? null;
 
@@ -203,6 +251,17 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
             {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             {showClosed ? "Ocultar fechados" : `Mostrar fechados (${closedTotal})`}
           </Button>
+          {isNativeApp() ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={importContacts.isPending}
+              onClick={() => importContacts.mutate()}
+            >
+              <Smartphone className="size-4" />
+              {importContacts.isPending ? "Importando..." : "Importar contatos do celular"}
+            </Button>
+          ) : null}
           <Button
             size="sm"
             onClick={() => {
