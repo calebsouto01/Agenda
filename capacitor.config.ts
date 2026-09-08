@@ -7,7 +7,7 @@ import type { CapacitorConfig } from "@capacitor/core";
 const config: CapacitorConfig = {
   appId: "com.agendalemonten.app",
   appName: "Agenda",
-  webDir: "dist",
+  webDir: "www",
   server: {
     url: "https://agenda-lemon-ten.vercel.app/",
     cleartext: false,
