@@ -12,6 +12,9 @@ on:
       - "www/**"
       - ".github/workflows/android-debug-apk.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,3 +46,17 @@ jobs:
         with:
           name: agenda-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Publica numa Release fixa (mesma tag sempre) com link direto de
+      # download — mais simples de achar e baixar pelo celular (inclusive
+      # pelo app oficial do GitHub) do que a seção de Artifacts da run.
+      - name: Publish debug APK as a release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: debug-latest
+          name: Agenda (debug APK)
+          body: Build de teste automática, gerada a partir do commit ${{ github.sha }}. Não é uma versão da Play Store.
+          artifacts: android/app/build/outputs/apk/debug/app-debug.apk
+          allowUpdates: true
+          replacesArtifacts: true
+          prerelease: true
