@@ -39,7 +39,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
         )
         .eq("establishment_id", establishmentId)
         .eq("stage", "novo")
-        .order("created_at", { ascending: false });
+        .order("name", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Lead[];
     },
@@ -171,30 +171,34 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
           Contatos ainda não trabalhados. Ative os que valem a pena abordar.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {isNativeApp() ? (
             <Button
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               disabled={importContacts.isPending}
               onClick={() => importContacts.mutate()}
             >
-              <Smartphone className="size-4" />
-              {importContacts.isPending ? "Importando..." : "Importar contatos do celular"}
+              <Smartphone className="size-4 shrink-0" />
+              <span className="truncate">
+                {importContacts.isPending ? "Importando..." : "Importar contatos do celular"}
+              </span>
             </Button>
           ) : null}
           <Button
             size="sm"
+            className="w-full sm:w-auto"
             onClick={() => {
               setForm({ ...EMPTY_FORM });
               setOpenNew(true);
             }}
           >
-            <Plus className="size-4" /> Novo contato
+            <Plus className="size-4 shrink-0" /> Novo contato
           </Button>
         </div>
       </div>
@@ -339,13 +343,13 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
               lead={contact}
               responsavelNome={responsavelNome(contact.responsavel_id)}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2 min-[420px]:flex-row">
                 <button
                   type="button"
                   onClick={() => activate.mutate(contact)}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                  className="flex items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90 min-[420px]:flex-1"
                 >
-                  Ativar no pipeline <ArrowRight className="size-3" />
+                  Ativar no pipeline <ArrowRight className="size-3 shrink-0" />
                 </button>
                 <button
                   type="button"
