@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
-      { title: "Termos de Uso — Agenda" },
-      { name: "description", content: "Termos de uso da plataforma Agenda." },
+      { title: "Termos de Uso — Zaka" },
+      { name: "description", content: "Termos de uso da plataforma Zaka." },
     ],
   }),
   component: TermosPage,
@@ -19,7 +19,7 @@ function TermosPage() {
       <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5">
         <Link to="/" className="flex items-center gap-2 text-base font-bold">
           <CalendarCheck className="size-5 text-primary" />
-          Agenda
+          Zaka
         </Link>
         <Link to="/" className="flex items-center gap-1 text-sm text-muted-foreground">
           <ChevronLeft className="size-4" />
@@ -42,7 +42,7 @@ function TermosPage() {
                 <h2 className="mb-1 text-sm font-bold">1. Aceitação dos termos</h2>
                 <p>
                   Ao criar uma conta, cadastrar um estabelecimento ou realizar um agendamento pela
-                  Agenda ("Plataforma"), você concorda com estes Termos de Uso e com a nossa{" "}
+                  Zaka ("Plataforma"), você concorda com estes Termos de Uso e com a nossa{" "}
                   <Link to="/privacidade" className="font-semibold text-primary underline">
                     Política de Privacidade
                   </Link>
@@ -53,7 +53,7 @@ function TermosPage() {
               <section>
                 <h2 className="mb-1 text-sm font-bold">2. Descrição do serviço</h2>
                 <p>
-                  A Agenda é uma plataforma de agendamento online que permite a estabelecimentos de
+                  A Zaka é uma plataforma de agendamento online que permite a estabelecimentos de
                   serviços (salões, barbearias, clínicas, oficinas e similares) gerenciar serviços,
                   profissionais, horários, clientes e agendamentos, e permite que clientes finais
                   marquem horários diretamente com esses estabelecimentos.
@@ -65,7 +65,7 @@ function TermosPage() {
                 <p>
                   O estabelecimento é responsável por manter seus dados cadastrais, serviços,
                   preços, horários de funcionamento e informações de clientes atualizados e
-                  corretos. A Agenda não participa das relações comerciais entre o estabelecimento e
+                  corretos. A Zaka não participa das relações comerciais entre o estabelecimento e
                   seus clientes, e não se responsabiliza pela qualidade, execução ou cumprimento dos
                   serviços agendados.
                 </p>
@@ -75,7 +75,7 @@ function TermosPage() {
                 <h2 className="mb-1 text-sm font-bold">4. Agendamentos e cancelamentos</h2>
                 <p>
                   Horários, políticas de cancelamento, cobrança e reembolso são definidos livremente
-                  por cada estabelecimento. A Agenda apenas disponibiliza a ferramenta técnica para
+                  por cada estabelecimento. A Zaka apenas disponibiliza a ferramenta técnica para
                   registrar e organizar esses agendamentos.
                 </p>
               </section>
@@ -93,8 +93,8 @@ function TermosPage() {
               <section>
                 <h2 className="mb-1 text-sm font-bold">6. Propriedade intelectual</h2>
                 <p>
-                  A marca, o software, o layout e os demais elementos da Plataforma pertencem à
-                  Agenda e não podem ser copiados, reproduzidos ou distribuídos sem autorização.
+                  A marca, o software, o layout e os demais elementos da Plataforma pertencem à Zaka
+                  e não podem ser copiados, reproduzidos ou distribuídos sem autorização.
                 </p>
               </section>
 
