@@ -129,6 +129,10 @@ function Home() {
           </Card>
         )}
       </section>
+
+      <footer className="border-t px-4 py-6 text-center text-xs text-muted-foreground">
+        CNPJ 67.596.409/0001-93
+      </footer>
     </main>
   );
 }
