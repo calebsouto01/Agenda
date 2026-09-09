@@ -232,7 +232,7 @@ export function InventoryTab({ establishmentId }: { establishmentId: string }) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {products.map((p) => {
             const low = p.stock_qty <= p.min_stock_qty;
             return (

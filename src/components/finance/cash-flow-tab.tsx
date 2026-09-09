@@ -311,7 +311,7 @@ export function CashFlowTab({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {ledger.map((e) => (
             <Card key={e.id}>
               <CardContent className="flex items-center justify-between gap-3 p-4">
