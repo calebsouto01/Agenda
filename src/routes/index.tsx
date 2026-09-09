@@ -141,6 +141,7 @@ function Home() {
           </Link>
         </div>
         <p className="mt-2">CNPJ 67.596.409/0001-93</p>
+        <p>CALEB FERREIRA SOUTO DE OLIVEIRA</p>
       </footer>
     </main>
   );
