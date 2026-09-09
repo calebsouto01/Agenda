@@ -108,7 +108,7 @@ function AuthPage() {
       <div className="w-full max-w-sm">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2 font-bold">
           <CalendarCheck className="size-5 text-primary" />
-          Agenda
+          Zaka
         </Link>
         <Card className="shadow-soft">
           <CardContent className="p-6">

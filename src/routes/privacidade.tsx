@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: "Política de Privacidade — Agenda" },
-      { name: "description", content: "Política de privacidade da plataforma Agenda." },
+      { title: "Política de Privacidade — Zaka" },
+      { name: "description", content: "Política de privacidade da plataforma Zaka." },
     ],
   }),
   component: PrivacidadePage,
@@ -19,7 +19,7 @@ function PrivacidadePage() {
       <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5">
         <Link to="/" className="flex items-center gap-2 text-base font-bold">
           <CalendarCheck className="size-5 text-primary" />
-          Agenda
+          Zaka
         </Link>
         <Link to="/" className="flex items-center gap-1 text-sm text-muted-foreground">
           <ChevronLeft className="size-4" />
@@ -41,9 +41,9 @@ function PrivacidadePage() {
               <section>
                 <h2 className="mb-1 text-sm font-bold">1. Quem somos</h2>
                 <p>
-                  A Agenda (CNPJ 67.596.409/0001-93) é responsável pelo tratamento dos dados
-                  pessoais coletados através desta plataforma de agendamento online, em conformidade
-                  com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
+                  A Zaka (CNPJ 67.596.409/0001-93) é responsável pelo tratamento dos dados pessoais
+                  coletados através desta plataforma de agendamento online, em conformidade com a
+                  Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
                 </p>
               </section>
 

@@ -10,13 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Agenda — Agendamento online para qualquer serviço" },
+      { title: "Zaka — Agendamento online para qualquer serviço" },
       {
         name: "description",
         content:
           "Escolha o estabelecimento, o serviço, o profissional e um horário livre. Agendamento online simples para barbearias, salões, clínicas, oficinas e mais.",
       },
-      { property: "og:title", content: "Agenda — Agendamento online para qualquer serviço" },
+      { property: "og:title", content: "Zaka — Agendamento online para qualquer serviço" },
       {
         property: "og:description",
         content:
@@ -46,7 +46,7 @@ function Home() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
         <span className="flex items-center gap-2 text-base font-bold">
           <CalendarCheck className="size-5 text-primary" />
-          Agenda
+          Zaka
         </span>
         <Button asChild variant="outline" size="sm">
           <Link to="/admin">Área do administrador</Link>
