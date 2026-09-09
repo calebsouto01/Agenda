@@ -75,6 +75,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "facebook-domain-verification", content: "3st57bvnbladb07ghrhsrzg8bgvy6t" },
       { title: "Zaka — Agendamento online para serviços" },
       {
         name: "description",
