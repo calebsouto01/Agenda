@@ -1,62 +1,21 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Plus,
-  Smartphone,
-  Sparkles,
-  Target,
-  Trophy,
-  UserPlus,
-  XCircle,
-} from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Sparkles, Trophy, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice, normalizePhone } from "@/lib/booking";
-import { isNativeApp, pickAllDeviceContacts } from "@/lib/native-contacts";
-import { Badge } from "@/components/ui/badge";
+import { formatPrice } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-
-type LeadStage = "novo" | "contato" | "agendado" | "convertido" | "perdido";
-
-type Lead = {
-  id: string;
-  customer_id: string | null;
-  name: string;
-  phone: string | null;
-  origem: string;
-  stage: LeadStage;
-  valor_estimado_cents: number | null;
-  responsavel_id: string | null;
-  notes: string | null;
-  motivo_perda: string | null;
-};
-
-type Professional = { id: string; name: string };
+import { LeadCard, type Lead, type LeadStage, type Professional } from "./lead-shared";
 
 const ACTIVE_STAGES: { value: LeadStage; label: string }[] = [
-  { value: "novo", label: "Novo" },
   { value: "contato", label: "Em contato" },
   { value: "agendado", label: "Agendado" },
 ];
-
-const ORIGENS = ["Indicação", "Instagram", "WhatsApp", "Google", "Página pública", "Outro"];
-
-const EMPTY_FORM = { name: "", phone: "", origem: "", valor: "", responsavelId: "" };
 
 function nextStage(stage: LeadStage): LeadStage | null {
   const idx = ACTIVE_STAGES.findIndex((s) => s.value === stage);
@@ -65,14 +24,12 @@ function nextStage(stage: LeadStage): LeadStage | null {
 
 export function PipelineTab({ establishmentId }: { establishmentId: string }) {
   const queryClient = useQueryClient();
-  const [openNew, setOpenNew] = useState(false);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
   const [leadPerdido, setLeadPerdido] = useState<Lead | null>(null);
   const [motivo, setMotivo] = useState("");
   const [showClosed, setShowClosed] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
-    queryKey: ["crm-leads", establishmentId],
+    queryKey: ["crm-leads", establishmentId, "pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("crm_leads")
@@ -80,6 +37,7 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
           "id, customer_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda",
         )
         .eq("establishment_id", establishmentId)
+        .neq("stage", "novo")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Lead[];
@@ -103,30 +61,6 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
     queryClient.invalidateQueries({ queryKey: ["crm-leads"] });
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
-
-  const createLead = useMutation({
-    mutationFn: async () => {
-      const name = form.name.trim();
-      if (name.length < 2) throw new Error("Informe o nome");
-      const cents = form.valor ? Math.round(Number(form.valor.replace(",", ".")) * 100) : null;
-      const { error } = await supabase.from("crm_leads").insert({
-        establishment_id: establishmentId,
-        name,
-        phone: form.phone.trim() || null,
-        origem: form.origem.trim() || "Outro",
-        valor_estimado_cents: cents,
-        responsavel_id: form.responsavelId || null,
-      });
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Lead criado");
-      setForm({ ...EMPTY_FORM });
-      setOpenNew(false);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const advance = useMutation({
     mutationFn: async (lead: Lead) => {
@@ -186,52 +120,6 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const importContacts = useMutation({
-    mutationFn: async () => {
-      const deviceContacts = await pickAllDeviceContacts();
-      if (deviceContacts.length === 0) {
-        throw new Error("Nenhum contato com telefone encontrado no celular");
-      }
-
-      const [{ data: existingCustomers }, { data: existingLeads }] = await Promise.all([
-        supabase.from("customers").select("phone").eq("establishment_id", establishmentId),
-        supabase.from("crm_leads").select("phone").eq("establishment_id", establishmentId),
-      ]);
-      const known = new Set(
-        [...(existingCustomers ?? []), ...(existingLeads ?? [])]
-          .map((r) => (r.phone ? normalizePhone(r.phone) : null))
-          .filter((v): v is string => Boolean(v)),
-      );
-
-      const seen = new Set<string>();
-      const newLeads = deviceContacts.filter((c) => {
-        const key = normalizePhone(c.phone);
-        if (key.length < 8 || known.has(key) || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      if (newLeads.length === 0) return 0;
-
-      const { error } = await supabase.from("crm_leads").insert(
-        newLeads.map((c) => ({
-          establishment_id: establishmentId,
-          name: c.name,
-          phone: c.phone,
-          origem: "Contatos importados",
-        })),
-      );
-      if (error) throw new Error(error.message);
-      return newLeads.length;
-    },
-    onSuccess: (count) => {
-      toast.success(
-        count > 0 ? `${count} novo(s) lead(s) importado(s)` : "Nenhum contato novo encontrado",
-      );
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const responsavelNome = (id: string | null) =>
     professionals?.find((p) => p.id === id)?.name ?? null;
 
@@ -245,33 +133,13 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">Do primeiro contato até virar cliente.</p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
-            {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            {showClosed ? "Ocultar fechados" : `Mostrar fechados (${closedTotal})`}
-          </Button>
-          {isNativeApp() ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={importContacts.isPending}
-              onClick={() => importContacts.mutate()}
-            >
-              <Smartphone className="size-4" />
-              {importContacts.isPending ? "Importando..." : "Importar contatos do celular"}
-            </Button>
-          ) : null}
-          <Button
-            size="sm"
-            onClick={() => {
-              setForm({ ...EMPTY_FORM });
-              setOpenNew(true);
-            }}
-          >
-            <Plus className="size-4" /> Novo lead
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Contatos ativados até virar cliente. Novos contatos entram pela aba Contatos.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
+          {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {showClosed ? "Ocultar fechados" : `Mostrar fechados (${closedTotal})`}
+        </Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -296,87 +164,6 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
           </CardContent>
         </Card>
       </div>
-
-      {openNew ? (
-        <Card className="shadow-soft">
-          <CardContent className="grid gap-3 p-5">
-            <div className="grid gap-1.5">
-              <Label htmlFor="lead-name">Nome</Label>
-              <Input
-                id="lead-name"
-                maxLength={120}
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="lead-phone">Telefone</Label>
-                <Input
-                  id="lead-phone"
-                  maxLength={30}
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="lead-valor">Valor estimado (R$)</Label>
-                <Input
-                  id="lead-valor"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.valor}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="lead-origem">Origem</Label>
-                <Input
-                  id="lead-origem"
-                  list="lead-origens"
-                  maxLength={60}
-                  value={form.origem}
-                  onChange={(e) => setForm({ ...form, origem: e.target.value })}
-                />
-                <datalist id="lead-origens">
-                  {ORIGENS.map((o) => (
-                    <option key={o} value={o} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Responsável</Label>
-                <Select
-                  value={form.responsavelId}
-                  onValueChange={(v) => setForm({ ...form, responsavelId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nenhum" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {professionals?.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button disabled={createLead.isPending} onClick={() => createLead.mutate()}>
-                Criar lead
-              </Button>
-              <Button variant="ghost" onClick={() => setOpenNew(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
 
       {leadPerdido ? (
         <Card className="border-destructive/30 shadow-soft">
@@ -422,9 +209,9 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
               <UserPlus className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Nenhum lead ainda</p>
+              <p className="text-sm font-medium">Nenhum lead ativado ainda</p>
               <p className="text-sm text-muted-foreground">
-                Cadastre um lead pra começar a acompanhar o funil.
+                Ative contatos na aba Contatos pra começar a acompanhar o funil.
               </p>
             </div>
           </CardContent>
@@ -544,39 +331,5 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
         </div>
       )}
     </div>
-  );
-}
-
-function LeadCard({
-  lead,
-  responsavelNome,
-  children,
-}: {
-  lead: Lead;
-  responsavelNome: string | null;
-  children?: React.ReactNode;
-}) {
-  return (
-    <Card className="opacity-100">
-      <CardContent className="space-y-2 p-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{lead.name}</p>
-          <p className="truncate text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
-          <Badge variant="outline" className="mt-1 border-0 bg-primary/10 text-[10px] text-primary">
-            <Target className="mr-1 size-2.5" />
-            {lead.origem}
-          </Badge>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">
-            {lead.valor_estimado_cents != null ? formatPrice(lead.valor_estimado_cents) : "—"}
-          </span>
-          {responsavelNome ? (
-            <span className="text-xs text-muted-foreground">{responsavelNome}</span>
-          ) : null}
-        </div>
-        {children}
-      </CardContent>
-    </Card>
   );
 }
