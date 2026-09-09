@@ -239,22 +239,22 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
                       lead={lead}
                       responsavelNome={responsavelNome(lead.responsavel_id)}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-2 min-[420px]:flex-row">
                         {stage.value === "agendado" ? (
                           <button
                             type="button"
                             onClick={() => convert.mutate(lead)}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-success px-2 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90"
+                            className="flex items-center justify-center gap-1 rounded-md bg-success px-2 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90 min-[420px]:flex-1"
                           >
-                            <Sparkles className="size-3" /> Converter
+                            <Sparkles className="size-3 shrink-0" /> Converter
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => advance.mutate(lead)}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                            className="flex items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90 min-[420px]:flex-1"
                           >
-                            Avançar <ArrowRight className="size-3" />
+                            Avançar <ArrowRight className="size-3 shrink-0" />
                           </button>
                         )}
                         <button
