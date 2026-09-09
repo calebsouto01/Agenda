@@ -32,25 +32,30 @@ export function LeadCard({
   responsavelNome: string | null;
   children?: React.ReactNode;
 }) {
+  const hasValue = lead.valor_estimado_cents != null || Boolean(responsavelNome);
   return (
     <Card>
-      <CardContent className="space-y-2 p-3">
-        <div className="min-w-0">
+      <CardContent className="space-y-1.5 p-3">
+        <div className="flex min-w-0 items-baseline justify-between gap-2">
           <p className="truncate text-sm font-medium">{lead.name}</p>
-          <p className="truncate text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
-          <Badge variant="outline" className="mt-1 border-0 bg-primary/10 text-[10px] text-primary">
-            <Target className="mr-1 size-2.5" />
-            {lead.origem}
-          </Badge>
+          <p className="shrink-0 text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">
-            {lead.valor_estimado_cents != null ? formatPrice(lead.valor_estimado_cents) : "—"}
-          </span>
-          {responsavelNome ? (
-            <span className="text-xs text-muted-foreground">{responsavelNome}</span>
-          ) : null}
-        </div>
+        <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">
+          <Target className="mr-1 size-2.5" />
+          {lead.origem}
+        </Badge>
+        {hasValue ? (
+          <div className="flex items-center justify-between gap-2">
+            {lead.valor_estimado_cents != null ? (
+              <span className="text-sm font-semibold">
+                {formatPrice(lead.valor_estimado_cents)}
+              </span>
+            ) : null}
+            {responsavelNome ? (
+              <span className="text-xs text-muted-foreground">{responsavelNome}</span>
+            ) : null}
+          </div>
+        ) : null}
         {children}
       </CardContent>
     </Card>

@@ -343,13 +343,13 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
               lead={contact}
               responsavelNome={responsavelNome(contact.responsavel_id)}
             >
-              <div className="flex flex-col gap-2 min-[420px]:flex-row">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => activate.mutate(contact)}
-                  className="flex items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90 min-[420px]:flex-1"
+                  className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
                 >
-                  Ativar no pipeline <ArrowRight className="size-3 shrink-0" />
+                  Ativar <ArrowRight className="size-3 shrink-0" />
                 </button>
                 <button
                   type="button"
