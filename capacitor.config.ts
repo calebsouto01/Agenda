@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
   appName: "Zaka",
   webDir: "www",
   server: {
-    url: "https://agenda-lemon-ten.vercel.app/",
+    url: "https://agendazaka.com/",
     cleartext: false,
   },
 };
