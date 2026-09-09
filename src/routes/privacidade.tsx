@@ -144,6 +144,7 @@ function PrivacidadePage() {
                   pelos canais informados na página inicial da Plataforma.
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">CNPJ 67.596.409/0001-93</p>
+                <p className="text-xs text-muted-foreground">CALEB FERREIRA SOUTO DE OLIVEIRA</p>
               </section>
             </div>
           </CardContent>
