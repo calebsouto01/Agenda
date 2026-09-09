@@ -36,8 +36,8 @@ export function LeadCard({
   return (
     <Card>
       <CardContent className="space-y-1.5 p-3">
-        <div className="flex min-w-0 items-baseline justify-between gap-2">
-          <p className="truncate text-sm font-medium">{lead.name}</p>
+        <div className="flex items-baseline gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm font-medium">{lead.name}</p>
           <p className="shrink-0 text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
         </div>
         <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">

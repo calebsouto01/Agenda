@@ -373,7 +373,7 @@ function FinancePage() {
                           key={m.name}
                           className="flex items-center justify-between gap-2 text-sm"
                         >
-                          <span className="truncate">
+                          <span className="min-w-0 flex-1 truncate">
                             {m.name} <span className="text-muted-foreground">({m.count})</span>
                           </span>
                           <span className="shrink-0 font-semibold">{formatPrice(m.total)}</span>
@@ -395,7 +395,7 @@ function FinancePage() {
                           key={s.name}
                           className="flex items-center justify-between gap-2 text-sm"
                         >
-                          <span className="truncate">
+                          <span className="min-w-0 flex-1 truncate">
                             {s.name} <span className="text-muted-foreground">({s.count})</span>
                           </span>
                           <span className="shrink-0 font-semibold">{formatPrice(s.total)}</span>
@@ -417,7 +417,7 @@ function FinancePage() {
                           key={p.name}
                           className="flex items-center justify-between gap-2 text-sm"
                         >
-                          <span className="truncate">
+                          <span className="min-w-0 flex-1 truncate">
                             {p.name} <span className="text-muted-foreground">({p.count})</span>
                           </span>
                           <span className="shrink-0 font-semibold">{formatPrice(p.total)}</span>
