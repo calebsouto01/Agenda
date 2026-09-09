@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ContactsTab } from "@/components/crm/contacts-tab";
 import { PipelineTab } from "@/components/crm/pipeline-tab";
 import { ActivitiesTab } from "@/components/crm/activities-tab";
 
@@ -32,7 +33,7 @@ type Customer = {
 };
 
 type View = "list" | "rank";
-type Section = "clientes" | "pipeline" | "atividades";
+type Section = "contatos" | "pipeline" | "clientes" | "atividades";
 type Segment = "new" | "recurring" | "inactive";
 
 /** Days since the last completed visit after which a customer is considered inactive. */
@@ -51,17 +52,7 @@ const SEGMENT_BADGE: Record<Segment, string> = {
   inactive: "bg-muted text-muted-foreground",
 };
 
-type CustomerFilter = "all" | "new" | "recurring" | "inactive30" | "inactive60";
-
-const CUSTOMER_FILTERS: { value: CustomerFilter; label: string }[] = [
-  { value: "all", label: "Todos" },
-  { value: "new", label: SEGMENT_LABEL.new },
-  { value: "recurring", label: SEGMENT_LABEL.recurring },
-  { value: "inactive30", label: "Inativos 30 dias" },
-  { value: "inactive60", label: "Inativos 60 dias" },
-];
-
-/** Novo: sem visita ainda, ou só uma, recente. Recorrente: 2+ visitas recentes. Inativo: sem visita há muito tempo. */
+/** Novo: primeira visita, recente. Recorrente: 2+ visitas recentes. Inativo: sem visita há muito tempo. */
 function segmentOf(visits: number, lastVisitAt: string | null): Segment {
   if (visits === 0 || !lastVisitAt) return "new";
   const daysSince = (Date.now() - new Date(lastVisitAt).getTime()) / DAY_MS;
@@ -75,7 +66,6 @@ function CustomersPage() {
   const [section, setSection] = useState<Section>("clientes");
   const [term, setTerm] = useState("");
   const [view, setView] = useState<View>("list");
-  const [filter, setFilter] = useState<CustomerFilter>("all");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
@@ -134,21 +124,13 @@ function CustomersPage() {
     [customers],
   );
 
+  // Cliente = concluiu pelo menos um serviço. Contatos/leads que nunca chegaram
+  // a um atendimento concluído ficam nas abas Contatos/Pipeline, não aqui.
   const filtered = withCounts.filter((c) => {
     const matchesTerm = `${c.name} ${c.phone} ${c.email ?? ""}`
       .toLowerCase()
       .includes(term.trim().toLowerCase());
-    const matchesFilter =
-      filter === "all"
-        ? true
-        : filter === "new"
-          ? c.segment === "new"
-          : filter === "recurring"
-            ? c.segment === "recurring"
-            : filter === "inactive30"
-              ? c.daysSinceLastVisit !== null && c.daysSinceLastVisit > 30
-              : c.daysSinceLastVisit !== null && c.daysSinceLastVisit > 60;
-    return matchesTerm && matchesFilter;
+    return c.visits > 0 && matchesTerm;
   });
 
   const ranked = useMemo(
@@ -162,10 +144,19 @@ function CustomersPage() {
 
       <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
         <TabsList>
-          <TabsTrigger value="clientes">Clientes</TabsTrigger>
+          <TabsTrigger value="contatos">Contatos</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="atividades">Atividades</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="contatos" className="pt-4">
+          {establishment ? <ContactsTab establishmentId={establishment.id} /> : null}
+        </TabsContent>
+
+        <TabsContent value="pipeline" className="pt-4">
+          {establishment ? <PipelineTab establishmentId={establishment.id} /> : null}
+        </TabsContent>
 
         <TabsContent value="clientes" className="space-y-4 pt-4">
           <div className="flex justify-end">
@@ -183,23 +174,6 @@ function CustomersPage() {
             value={term}
             onChange={(e) => setTerm(e.target.value)}
           />
-
-          <div className="flex flex-wrap gap-2">
-            {CUSTOMER_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setFilter(f.value)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                  filter === f.value
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-card hover:bg-muted"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
 
           {isLoading ? (
             <Skeleton className="h-32 w-full" />
@@ -324,10 +298,6 @@ function CustomersPage() {
               ))}
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="pipeline" className="pt-4">
-          {establishment ? <PipelineTab establishmentId={establishment.id} /> : null}
         </TabsContent>
 
         <TabsContent value="atividades" className="pt-4">
