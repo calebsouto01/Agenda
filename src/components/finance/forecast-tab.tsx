@@ -168,7 +168,7 @@ export function ForecastTab({
             </p>
             {byService.map((s) => (
               <div key={s.name} className="flex items-center justify-between gap-2 text-sm">
-                <span className="truncate">
+                <span className="min-w-0 flex-1 truncate">
                   {s.name}{" "}
                   <span className="text-muted-foreground">
                     (~{s.projectedQty.toFixed(1)} atendimento(s))

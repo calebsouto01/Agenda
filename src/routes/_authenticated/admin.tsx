@@ -79,7 +79,7 @@ function AdminLayout() {
           </Button>
           <span className="flex min-w-0 items-center gap-2">
             <CalendarCheck className="size-5 shrink-0 text-primary" />
-            <span className="truncate text-sm font-bold">{establishment.name}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
           </span>
         </header>
 

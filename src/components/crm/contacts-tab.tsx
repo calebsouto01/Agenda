@@ -185,7 +185,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
               onClick={() => importContacts.mutate()}
             >
               <Smartphone className="size-4 shrink-0" />
-              <span className="truncate">
+              <span className="min-w-0 flex-1 truncate">
                 {importContacts.isPending ? "Importando..." : "Importar contatos do celular"}
               </span>
             </Button>

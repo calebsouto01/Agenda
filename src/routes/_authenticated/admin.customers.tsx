@@ -191,7 +191,7 @@ function CustomersPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold">{c.name}</p>
+                          <p className="min-w-0 flex-1 truncate text-sm font-semibold">{c.name}</p>
                           <Badge
                             variant="outline"
                             className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
@@ -275,7 +275,7 @@ function CustomersPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-semibold">{c.name}</p>
+                        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{c.name}</p>
                         <Badge variant="outline" className={`border-0 ${SEGMENT_BADGE[c.segment]}`}>
                           {SEGMENT_LABEL[c.segment]}
                         </Badge>
