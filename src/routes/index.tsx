@@ -131,7 +131,16 @@ function Home() {
       </section>
 
       <footer className="border-t px-4 py-6 text-center text-xs text-muted-foreground">
-        CNPJ 67.596.409/0001-93
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <Link to="/termos" className="hover:text-foreground hover:underline">
+            Termos de Uso
+          </Link>
+          <span className="text-muted-foreground/50">·</span>
+          <Link to="/privacidade" className="hover:text-foreground hover:underline">
+            Política de Privacidade
+          </Link>
+        </div>
+        <p className="mt-2">CNPJ 67.596.409/0001-93</p>
       </footer>
     </main>
   );
