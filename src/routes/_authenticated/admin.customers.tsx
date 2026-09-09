@@ -184,7 +184,7 @@ function CustomersPage() {
               </CardContent>
             </Card>
           ) : view === "list" ? (
-            <div className="grid gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {filtered.map((c) => (
                 <Card key={c.id}>
                   <CardContent className="space-y-2 p-4">
@@ -260,7 +260,7 @@ function CustomersPage() {
               ))}
             </div>
           ) : (
-            <div className="grid gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {ranked.map((c, i) => (
                 <Card key={c.id}>
                   <CardContent className="flex items-center gap-3 p-4">

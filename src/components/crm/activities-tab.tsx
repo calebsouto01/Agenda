@@ -248,7 +248,7 @@ export function ActivitiesTab({ establishmentId, tz }: { establishmentId: string
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {visible.map((a) => {
             const overdue = a.status === "pendente" && !!a.due_date && a.due_date < todayIso;
             return (
