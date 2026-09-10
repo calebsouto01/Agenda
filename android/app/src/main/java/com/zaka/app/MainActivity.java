@@ -1,4 +1,4 @@
-package com.agendalemonten.app;
+package com.zaka.app;
 
 import com.getcapacitor.BridgeActivity;
 
