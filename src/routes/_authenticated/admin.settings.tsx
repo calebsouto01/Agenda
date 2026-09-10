@@ -57,6 +57,7 @@ function SettingsPage() {
     address: "",
     timezone: "America/Sao_Paulo",
     sellsProducts: false,
+    whatsappApiConnected: false,
   });
 
   useEffect(() => {
@@ -69,6 +70,7 @@ function SettingsPage() {
       address: establishment.address ?? "",
       timezone: establishment.timezone,
       sellsProducts: establishment.sells_products,
+      whatsappApiConnected: establishment.whatsapp_business_api_connected,
     });
   }, [establishment]);
 
@@ -86,6 +88,7 @@ function SettingsPage() {
           address: parsed.data.address || null,
           timezone: form.timezone,
           sells_products: form.sellsProducts,
+          whatsapp_business_api_connected: form.whatsappApiConnected,
         })
         .eq("id", establishment!.id);
       if (error) throw new Error(error.message);
@@ -179,6 +182,21 @@ function SettingsPage() {
               id="e-products"
               checked={form.sellsProducts}
               onCheckedChange={(v) => setForm({ ...form, sellsProducts: v })}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div>
+              <Label htmlFor="e-whatsapp-api">WhatsApp Business API conectada</Label>
+              <p className="text-xs text-muted-foreground">
+                Ative quando o número estiver conectado à API do WhatsApp. Isso desliga a pergunta
+                "WhatsApp ou WhatsApp Business" ao clicar em um contato — o número da API passa a
+                ser o único usado.
+              </p>
+            </div>
+            <Switch
+              id="e-whatsapp-api"
+              checked={form.whatsappApiConnected}
+              onCheckedChange={(v) => setForm({ ...form, whatsappApiConnected: v })}
             />
           </div>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>

@@ -18,6 +18,7 @@
     "@capacitor-community/contacts": "^8.0.0",
     "@capacitor/android": "^8.5.1",
     "@capacitor/core": "^8.5.1",
+    "@capawesome/capacitor-android-intent-launcher": "^0.1.2",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

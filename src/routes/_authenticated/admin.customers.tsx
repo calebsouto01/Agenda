@@ -6,7 +6,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
-import { type AppointmentStatus, whatsappLink } from "@/lib/booking";
+import type { AppointmentStatus } from "@/lib/booking";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -199,15 +200,13 @@ function CustomersPage() {
                             {SEGMENT_LABEL[c.segment]}
                           </Badge>
                         </div>
-                        <a
-                          href={whatsappLink(c.phone)}
-                          target="_blank"
-                          rel="noreferrer"
+                        <WhatsAppLink
+                          phone={c.phone}
                           className="inline-flex items-center gap-1 text-xs font-medium text-primary"
                         >
                           <Phone className="size-3" />
                           {c.phone}
-                        </a>
+                        </WhatsAppLink>
                         {c.email ? (
                           <p className="truncate text-xs text-muted-foreground">{c.email}</p>
                         ) : null}
@@ -280,15 +279,13 @@ function CustomersPage() {
                           {SEGMENT_LABEL[c.segment]}
                         </Badge>
                       </div>
-                      <a
-                        href={whatsappLink(c.phone)}
-                        target="_blank"
-                        rel="noreferrer"
+                      <WhatsAppLink
+                        phone={c.phone}
                         className="inline-flex items-center gap-1 text-xs font-medium text-primary"
                       >
                         <Phone className="size-3" />
                         {c.phone}
-                      </a>
+                      </WhatsAppLink>
                     </div>
                     <span className="shrink-0 text-sm font-bold">
                       {c.visits} visita{c.visits === 1 ? "" : "s"}

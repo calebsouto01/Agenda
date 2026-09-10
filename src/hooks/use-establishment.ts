@@ -12,6 +12,7 @@ export type Establishment = {
   timezone: string;
   slot_step_minutes: number;
   sells_products: boolean;
+  whatsapp_business_api_connected: boolean;
 };
 
 /** The establishment owned by the signed-in user (one per account in this version). */
@@ -24,7 +25,7 @@ export function useEstablishment() {
       const { data, error } = await supabase
         .from("establishments")
         .select(
-          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products",
+          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected",
         )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })
