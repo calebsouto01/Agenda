@@ -1,9 +1,9 @@
 import { MessageCircle, Target } from "lucide-react";
 
-import { formatPrice, whatsappLink } from "@/lib/booking";
+import { formatPrice } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 
 export type LeadStage = "novo" | "contato" | "agendado" | "convertido" | "perdido";
 
@@ -41,21 +41,14 @@ export function LeadCard({
           <p className="min-w-0 flex-1 truncate text-sm font-medium">{lead.name}</p>
           <p className="shrink-0 text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
           {lead.phone ? (
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              className="size-6 shrink-0 text-success hover:text-success"
+            <WhatsAppLink
+              phone={lead.phone}
+              message={`Oi ${lead.name.split(" ")[0]}! `}
+              ariaLabel="Conversar no WhatsApp"
+              className="flex size-6 shrink-0 items-center justify-center rounded-md text-success hover:bg-accent hover:text-success"
             >
-              <a
-                href={whatsappLink(lead.phone, `Oi ${lead.name.split(" ")[0]}! `)}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Conversar no WhatsApp"
-              >
-                <MessageCircle className="size-3.5" />
-              </a>
-            </Button>
+              <MessageCircle className="size-3.5" />
+            </WhatsAppLink>
           ) : null}
         </div>
         <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">
