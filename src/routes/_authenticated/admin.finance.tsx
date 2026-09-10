@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis } from "recharts";
-import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, TrendingDown, TrendingUp } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { isPro } from "@/lib/plans";
 import {
   PAYMENT_METHOD_LABEL,
   addDays,
@@ -247,6 +248,31 @@ function FinancePage() {
       </Button>
     </div>
   );
+
+  if (establishment && !isPro(establishment.plan)) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-extrabold">Financeiro</h1>
+        <Card className="shadow-soft">
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="rounded-full bg-primary/10 p-3 text-primary">
+              <Lock className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Financeiro é um recurso do plano Pro</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                Fluxo de caixa, previsão de receita e controle de estoque, tudo automático. Assine o
+                Pro para liberar.
+              </p>
+            </div>
+            <Button asChild className="mt-2">
+              <Link to="/admin/settings">Assinar Pro — R$ 19,90/mês</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

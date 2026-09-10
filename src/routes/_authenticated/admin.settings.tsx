@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
-import { slugify } from "@/lib/booking";
+import { formatPrice, slugify } from "@/lib/booking";
+import { FREE_LIMITS, PLAN_LABEL, PRO_PRICE_CENTS, isPro } from "@/lib/plans";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -105,6 +108,71 @@ function SettingsPage() {
 
   return (
     <div className="space-y-4">
+      <h1 className="text-xl font-extrabold">Plano</h1>
+      <Card className="shadow-soft">
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold">Plano {PLAN_LABEL[establishment.plan]}</p>
+                <Badge
+                  variant="outline"
+                  className={
+                    isPro(establishment.plan)
+                      ? "border-0 bg-success/20 text-success"
+                      : "border-0 bg-muted text-muted-foreground"
+                  }
+                >
+                  {establishment.plan_status === "active" ? "Ativo" : establishment.plan_status}
+                </Badge>
+              </div>
+              {!isPro(establishment.plan) ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Até {FREE_LIMITS.maxProfessionals} profissional e{" "}
+                  {FREE_LIMITS.maxAppointmentsPerMonth} agendamentos/mês. Sem Financeiro.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatPrice(PRO_PRICE_CENTS)}/mês · tudo liberado
+                </p>
+              )}
+            </div>
+            {!isPro(establishment.plan) ? (
+              <Button onClick={() => toast.info("Pagamento via Mercado Pago chegando em breve")}>
+                Assinar Pro
+              </Button>
+            ) : null}
+          </div>
+
+          {!isPro(establishment.plan) ? (
+            <div className="grid gap-3 rounded-lg border bg-card/60 p-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">Grátis</p>
+                <p className="mt-1 text-lg font-extrabold">R$ 0</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-primary">Pro</p>
+                <p className="mt-1 text-lg font-extrabold">{formatPrice(PRO_PRICE_CENTS)}/mês</p>
+              </div>
+              {[
+                "Profissionais ilimitados",
+                "Agendamentos ilimitados",
+                "Financeiro completo (caixa, previsão, estoque)",
+                "Confirmação e lembrete automático por WhatsApp",
+              ].map((item) => (
+                <p
+                  key={item}
+                  className="col-span-2 flex items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <Check className="size-3.5 shrink-0 text-primary" />
+                  {item}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <h1 className="text-xl font-extrabold">Dados da empresa</h1>
       <Card className="shadow-soft">
         <CardContent className="grid gap-3 p-5">

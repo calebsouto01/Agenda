@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { FREE_LIMITS, isPro } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,8 +48,16 @@ function ProfessionalsPage() {
     },
   });
 
+  const atFreeLimit =
+    Boolean(establishment) &&
+    !isPro(establishment!.plan) &&
+    (professionals?.length ?? 0) >= FREE_LIMITS.maxProfessionals;
+
   const save = useMutation({
     mutationFn: async () => {
+      if (!form.id && atFreeLimit) {
+        throw new Error(`Plano Grátis permite até ${FREE_LIMITS.maxProfessionals} profissional`);
+      }
       const parsed = schema.safeParse({ name: form.name, role: form.role });
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
       const payload = {
@@ -89,6 +98,7 @@ function ProfessionalsPage() {
         <h1 className="text-xl font-extrabold">Profissionais</h1>
         <Button
           size="sm"
+          disabled={atFreeLimit}
           onClick={() => {
             setForm({ ...EMPTY });
             setOpen(true);
@@ -98,9 +108,19 @@ function ProfessionalsPage() {
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Sem profissionais cadastrados, os agendamentos são feitos direto para o estabelecimento.
-      </p>
+      {atFreeLimit ? (
+        <p className="text-xs text-muted-foreground">
+          Plano Grátis permite até {FREE_LIMITS.maxProfessionals} profissional.{" "}
+          <Link to="/admin/settings" className="font-semibold text-primary underline">
+            Assine o Pro
+          </Link>{" "}
+          pra cadastrar mais.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Sem profissionais cadastrados, os agendamentos são feitos direto para o estabelecimento.
+        </p>
+      )}
 
       {open ? (
         <Card className="shadow-soft">

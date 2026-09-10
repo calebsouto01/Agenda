@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type Plan = "free" | "pro";
+export type PlanStatus = "active" | "trialing" | "past_due" | "canceled";
+
 export type Establishment = {
   id: string;
   owner_id: string;
@@ -13,6 +16,9 @@ export type Establishment = {
   slot_step_minutes: number;
   sells_products: boolean;
   whatsapp_business_api_connected: boolean;
+  plan: Plan;
+  plan_status: PlanStatus;
+  plan_renews_at: string | null;
 };
 
 /** The establishment owned by the signed-in user (one per account in this version). */
@@ -25,7 +31,7 @@ export function useEstablishment() {
       const { data, error } = await supabase
         .from("establishments")
         .select(
-          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected",
+          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at",
         )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })

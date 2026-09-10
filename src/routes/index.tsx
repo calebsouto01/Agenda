@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarCheck,
+  Check,
   CheckCheck,
   Clock,
   ListChecks,
@@ -299,6 +300,71 @@ function Home() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-4xl px-4 py-14 sm:py-20">
+        <h2 className="text-center text-xl font-extrabold sm:text-2xl">
+          Comece grátis. Cresça quando fizer sentido.
+        </h2>
+        <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
+          Sem cartão de crédito pra começar. Sem letra miúda pra assinar.
+        </p>
+        <div className="mx-auto mt-8 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border bg-card p-6">
+            <p className="text-sm font-bold">Grátis</p>
+            <p className="mt-2 text-3xl font-extrabold">
+              R$ 0<span className="text-sm font-medium text-muted-foreground">/sempre</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pra tirar sua agenda do WhatsApp hoje mesmo.
+            </p>
+            <ul className="mt-5 space-y-2.5 text-sm">
+              {[
+                "1 profissional",
+                "Agenda online ilimitada",
+                "Até 50 agendamentos/mês",
+                "CRM (Contatos, Pipeline, Clientes)",
+                "Link de agendamento próprio",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <Check className="size-4 shrink-0 text-primary" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Button asChild variant="outline" className="mt-6 w-full">
+              <Link to="/admin">Começar grátis</Link>
+            </Button>
+          </div>
+
+          <div className="relative rounded-2xl border-2 border-primary bg-card p-6">
+            <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+              Mais escolhido
+            </span>
+            <p className="text-sm font-bold text-primary">Pro</p>
+            <p className="mt-2 text-3xl font-extrabold">
+              R$ 19,90<span className="text-sm font-medium text-muted-foreground">/mês</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Pra quem já vive de agenda cheia.</p>
+            <ul className="mt-5 space-y-2.5 text-sm">
+              {[
+                "Profissionais ilimitados",
+                "Agendamentos ilimitados",
+                "Financeiro completo (caixa, previsão, estoque)",
+                "Confirmação e lembrete automático por WhatsApp",
+                "Suporte prioritário",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <Check className="size-4 shrink-0 text-primary" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Button asChild className="mt-6 w-full">
+              <Link to="/admin">Assinar Pro</Link>
+            </Button>
           </div>
         </div>
       </section>
