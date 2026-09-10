@@ -7,6 +7,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://agendazaka.com/#organization",
+      name: "Zaka",
+      legalName: "CALEB FERREIRA SOUTO DE OLIVEIRA",
+      url: "https://agendazaka.com/",
+      logo: "https://agendazaka.com/logo-512.png",
+      description:
+        "Plataforma brasileira de agendamento online, CRM de clientes e gestão financeira para negócios de serviços.",
+    },
+    {
+      "@type": "WebApplication",
+      name: "Zaka",
+      url: "https://agendazaka.com/",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web, Android",
+      description:
+        "Agenda online, CRM de clientes (Contatos, Pipeline e Clientes) e controle financeiro para barbearias, salões, clínicas, oficinas e outros negócios de horário marcado.",
+      publisher: { "@id": "https://agendazaka.com/#organization" },
+    },
+  ],
+};
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -21,6 +47,12 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content:
           "Agende em segundos: serviço, profissional, data e horário disponível, com confirmação na tela.",
+      },
+    ],
+    scripts: [
+      {
+        attrs: { type: "application/ld+json" },
+        children: JSON.stringify(STRUCTURED_DATA),
       },
     ],
   }),
