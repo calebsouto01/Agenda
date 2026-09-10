@@ -120,6 +120,13 @@ export function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "").slice(-11);
 }
 
+/** Link "wa.me" pra abrir uma conversa direto, sem depender da WhatsApp Business API. */
+export function whatsappLink(phone: string, message?: string) {
+  const digits = normalizePhone(phone);
+  const url = `https://wa.me/55${digits}`;
+  return message ? `${url}?text=${encodeURIComponent(message)}` : url;
+}
+
 export function slugify(value: string) {
   return value
     .normalize("NFD")

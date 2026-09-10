@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
-import type { AppointmentStatus } from "@/lib/booking";
+import { type AppointmentStatus, whatsappLink } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -200,7 +200,7 @@ function CustomersPage() {
                           </Badge>
                         </div>
                         <a
-                          href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
+                          href={whatsappLink(c.phone)}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 text-xs font-medium text-primary"
@@ -281,7 +281,7 @@ function CustomersPage() {
                         </Badge>
                       </div>
                       <a
-                        href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
+                        href={whatsappLink(c.phone)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-xs font-medium text-primary"
