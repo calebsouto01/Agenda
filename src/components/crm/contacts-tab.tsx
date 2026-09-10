@@ -28,6 +28,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [leadPerdido, setLeadPerdido] = useState<Lead | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [search, setSearch] = useState("");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["crm-leads", establishmentId, "novo"],
@@ -169,6 +170,10 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const responsavelNome = (id: string | null) =>
     professionals?.find((p) => p.id === id)?.name ?? null;
 
+  const filteredContacts = (contacts ?? []).filter((c) =>
+    c.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -201,6 +206,15 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
             <Plus className="size-4 shrink-0" /> Novo contato
           </Button>
         </div>
+      </div>
+
+      <div className="sticky top-14 z-10 bg-background py-2 md:top-0">
+        <Input
+          placeholder="Buscar por nome"
+          maxLength={80}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {openNew ? (
@@ -335,9 +349,15 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
             </div>
           </CardContent>
         </Card>
+      ) : filteredContacts.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            Nenhum contato encontrado.
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {contacts?.map((contact) => (
+          {filteredContacts.map((contact) => (
             <LeadCard
               key={contact.id}
               lead={contact}
