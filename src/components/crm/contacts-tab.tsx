@@ -97,7 +97,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Contato ativado no pipeline");
+      toast.success("Contato ativado no funil");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),

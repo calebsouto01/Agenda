@@ -41,7 +41,7 @@ const STRUCTURED_DATA = {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web, Android",
       description:
-        "Agenda online, CRM de clientes (Contatos, Pipeline e Clientes) e controle financeiro para barbearias, salões, clínicas, oficinas e outros negócios de horário marcado.",
+        "Agenda online, CRM de clientes (Contatos, Funil e Clientes) e controle financeiro para barbearias, salões, clínicas, oficinas e outros negócios de horário marcado.",
       publisher: { "@id": "https://agendazaka.com/#organization" },
     },
   ],
@@ -325,7 +325,7 @@ function Home() {
                 "1 profissional",
                 "Agenda online ilimitada",
                 "Até 50 agendamentos/mês",
-                "CRM (Contatos, Pipeline, Clientes)",
+                "CRM (Contatos, Funil, Clientes)",
                 "Link de agendamento próprio",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2">

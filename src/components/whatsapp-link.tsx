@@ -16,12 +16,15 @@ export function WhatsAppLink({
   className,
   ariaLabel,
   children,
+  onSend,
 }: {
   phone: string;
   message?: string;
   className?: string;
   ariaLabel?: string;
   children: ReactNode;
+  /** Chamado assim que o usuário clica pra enviar, antes de saber se a mensagem foi de fato enviada no WhatsApp. */
+  onSend?: () => void;
 }) {
   const { data: establishment } = useEstablishment();
   const [open, setOpen] = useState(false);
@@ -29,6 +32,7 @@ export function WhatsAppLink({
   const url = whatsappLink(phone, message);
 
   async function handleClick(e: MouseEvent) {
+    onSend?.();
     if (apiConnected || !isNativeAndroid()) return;
     e.preventDefault();
     const apps = await detectWhatsAppApps();

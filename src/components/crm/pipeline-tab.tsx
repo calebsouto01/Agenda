@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Eye, EyeOff, Sparkles, Trophy, UserPlus, XCircle } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Send, Sparkles, Trophy, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/booking";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,17 +13,71 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LeadCard, type Lead, type LeadStage, type Professional } from "./lead-shared";
 
+type FunnelLead = Lead & { appointment: { starts_at: string } | null };
+
 const ACTIVE_STAGES: { value: LeadStage; label: string }[] = [
+  { value: "mensagem_1", label: "Mensagem 1" },
+  { value: "confirmacao_dia", label: "Confirmação do dia" },
   { value: "contato", label: "Em contato" },
   { value: "agendado", label: "Agendado" },
 ];
 
 function nextStage(stage: LeadStage): LeadStage | null {
-  const idx = ACTIVE_STAGES.findIndex((s) => s.value === stage);
-  return idx >= 0 && idx < ACTIVE_STAGES.length - 1 ? ACTIVE_STAGES[idx + 1]!.value : null;
+  switch (stage) {
+    case "mensagem_1":
+      return "confirmacao_dia";
+    case "confirmacao_dia":
+      return "convertido";
+    case "contato":
+      return "agendado";
+    default:
+      return null;
+  }
 }
 
-export function PipelineTab({ establishmentId }: { establishmentId: string }) {
+function formatDateTime(iso: string, timezone: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("pt-BR", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+  });
+  const time = d.toLocaleTimeString("pt-BR", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return { date, time };
+}
+
+function buildMessage(
+  stage: "mensagem_1" | "confirmacao_dia",
+  lead: FunnelLead,
+  establishmentName: string,
+  timezone: string,
+) {
+  const firstName = lead.name.split(" ")[0] || lead.name;
+  const when = lead.appointment ? formatDateTime(lead.appointment.starts_at, timezone) : null;
+
+  if (stage === "mensagem_1") {
+    return when
+      ? `Oi ${firstName}! Recebemos seu agendamento na ${establishmentName} pra ${when.date} às ${when.time}. Qualquer dúvida é só chamar por aqui!`
+      : `Oi ${firstName}! Recebemos seu agendamento na ${establishmentName}. Qualquer dúvida é só chamar por aqui!`;
+  }
+  return when
+    ? `Oi ${firstName}! Passando pra confirmar seu horário hoje às ${when.time} na ${establishmentName}. Te esperamos!`
+    : `Oi ${firstName}! Passando pra confirmar seu horário hoje na ${establishmentName}. Te esperamos!`;
+}
+
+export function PipelineTab({
+  establishmentId,
+  establishmentName,
+  timezone,
+}: {
+  establishmentId: string;
+  establishmentName: string;
+  timezone: string;
+}) {
   const queryClient = useQueryClient();
   const [leadPerdido, setLeadPerdido] = useState<Lead | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -34,13 +89,13 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
       const { data, error } = await supabase
         .from("crm_leads")
         .select(
-          "id, customer_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda",
+          "id, customer_id, appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, appointment:appointments(starts_at)",
         )
         .eq("establishment_id", establishmentId)
         .neq("stage", "novo")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Lead[];
+      return (data ?? []) as unknown as FunnelLead[];
     },
   });
 
@@ -134,7 +189,8 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Contatos ativados até virar cliente. Novos contatos entram pela aba Contatos.
+          Todo agendamento novo entra aqui automaticamente. Contatos ativados na aba Contatos também
+          aparecem.
         </p>
         <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
           {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -145,7 +201,7 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
       <div className="grid grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Pipeline ativo</p>
+            <p className="text-xs text-muted-foreground">Funil ativo</p>
             <p className="text-lg font-bold">{formatPrice(pipelineValue)}</p>
           </CardContent>
         </Card>
@@ -209,9 +265,9 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
               <UserPlus className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Nenhum lead ativado ainda</p>
+              <p className="text-sm font-medium">Nenhum lead no funil ainda</p>
               <p className="text-sm text-muted-foreground">
-                Ative contatos na aba Contatos pra começar a acompanhar o funil.
+                Novos agendamentos entram aqui automaticamente, ou ative contatos na aba Contatos.
               </p>
             </div>
           </CardContent>
@@ -248,6 +304,24 @@ export function PipelineTab({ establishmentId }: { establishmentId: string }) {
                           >
                             <Sparkles className="size-3 shrink-0" /> Converter
                           </button>
+                        ) : stage.value === "mensagem_1" || stage.value === "confirmacao_dia" ? (
+                          lead.phone ? (
+                            <WhatsAppLink
+                              phone={lead.phone}
+                              message={buildMessage(stage.value, lead, establishmentName, timezone)}
+                              onSend={() => advance.mutate(lead)}
+                              className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                            >
+                              <Send className="size-3 shrink-0" />
+                              {stage.value === "mensagem_1"
+                                ? "Enviar mensagem"
+                                : "Enviar confirmação"}
+                            </WhatsAppLink>
+                          ) : (
+                            <span className="flex-1 rounded-md bg-muted px-2 py-1.5 text-center text-xs text-muted-foreground">
+                              Sem telefone
+                            </span>
+                          )
                         ) : (
                           <button
                             type="button"
