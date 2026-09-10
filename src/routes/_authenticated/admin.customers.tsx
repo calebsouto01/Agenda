@@ -161,6 +161,8 @@ function CustomersPage() {
               establishmentId={establishment.id}
               establishmentName={establishment.name}
               timezone={establishment.timezone}
+              message1Template={establishment.whatsapp_message_1}
+              messageConfirmacaoTemplate={establishment.whatsapp_message_confirmacao}
             />
           ) : null}
         </TabsContent>
