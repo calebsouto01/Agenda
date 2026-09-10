@@ -10,6 +10,7 @@ android {
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
     implementation project(':capacitor-community-contacts')
+    implementation project(':capacitor-share')
     implementation project(':capawesome-capacitor-android-intent-launcher')
 
 }
