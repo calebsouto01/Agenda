@@ -9,6 +9,7 @@ import {
   Menu,
   Scissors,
   Settings,
+  Share2,
   Users,
   Clock,
   UserRound,
@@ -152,6 +153,27 @@ function NavContent({
             <ExternalLink className="size-4" />
             Página pública
           </a>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={async () => {
+            const url = `${window.location.origin}/b/${establishment.slug}`;
+            if (navigator.share) {
+              try {
+                await navigator.share({ title: establishment.name, url });
+              } catch {
+                // usuário cancelou o compartilhamento, sem problema
+              }
+              return;
+            }
+            await navigator.clipboard.writeText(url);
+            toast.success("Link copiado");
+          }}
+        >
+          <Share2 className="size-4" />
+          Compartilhar
         </Button>
         <Button
           variant="ghost"
