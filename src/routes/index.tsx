@@ -181,7 +181,7 @@ function Home() {
           Zaka
         </span>
         <Button asChild variant="outline" size="sm">
-          <Link to="/admin">Área do administrador</Link>
+          <Link to="/admin">Login</Link>
         </Button>
       </header>
 
