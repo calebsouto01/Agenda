@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Reveal } from "@/components/reveal";
 
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
@@ -83,7 +84,7 @@ const PREVIEW_SLOTS = [
 
 function AgendaPreview() {
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-card p-2 shadow-xl">
+    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-card p-2 shadow-glow">
       <div className="rounded-[1.5rem] border bg-background p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <div>
@@ -135,7 +136,7 @@ function AgendaPreview() {
 
 function ChatChaosPreview() {
   return (
-    <div className="mx-auto w-full max-w-xs space-y-2 rounded-2xl border bg-card p-4 shadow-soft">
+    <div className="mx-auto w-full max-w-xs space-y-2 rounded-2xl border bg-card p-4 shadow-glow">
       <div className="flex items-center gap-2 border-b pb-2">
         <span className="flex size-6 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Send className="size-3" />
@@ -175,7 +176,7 @@ function Home() {
   });
 
   return (
-    <main className="min-h-screen surface-hero">
+    <main className="zaka-public min-h-screen surface-hero">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
         <span className="flex items-center gap-2 text-base font-bold">
           <CalendarCheck className="size-5 text-primary" />
@@ -187,7 +188,7 @@ function Home() {
       </header>
 
       <section className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 px-4 pb-14 pt-6 sm:pb-20 sm:pt-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
-        <div className="text-center lg:text-left">
+        <Reveal className="text-center lg:text-left">
           <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" />
             Para barbearia, salão, clínica, oficina e outros negócios de horário marcado
@@ -200,7 +201,11 @@ function Home() {
             perder horário por mensagem que ninguém viu.
           </p>
           <div className="mt-7 flex flex-col items-center gap-2 sm:flex-row sm:justify-center lg:justify-start">
-            <Button asChild size="lg" className="w-full sm:w-auto">
+            <Button
+              asChild
+              size="lg"
+              className="w-full transition-transform hover:scale-[1.02] sm:w-auto"
+            >
               <Link to="/admin">
                 Comece agora, grátis <ArrowRight className="size-4" />
               </Link>
@@ -209,14 +214,18 @@ function Home() {
           <p className="mt-3 text-xs text-muted-foreground">
             Sem cartão de crédito. Sua agenda no ar em poucos minutos.
           </p>
-        </div>
-        <AgendaPreview />
+        </Reveal>
+        <Reveal delay={120}>
+          <AgendaPreview />
+        </Reveal>
       </section>
 
       <section className="border-t bg-card/40 px-4 py-14 sm:py-20">
         <div className="mx-auto grid max-w-4xl grid-cols-1 items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-          <ChatChaosPreview />
-          <div className="text-center lg:text-left">
+          <Reveal>
+            <ChatChaosPreview />
+          </Reveal>
+          <Reveal delay={120} className="text-center lg:text-left">
             <h2 className="text-xl font-extrabold sm:text-2xl">
               Isso não é falta de esforço seu. É falta de ferramenta certa.
             </h2>
@@ -225,7 +234,7 @@ function Home() {
               clientes marcam no mesmo horário porque ninguém cruzou a agenda. No fim do mês, você
               não sabe quanto realmente entrou de caixa.
             </p>
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -252,25 +261,29 @@ function Home() {
               title: "CRM simples",
               description: "Nunca mais perde um contato que quase virou cliente.",
             },
-          ].map((item) => (
-            <div key={item.title} className="flex gap-3 rounded-xl border bg-card p-5 shadow-soft">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <item.icon className="size-5" />
+          ].map((item, i) => (
+            <Reveal key={item.title} delay={i * 80}>
+              <div className="flex h-full gap-3 rounded-2xl border bg-card p-5 shadow-soft transition-shadow hover:shadow-glow">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <item.icon className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">{item.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold">{item.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-              </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       <section className="border-t bg-card/40 px-4 py-14 sm:py-20">
         <div className="mx-auto max-w-4xl">
-          <h2 className="text-center text-xl font-extrabold sm:text-2xl">
-            Do caderno pro ar em 3 passos
-          </h2>
+          <Reveal>
+            <h2 className="text-center text-xl font-extrabold sm:text-2xl">
+              Do caderno pro ar em 3 passos
+            </h2>
+          </Reveal>
           <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
             {[
               {
@@ -289,7 +302,7 @@ function Home() {
                 description: "Agendamento confirmado, sem choque de horário, direto no painel.",
               },
             ].map((step, i) => (
-              <div key={step.title} className="text-center">
+              <Reveal key={step.title} delay={i * 100} className="text-center">
                 <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-primary text-base font-extrabold text-primary-foreground">
                   {i + 1}
                 </span>
@@ -298,79 +311,89 @@ function Home() {
                 <p className="mx-auto mt-1 max-w-[220px] text-sm text-muted-foreground">
                   {step.description}
                 </p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-4xl px-4 py-14 sm:py-20">
-        <h2 className="text-center text-xl font-extrabold sm:text-2xl">
-          Comece grátis. Cresça quando fizer sentido.
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
-          Sem cartão de crédito pra começar. Sem letra miúda pra assinar.
-        </p>
+        <Reveal>
+          <h2 className="text-center text-xl font-extrabold sm:text-2xl">
+            Comece grátis. Cresça quando fizer sentido.
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
+            Sem cartão de crédito pra começar. Sem letra miúda pra assinar.
+          </p>
+        </Reveal>
         <div className="mx-auto mt-8 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border bg-card p-6">
-            <p className="text-sm font-bold">Grátis</p>
-            <p className="mt-2 text-3xl font-extrabold">
-              R$ 0<span className="text-sm font-medium text-muted-foreground">/sempre</span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pra tirar sua agenda do WhatsApp hoje mesmo.
-            </p>
-            <ul className="mt-5 space-y-2.5 text-sm">
-              {[
-                "1 profissional",
-                "Agenda online ilimitada",
-                "Até 50 agendamentos/mês",
-                "CRM (Contatos, Funil, Clientes)",
-                "Link de agendamento próprio",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="size-4 shrink-0 text-primary" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Button asChild variant="outline" className="mt-6 w-full">
-              <Link to="/admin">Começar grátis</Link>
-            </Button>
-          </div>
+          <Reveal delay={80}>
+            <div className="h-full rounded-2xl border bg-card p-6">
+              <p className="text-sm font-bold">Grátis</p>
+              <p className="mt-2 text-3xl font-extrabold">
+                R$ 0<span className="text-sm font-medium text-muted-foreground">/sempre</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pra tirar sua agenda do WhatsApp hoje mesmo.
+              </p>
+              <ul className="mt-5 space-y-2.5 text-sm">
+                {[
+                  "1 profissional",
+                  "Agenda online ilimitada",
+                  "Até 50 agendamentos/mês",
+                  "CRM (Contatos, Funil, Clientes)",
+                  "Link de agendamento próprio",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <Check className="size-4 shrink-0 text-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button asChild variant="outline" className="mt-6 w-full">
+                <Link to="/admin">Começar grátis</Link>
+              </Button>
+            </div>
+          </Reveal>
 
-          <div className="relative rounded-2xl border-2 border-primary bg-card p-6">
-            <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-              Mais escolhido
-            </span>
-            <p className="text-sm font-bold text-primary">Pro</p>
-            <p className="mt-2 text-3xl font-extrabold">
-              R$ 19,90<span className="text-sm font-medium text-muted-foreground">/mês</span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Pra quem já vive de agenda cheia.</p>
-            <ul className="mt-5 space-y-2.5 text-sm">
-              {[
-                "Profissionais ilimitados",
-                "Agendamentos ilimitados",
-                "Financeiro completo (caixa, previsão, estoque)",
-                "Confirmação e lembrete automático por WhatsApp",
-                "Suporte prioritário",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="size-4 shrink-0 text-primary" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Button asChild className="mt-6 w-full">
-              <Link to="/admin">Assinar Pro</Link>
-            </Button>
-          </div>
+          <Reveal delay={160}>
+            <div className="relative h-full rounded-2xl border-2 border-primary bg-card p-6 shadow-glow">
+              <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                Mais escolhido
+              </span>
+              <p className="text-sm font-bold text-primary">Pro</p>
+              <p className="mt-2 text-3xl font-extrabold">
+                R$ 19,90<span className="text-sm font-medium text-muted-foreground">/mês</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pra quem já vive de agenda cheia.
+              </p>
+              <ul className="mt-5 space-y-2.5 text-sm">
+                {[
+                  "Profissionais ilimitados",
+                  "Agendamentos ilimitados",
+                  "Financeiro completo (caixa, previsão, estoque)",
+                  "Confirmação e lembrete automático por WhatsApp",
+                  "Suporte prioritário",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <Check className="size-4 shrink-0 text-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-6 w-full">
+                <Link to="/admin">Assinar Pro</Link>
+              </Button>
+            </div>
+          </Reveal>
         </div>
       </section>
 
       <section className="mx-auto max-w-5xl px-4 py-14 sm:py-20">
-        <h2 className="mb-4 text-lg font-bold">Negócios que já usam o Zaka</h2>
+        <Reveal>
+          <h2 className="mb-4 text-lg font-bold">Negócios que já usam o Zaka</h2>
+        </Reveal>
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <Skeleton className="h-32 w-full" />
@@ -378,30 +401,32 @@ function Home() {
           </div>
         ) : establishments && establishments.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            {establishments.map((e) => (
-              <Card key={e.id} className="shadow-soft">
-                <CardContent className="flex h-full flex-col gap-3 p-5">
-                  <div>
-                    <h3 className="text-base font-bold">{e.name}</h3>
-                    {e.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                        {e.description}
+            {establishments.map((e, i) => (
+              <Reveal key={e.id} delay={i * 60}>
+                <Card className="h-full shadow-soft transition-shadow hover:shadow-glow">
+                  <CardContent className="flex h-full flex-col gap-3 p-5">
+                    <div>
+                      <h3 className="text-base font-bold">{e.name}</h3>
+                      {e.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {e.description}
+                        </p>
+                      ) : null}
+                    </div>
+                    {e.address ? (
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="size-3.5" />
+                        {e.address}
                       </p>
                     ) : null}
-                  </div>
-                  {e.address ? (
-                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="size-3.5" />
-                      {e.address}
-                    </p>
-                  ) : null}
-                  <Button asChild className="mt-auto w-full">
-                    <Link to="/b/$slug" params={{ slug: e.slug }}>
-                      Agendar
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    <Button asChild className="mt-auto w-full">
+                      <Link to="/b/$slug" params={{ slug: e.slug }}>
+                        Agendar
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Reveal>
             ))}
           </div>
         ) : (
@@ -418,16 +443,23 @@ function Home() {
       </section>
 
       <section className="border-t px-4 py-14 sm:py-20">
-        <div className="mx-auto max-w-2xl rounded-2xl bg-primary px-6 py-10 text-center text-primary-foreground sm:px-10">
-          <h2 className="text-xl font-extrabold sm:text-2xl">
-            Pare de perder agendamento. Comece agora, grátis.
-          </h2>
-          <Button asChild size="lg" variant="secondary" className="mt-6">
-            <Link to="/admin">
-              Criar minha agenda <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
+        <Reveal className="mx-auto max-w-2xl">
+          <div className="rounded-2xl bg-primary px-6 py-10 text-center text-primary-foreground shadow-glow sm:px-10">
+            <h2 className="text-xl font-extrabold sm:text-2xl">
+              Pare de perder agendamento. Comece agora, grátis.
+            </h2>
+            <Button
+              asChild
+              size="lg"
+              variant="secondary"
+              className="mt-6 transition-transform hover:scale-[1.02]"
+            >
+              <Link to="/admin">
+                Criar minha agenda <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+        </Reveal>
       </section>
 
       <footer className="border-t px-4 py-6 text-center text-xs text-muted-foreground">

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Reveal } from "@/components/reveal";
 import {
   WEEKDAYS_SHORT,
   addDays,
@@ -165,7 +166,7 @@ function PublicBooking() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto max-w-2xl space-y-4 p-4">
+      <main className="zaka-public mx-auto max-w-2xl space-y-4 p-4">
         <Skeleton className="h-28 w-full" />
         <Skeleton className="h-64 w-full" />
       </main>
@@ -174,7 +175,7 @@ function PublicBooking() {
 
   if (!shop) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+      <main className="zaka-public flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
         <h1 className="text-xl font-bold">Estabelecimento não encontrado</h1>
         <Button asChild variant="outline">
           <Link to="/">Voltar ao início</Link>
@@ -191,44 +192,46 @@ function PublicBooking() {
 
   if (confirmed) {
     return (
-      <main className="flex min-h-screen items-center justify-center surface-hero p-4">
-        <Card className="w-full max-w-md shadow-soft">
-          <CardContent className="space-y-4 p-6 text-center">
-            <CheckCircle2 className="mx-auto size-12 text-success" />
-            <h1 className="text-xl font-bold">Agendamento confirmado!</h1>
-            <div className="rounded-xl border bg-muted/40 p-4 text-left text-sm">
-              <p className="font-semibold">{shop.establishment.name}</p>
-              <p className="text-muted-foreground">{servicesLabel}</p>
-              {professional ? (
-                <p className="text-muted-foreground">com {professional.name}</p>
-              ) : null}
-              <p className="mt-2 font-semibold">{dateTimeInZone(confirmed.starts_at, tz)}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Guarde este horário. Em caso de imprevisto, entre em contato com o estabelecimento
-              {shop.establishment.phone ? ` no ${shop.establishment.phone}` : ""}.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => {
-                setConfirmed(null);
-                setSlot(null);
-                setServiceIds([]);
-                setProfessionalId(null);
-                setDate(null);
-                setForm({ name: "", phone: "", email: "", notes: "" });
-              }}
-            >
-              Fazer outro agendamento
-            </Button>
-          </CardContent>
-        </Card>
+      <main className="zaka-public flex min-h-screen items-center justify-center surface-hero p-4">
+        <Reveal className="w-full max-w-md">
+          <Card className="shadow-glow">
+            <CardContent className="space-y-4 p-6 text-center">
+              <CheckCircle2 className="mx-auto size-12 text-success" />
+              <h1 className="text-xl font-bold">Agendamento confirmado!</h1>
+              <div className="rounded-xl border bg-muted/40 p-4 text-left text-sm">
+                <p className="font-semibold">{shop.establishment.name}</p>
+                <p className="text-muted-foreground">{servicesLabel}</p>
+                {professional ? (
+                  <p className="text-muted-foreground">com {professional.name}</p>
+                ) : null}
+                <p className="mt-2 font-semibold">{dateTimeInZone(confirmed.starts_at, tz)}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Guarde este horário. Em caso de imprevisto, entre em contato com o estabelecimento
+                {shop.establishment.phone ? ` no ${shop.establishment.phone}` : ""}.
+              </p>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setConfirmed(null);
+                  setSlot(null);
+                  setServiceIds([]);
+                  setProfessionalId(null);
+                  setDate(null);
+                  setForm({ name: "", phone: "", email: "", notes: "" });
+                }}
+              >
+                Fazer outro agendamento
+              </Button>
+            </CardContent>
+          </Card>
+        </Reveal>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen surface-hero pb-16">
+    <main className="zaka-public min-h-screen surface-hero pb-16">
       <div className="mx-auto max-w-2xl px-4 py-6">
         <Link
           to="/"
@@ -237,31 +240,33 @@ function PublicBooking() {
           <ArrowLeft className="size-3.5" /> Todos os estabelecimentos
         </Link>
 
-        <Card className="shadow-soft">
-          <CardContent className="space-y-1 p-5">
-            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
-              <CalendarCheck className="size-4" /> Agendamento online
-            </span>
-            <h1 className="text-2xl font-extrabold">{shop.establishment.name}</h1>
-            {shop.establishment.description ? (
-              <p className="text-sm text-muted-foreground">{shop.establishment.description}</p>
-            ) : null}
-            <div className="flex flex-wrap gap-3 pt-2 text-xs text-muted-foreground">
-              {shop.establishment.address ? (
-                <span className="flex items-center gap-1">
-                  <MapPin className="size-3.5" />
-                  {shop.establishment.address}
-                </span>
+        <Reveal>
+          <Card className="shadow-glow">
+            <CardContent className="space-y-1 p-5">
+              <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                <CalendarCheck className="size-4" /> Agendamento online
+              </span>
+              <h1 className="text-2xl font-extrabold">{shop.establishment.name}</h1>
+              {shop.establishment.description ? (
+                <p className="text-sm text-muted-foreground">{shop.establishment.description}</p>
               ) : null}
-              {shop.establishment.phone ? (
-                <span className="flex items-center gap-1">
-                  <Phone className="size-3.5" />
-                  {shop.establishment.phone}
-                </span>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex flex-wrap gap-3 pt-2 text-xs text-muted-foreground">
+                {shop.establishment.address ? (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="size-3.5" />
+                    {shop.establishment.address}
+                  </span>
+                ) : null}
+                {shop.establishment.phone ? (
+                  <span className="flex items-center gap-1">
+                    <Phone className="size-3.5" />
+                    {shop.establishment.phone}
+                  </span>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        </Reveal>
 
         {/* 1. Serviço */}
         <Step number={1} title="Escolha um ou mais serviços">
@@ -491,20 +496,22 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="mt-4 shadow-soft">
-      <CardContent className="space-y-3 p-5">
-        <div className="flex items-center gap-2">
-          <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-            {number}
-          </span>
-          <div>
-            <h2 className="text-sm font-bold">{title}</h2>
-            {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
+    <Reveal className="mt-4">
+      <Card className="shadow-soft">
+        <CardContent className="space-y-3 p-5">
+          <div className="flex items-center gap-2">
+            <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              {number}
+            </span>
+            <div>
+              <h2 className="text-sm font-bold">{title}</h2>
+              {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
+            </div>
           </div>
-        </div>
-        {children}
-      </CardContent>
-    </Card>
+          {children}
+        </CardContent>
+      </Card>
+    </Reveal>
   );
 }
 
