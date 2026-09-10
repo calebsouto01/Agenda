@@ -5,7 +5,7 @@ import type { CapacitorConfig } from "@capacitor/core";
 // site puro não consegue acessar. appId não pode mudar depois de publicado
 // na Play Store — ajuste antes do primeiro build de produção se necessário.
 const config: CapacitorConfig = {
-  appId: "com.agendalemonten.app",
+  appId: "com.zaka.app",
   appName: "Zaka",
   webDir: "www",
   server: {

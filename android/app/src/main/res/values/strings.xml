@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Agenda</string>
-    <string name="title_activity_main">Agenda</string>
-    <string name="package_name">com.agendalemonten.app</string>
-    <string name="custom_url_scheme">com.agendalemonten.app</string>
+    <string name="app_name">Zaka</string>
+    <string name="title_activity_main">Zaka</string>
+    <string name="package_name">com.zaka.app</string>
+    <string name="custom_url_scheme">com.zaka.app</string>
 </resources>
