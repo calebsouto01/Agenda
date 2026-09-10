@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarCheck, Clock, MapPin, ShieldCheck, Sparkles, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarCheck,
+  Clock,
+  MapPin,
+  ShieldCheck,
+  Sparkles,
+  UsersRound,
+  Wallet,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,17 +45,17 @@ const STRUCTURED_DATA = {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Zaka — Agendamento online para qualquer serviço" },
+      { title: "Zaka — Pare de perder agendamento no WhatsApp" },
       {
         name: "description",
         content:
-          "Escolha o estabelecimento, o serviço, o profissional e um horário livre. Agendamento online simples para barbearias, salões, clínicas, oficinas e mais.",
+          "O Zaka organiza sua agenda, seus clientes e seu caixa num só lugar, pra você parar de perder horário por mensagem que ninguém viu. Grátis para começar.",
       },
-      { property: "og:title", content: "Zaka — Agendamento online para qualquer serviço" },
+      { property: "og:title", content: "Zaka — Pare de perder agendamento no WhatsApp" },
       {
         property: "og:description",
         content:
-          "Agende em segundos: serviço, profissional, data e horário disponível, com confirmação na tela.",
+          "Agenda online, CRM de clientes e fluxo de caixa automático para barbearias, salões, clínicas, oficinas e outros negócios de horário marcado.",
       },
     ],
     scripts: [
@@ -85,37 +94,82 @@ function Home() {
         </Button>
       </header>
 
-      <section className="mx-auto max-w-5xl px-4 pb-10 pt-6 text-center sm:pt-14">
+      <section className="mx-auto max-w-3xl px-4 pb-14 pt-6 text-center sm:pb-20 sm:pt-16">
         <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
           <Sparkles className="size-3.5 text-primary" />
-          Para qualquer negócio de serviços e horários
+          Para barbearia, salão, clínica, oficina e outros negócios de horário marcado
         </span>
         <h1 className="mt-5 text-3xl font-extrabold leading-tight sm:text-5xl">
-          Agendamento online, sem conversa de ida e volta
+          Cada agendamento perdido no WhatsApp é dinheiro saindo do seu bolso.
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
-          Seus clientes escolhem o serviço, o profissional e um horário realmente livre. Você
-          gerencia tudo em um painel único.
+          O Zaka organiza sua agenda, seus clientes e seu caixa num só lugar — pra você parar de
+          perder horário por mensagem que ninguém viu.
         </p>
-        <div className="mx-auto mt-8 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-7 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link to="/admin">
+              Comece agora, grátis <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Sem cartão de crédito. Sua agenda no ar em poucos minutos.
+        </p>
+      </section>
+
+      <section className="border-t bg-card/40 px-4 py-14 sm:py-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-xl font-extrabold sm:text-2xl">
+            Isso não é falta de esforço seu. É falta de ferramenta certa.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Cliente manda mensagem, você esquece de responder, ele marca em outro lugar. Dois
+            clientes marcam no mesmo horário porque ninguém cruzou a agenda. No fim do mês, você não
+            sabe quanto realmente entrou de caixa.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 py-14 sm:py-20">
+        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2">
           {[
-            { icon: Clock, label: "Horários calculados em tempo real" },
-            { icon: ShieldCheck, label: "Sem reservas duplicadas" },
-            { icon: Users, label: "Serviços e profissionais próprios" },
+            {
+              icon: Clock,
+              title: "Agenda online 24h",
+              description: "Cliente marca sozinho, sem trocar mensagem — mesmo de madrugada.",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Zero horário duplicado",
+              description: "O sistema calcula o que está livre de verdade, sem choque de agenda.",
+            },
+            {
+              icon: Wallet,
+              title: "Fluxo de caixa automático",
+              description: "Sabe quanto entrou e saiu sem precisar abrir o caderno.",
+            },
+            {
+              icon: UsersRound,
+              title: "CRM simples",
+              description: "Nunca mais perde um contato que quase virou cliente.",
+            },
           ].map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center gap-2 rounded-xl border bg-card/70 p-3 text-left text-xs font-medium"
-            >
-              <item.icon className="size-4 shrink-0 text-primary" />
-              {item.label}
+            <div key={item.title} className="flex gap-3 rounded-xl border bg-card p-5 shadow-soft">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <item.icon className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold">{item.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
       <section className="mx-auto max-w-5xl px-4 pb-20">
-        <h2 className="mb-4 text-lg font-bold">Estabelecimentos disponíveis</h2>
+        <h2 className="mb-4 text-lg font-bold">Negócios que já usam o Zaka</h2>
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <Skeleton className="h-32 w-full" />
@@ -160,6 +214,19 @@ function Home() {
             </CardContent>
           </Card>
         )}
+      </section>
+
+      <section className="border-t px-4 py-14 sm:py-20">
+        <div className="mx-auto max-w-2xl rounded-2xl bg-primary px-6 py-10 text-center text-primary-foreground sm:px-10">
+          <h2 className="text-xl font-extrabold sm:text-2xl">
+            Pare de perder agendamento. Comece agora, grátis.
+          </h2>
+          <Button asChild size="lg" variant="secondary" className="mt-6">
+            <Link to="/admin">
+              Criar minha agenda <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
       </section>
 
       <footer className="border-t px-4 py-6 text-center text-xs text-muted-foreground">
