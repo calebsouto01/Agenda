@@ -146,7 +146,7 @@ function CustomersPage() {
       <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
         <TabsList>
           <TabsTrigger value="contatos">Contatos</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="pipeline">Funil</TabsTrigger>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="atividades">Atividades</TabsTrigger>
         </TabsList>
@@ -156,7 +156,13 @@ function CustomersPage() {
         </TabsContent>
 
         <TabsContent value="pipeline" className="pt-4">
-          {establishment ? <PipelineTab establishmentId={establishment.id} /> : null}
+          {establishment ? (
+            <PipelineTab
+              establishmentId={establishment.id}
+              establishmentName={establishment.name}
+              timezone={establishment.timezone}
+            />
+          ) : null}
         </TabsContent>
 
         <TabsContent value="clientes" className="space-y-4 pt-4">

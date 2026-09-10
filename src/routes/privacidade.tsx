@@ -81,7 +81,7 @@ function PrivacidadePage() {
                   Usamos os dados coletados exclusivamente para operar a Plataforma: autenticar
                   contas, exibir a agenda de cada estabelecimento, processar agendamentos, gerar
                   relatórios financeiros e de clientes para o próprio estabelecimento, e permitir o
-                  funcionamento do CRM (pipeline de leads e atividades). Não usamos esses dados para
+                  funcionamento do CRM (funil de leads e atividades). Não usamos esses dados para
                   publicidade nem os vendemos a terceiros.
                 </p>
               </section>

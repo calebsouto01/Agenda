@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 
-export type LeadStage = "novo" | "contato" | "agendado" | "convertido" | "perdido";
+export type LeadStage =
+  "novo" | "mensagem_1" | "confirmacao_dia" | "contato" | "agendado" | "convertido" | "perdido";
 
 export type Lead = {
   id: string;
   customer_id: string | null;
+  appointment_id?: string | null;
   name: string;
   phone: string | null;
   origem: string;
