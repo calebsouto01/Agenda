@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Plus, Smartphone, UserPlus } from "lucide-react";
+import { ArrowRight, Plus, RotateCcw, Smartphone, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -26,12 +26,13 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const queryClient = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
-  const [leadPerdido, setLeadPerdido] = useState<Lead | null>(null);
+  const [leadToHide, setLeadToHide] = useState<Lead | null>(null);
   const [motivo, setMotivo] = useState("");
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"ativos" | "ocultos">("ativos");
 
   const { data: contacts, isLoading } = useQuery({
-    queryKey: ["crm-leads", establishmentId, "novo"],
+    queryKey: ["crm-leads", establishmentId, "contatos"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("crm_leads")
@@ -39,7 +40,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
           "id, customer_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda",
         )
         .eq("establishment_id", establishmentId)
-        .eq("stage", "novo")
+        .in("stage", ["novo", "perdido"])
         .order("name", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Lead[];
@@ -102,20 +103,35 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const markLost = useMutation({
+  const hideContact = useMutation({
     mutationFn: async () => {
-      if (!leadPerdido) return;
+      if (!leadToHide) return;
       if (!motivo.trim()) throw new Error("Informe o motivo");
       const { error } = await supabase
         .from("crm_leads")
         .update({ stage: "perdido", motivo_perda: motivo.trim() })
-        .eq("id", leadPerdido.id);
+        .eq("id", leadToHide.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Contato descartado");
-      setLeadPerdido(null);
+      toast.success("Contato ocultado");
+      setLeadToHide(null);
       setMotivo("");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reactivate = useMutation({
+    mutationFn: async (lead: Lead) => {
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ stage: "novo", motivo_perda: null })
+        .eq("id", lead.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Contato reativado");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -170,7 +186,10 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const responsavelNome = (id: string | null) =>
     professionals?.find((p) => p.id === id)?.name ?? null;
 
-  const filteredContacts = (contacts ?? []).filter((c) =>
+  const activeContacts = (contacts ?? []).filter((c) => c.stage === "novo");
+  const hiddenContacts = (contacts ?? []).filter((c) => c.stage === "perdido");
+  const baseList = filter === "ativos" ? activeContacts : hiddenContacts;
+  const filteredContacts = baseList.filter((c) =>
     c.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
 
@@ -208,7 +227,31 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
         </div>
       </div>
 
-      <div className="sticky top-14 z-10 bg-background py-2 md:top-0">
+      <div className="sticky top-14 z-10 space-y-2 bg-background py-2 md:top-0">
+        <div className="inline-flex rounded-lg border p-0.5">
+          <button
+            type="button"
+            onClick={() => setFilter("ativos")}
+            className={`rounded-md px-3 py-1 text-xs font-medium ${
+              filter === "ativos"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Ativos ({activeContacts.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("ocultos")}
+            className={`rounded-md px-3 py-1 text-xs font-medium ${
+              filter === "ocultos"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Ocultos ({hiddenContacts.length})
+          </button>
+        </div>
         <Input
           placeholder="Buscar por nome"
           maxLength={80}
@@ -298,10 +341,10 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
         </Card>
       ) : null}
 
-      {leadPerdido ? (
+      {leadToHide ? (
         <Card className="border-destructive/30 shadow-soft">
           <CardContent className="grid gap-3 p-5">
-            <p className="text-sm font-semibold">Descartar "{leadPerdido.name}"</p>
+            <p className="text-sm font-semibold">Ocultar "{leadToHide.name}"</p>
             <div className="grid gap-1.5">
               <Label htmlFor="contact-motivo">Motivo</Label>
               <Input
@@ -314,15 +357,15 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
             <div className="flex gap-2">
               <Button
                 variant="destructive"
-                disabled={markLost.isPending}
-                onClick={() => markLost.mutate()}
+                disabled={hideContact.isPending}
+                onClick={() => hideContact.mutate()}
               >
-                Descartar contato
+                Ocultar contato
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setLeadPerdido(null);
+                  setLeadToHide(null);
                   setMotivo("");
                 }}
               >
@@ -335,17 +378,23 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
 
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : (contacts?.length ?? 0) === 0 ? (
+      ) : baseList.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <div className="rounded-full bg-primary/10 p-3 text-primary">
               <UserPlus className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Nenhum contato pendente</p>
-              <p className="text-sm text-muted-foreground">
-                Importe do celular ou cadastre um contato pra começar.
-              </p>
+              {filter === "ativos" ? (
+                <>
+                  <p className="text-sm font-medium">Nenhum contato pendente</p>
+                  <p className="text-sm text-muted-foreground">
+                    Importe do celular ou cadastre um contato pra começar.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm font-medium">Nenhum contato oculto</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -363,25 +412,40 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
               lead={contact}
               responsavelNome={responsavelNome(contact.responsavel_id)}
             >
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => activate.mutate(contact)}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
-                >
-                  Ativar <ArrowRight className="size-3 shrink-0" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLeadPerdido(contact);
-                    setMotivo("");
-                  }}
-                  className="shrink-0 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  Descartar
-                </button>
-              </div>
+              {filter === "ativos" ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => activate.mutate(contact)}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                  >
+                    Ativar <ArrowRight className="size-3 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeadToHide(contact);
+                      setMotivo("");
+                    }}
+                    className="shrink-0 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    Ocultar
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {contact.motivo_perda ? (
+                    <p className="truncate text-xs text-muted-foreground">{contact.motivo_perda}</p>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => reactivate.mutate(contact)}
+                    className="flex w-full items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                  >
+                    <RotateCcw className="size-3 shrink-0" /> Reativar
+                  </button>
+                </div>
+              )}
             </LeadCard>
           ))}
         </div>
