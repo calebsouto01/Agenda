@@ -5,5 +5,8 @@ project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/
 include ':capacitor-community-contacts'
 project(':capacitor-community-contacts').projectDir = new File('../node_modules/@capacitor-community/contacts/android')
 
+include ':capacitor-share'
+project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')
+
 include ':capawesome-capacitor-android-intent-launcher'
 project(':capawesome-capacitor-android-intent-launcher').projectDir = new File('../node_modules/@capawesome/capacitor-android-intent-launcher/android')

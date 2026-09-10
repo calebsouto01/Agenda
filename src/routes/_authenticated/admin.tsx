@@ -16,6 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Share } from "@capacitor/share";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
@@ -160,16 +161,13 @@ function NavContent({
           className="w-full justify-start"
           onClick={async () => {
             const url = `${window.location.origin}/b/${establishment.slug}`;
-            if (navigator.share) {
-              try {
-                await navigator.share({ title: establishment.name, url });
-              } catch {
-                // usuário cancelou o compartilhamento, sem problema
-              }
-              return;
+            try {
+              await Share.share({ title: establishment.name, url, dialogTitle: "Compartilhar" });
+            } catch (e) {
+              if (e instanceof Error && e.name === "AbortError") return; // usuário cancelou
+              await navigator.clipboard.writeText(url);
+              toast.success("Link copiado");
             }
-            await navigator.clipboard.writeText(url);
-            toast.success("Link copiado");
           }}
         >
           <Share2 className="size-4" />
