@@ -67,52 +67,52 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 1rem;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --background: oklch(0.985 0.004 250);
-  --foreground: oklch(0.21 0.02 250);
+  --background: oklch(0.985 0.006 160);
+  --foreground: oklch(0.2 0.025 160);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 250);
+  --card-foreground: oklch(0.2 0.025 160);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 250);
-  --primary: oklch(0.52 0.11 200);
-  --primary-foreground: oklch(0.99 0.005 200);
-  --secondary: oklch(0.955 0.01 240);
-  --secondary-foreground: oklch(0.3 0.02 250);
-  --muted: oklch(0.955 0.008 240);
-  --muted-foreground: oklch(0.53 0.02 250);
-  --accent: oklch(0.93 0.035 195);
-  --accent-foreground: oklch(0.3 0.05 210);
+  --popover-foreground: oklch(0.2 0.025 160);
+  --primary: oklch(0.38 0.09 165);
+  --primary-foreground: oklch(0.98 0.01 160);
+  --secondary: oklch(0.95 0.012 160);
+  --secondary-foreground: oklch(0.3 0.03 160);
+  --muted: oklch(0.95 0.01 160);
+  --muted-foreground: oklch(0.52 0.02 160);
+  --accent: oklch(0.87 0.19 128);
+  --accent-foreground: oklch(0.28 0.08 150);
   --destructive: oklch(0.577 0.19 25);
   --destructive-foreground: oklch(0.99 0.005 250);
-  --success: oklch(0.6 0.12 155);
-  --success-foreground: oklch(0.99 0.005 155);
+  --success: oklch(0.6 0.12 150);
+  --success-foreground: oklch(0.99 0.005 150);
   --warning: oklch(0.78 0.13 80);
   --warning-foreground: oklch(0.28 0.05 80);
-  --border: oklch(0.9 0.012 245);
-  --input: oklch(0.9 0.012 245);
-  --ring: oklch(0.52 0.11 200);
+  --border: oklch(0.9 0.014 160);
+  --input: oklch(0.9 0.014 160);
+  --ring: oklch(0.38 0.09 165);
   --surface-gradient: linear-gradient(
     160deg,
-    oklch(0.97 0.02 200) 0%,
-    oklch(0.985 0.004 250) 55%,
-    oklch(0.96 0.02 250) 100%
+    oklch(0.95 0.03 150) 0%,
+    oklch(0.985 0.006 160) 55%,
+    oklch(0.96 0.025 165) 100%
   );
-  --shadow-soft: 0 1px 2px oklch(0.21 0.02 250 / 6%), 0 12px 32px oklch(0.21 0.02 250 / 8%);
-  --shadow-glow: var(--shadow-soft);
-  --chart-1: oklch(0.52 0.11 200);
-  --chart-2: oklch(0.6 0.12 155);
+  --shadow-soft: 0 1px 2px oklch(0.2 0.025 160 / 6%), 0 12px 32px oklch(0.2 0.025 160 / 8%);
+  --shadow-glow: 0 24px 64px oklch(0.38 0.09 165 / 18%), 0 2px 10px oklch(0.38 0.09 165 / 12%);
+  --chart-1: oklch(0.38 0.09 165);
+  --chart-2: oklch(0.6 0.12 150);
   --chart-3: oklch(0.78 0.13 80);
   --chart-4: oklch(0.55 0.15 300);
   --chart-5: oklch(0.6 0.16 25);
   --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.21 0.02 250);
-  --sidebar-primary: oklch(0.52 0.11 200);
-  --sidebar-primary-foreground: oklch(0.99 0.005 200);
-  --sidebar-accent: oklch(0.955 0.01 240);
-  --sidebar-accent-foreground: oklch(0.3 0.02 250);
-  --sidebar-border: oklch(0.9 0.012 245);
-  --sidebar-ring: oklch(0.52 0.11 200);
+  --sidebar-foreground: oklch(0.2 0.025 160);
+  --sidebar-primary: oklch(0.38 0.09 165);
+  --sidebar-primary-foreground: oklch(0.98 0.01 160);
+  --sidebar-accent: oklch(0.95 0.012 160);
+  --sidebar-accent-foreground: oklch(0.3 0.03 160);
+  --sidebar-border: oklch(0.9 0.014 160);
+  --sidebar-ring: oklch(0.38 0.09 165);
 }
 
 
@@ -183,28 +183,15 @@
 }
 
 /*
- * Site público (home + página de agendamento do cliente final).
- * Redefine só a paleta/raio/sombra nesse escopo, sem tocar no dashboard
- * interno (/admin), que mantém os tokens padrão acima.
+ * Card com tratamento interativo (hover lift + sombra colorida). Usar só em
+ * elementos clicáveis/destacados — não no Card padrão estático.
  */
-.zaka-public {
-  --radius: 1.125rem;
-  --background: oklch(0.99 0.003 280);
-  --primary: oklch(0.53 0.23 280);
-  --primary-foreground: oklch(0.98 0.012 280);
-  --accent: oklch(0.94 0.03 283);
-  --accent-foreground: oklch(0.4 0.18 280);
-  --border: oklch(0.91 0.015 280);
-  --input: oklch(0.91 0.015 280);
-  --ring: oklch(0.53 0.23 280);
-  --surface-gradient: linear-gradient(
-    160deg,
-    oklch(0.95 0.03 283) 0%,
-    oklch(0.99 0.003 280) 55%,
-    oklch(0.96 0.025 280) 100%
-  );
-  --shadow-glow: 0 24px 64px oklch(0.53 0.23 280 / 16%), 0 2px 10px oklch(0.53 0.23 280 / 10%);
-  --chart-4: oklch(0.53 0.23 280);
+@utility card-interactive {
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-glow);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

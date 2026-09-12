@@ -2,10 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis } from "recharts";
-import { ChevronLeft, ChevronRight, Lock, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  CalendarCheck,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Receipt,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { cn } from "@/lib/utils";
 import { isPro } from "@/lib/plans";
 import {
   PAYMENT_METHOD_LABEL,
@@ -91,6 +102,28 @@ function shiftAnchor(anchor: string, range: Range, direction: 1 | -1) {
   const d = new Date(`${anchor}T12:00:00Z`);
   d.setUTCMonth(d.getUTCMonth() + direction);
   return d.toISOString().slice(0, 10);
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  valueClassName,
+}: {
+  icon: typeof Wallet;
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="card-interactive rounded-2xl border bg-card p-4 shadow-soft">
+      <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="size-4" />
+      </span>
+      <p className="mt-2.5 text-xs font-medium text-muted-foreground">{label}</p>
+      <p className={cn("text-lg font-extrabold", valueClassName)}>{value}</p>
+    </div>
+  );
 }
 
 function FinancePage() {
@@ -230,7 +263,7 @@ function FinancePage() {
   }, [appointments, bounds, range, tz]);
 
   const dateNav = (
-    <div className="flex items-center justify-between rounded-xl border bg-card p-2">
+    <div className="flex items-center justify-between rounded-2xl border bg-card p-2 shadow-soft">
       <Button variant="ghost" size="sm" onClick={() => setAnchor(shiftAnchor(anchor, range, -1))}>
         <ChevronLeft className="size-4" />
       </Button>
@@ -304,57 +337,48 @@ function FinancePage() {
             <Skeleton className="h-64 w-full" />
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Faturado</p>
-                    <p className="text-lg font-extrabold">{formatPrice(totalCents)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Recebido</p>
-                    <p className="text-lg font-extrabold text-success">
-                      {formatPrice(receivedCents)}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Atendimentos</p>
-                    <p className="text-lg font-extrabold">{count}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Ticket médio</p>
-                    <p className="text-lg font-extrabold">{formatPrice(avgTicketCents)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Vs. período anterior
-                    </p>
-                    {change === null ? (
-                      <p className="text-lg font-extrabold text-muted-foreground">—</p>
-                    ) : (
-                      <p
-                        className={`flex items-center gap-1 text-lg font-extrabold ${
-                          change >= 0 ? "text-success" : "text-destructive"
-                        }`}
-                      >
-                        {change >= 0 ? (
-                          <TrendingUp className="size-4" />
-                        ) : (
-                          <TrendingDown className="size-4" />
-                        )}
-                        {change >= 0 ? "+" : ""}
-                        {change.toFixed(0)}%
+              <div className="space-y-3">
+                <div className="card-interactive relative overflow-hidden rounded-2xl bg-primary p-5 text-primary-foreground shadow-soft sm:p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-primary-foreground/70">
+                        Faturado no período
                       </p>
-                    )}
-                  </CardContent>
-                </Card>
+                      <p className="mt-1 text-3xl font-extrabold sm:text-4xl">
+                        {formatPrice(totalCents)}
+                      </p>
+                    </div>
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15">
+                      <Wallet className="size-6" />
+                    </span>
+                  </div>
+                  {change !== null ? (
+                    <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-xs font-bold">
+                      {change >= 0 ? (
+                        <TrendingUp className="size-3.5" />
+                      ) : (
+                        <TrendingDown className="size-3.5" />
+                      )}
+                      {change >= 0 ? "+" : ""}
+                      {change.toFixed(0)}% vs. período anterior
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <StatCard
+                    icon={CheckCircle2}
+                    label="Recebido"
+                    value={formatPrice(receivedCents)}
+                    valueClassName="text-success"
+                  />
+                  <StatCard icon={CalendarCheck} label="Atendimentos" value={String(count)} />
+                  <StatCard
+                    icon={Receipt}
+                    label="Ticket médio"
+                    value={formatPrice(avgTicketCents)}
+                  />
+                </div>
               </div>
 
               {byDay.length > 0 ? (

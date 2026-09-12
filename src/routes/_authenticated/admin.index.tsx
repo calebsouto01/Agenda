@@ -273,7 +273,7 @@ function Agenda() {
         </Button>
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border bg-card p-2">
+      <div className="flex items-center justify-between rounded-2xl border bg-card p-2 shadow-soft">
         <Button variant="ghost" size="sm" onClick={() => setAnchor(addDays(anchor, -step))}>
           <ChevronLeft className="size-4" />
         </Button>

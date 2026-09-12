@@ -166,7 +166,7 @@ function PublicBooking() {
 
   if (isLoading) {
     return (
-      <main className="zaka-public mx-auto max-w-2xl space-y-4 p-4">
+      <main className="mx-auto max-w-2xl space-y-4 p-4">
         <Skeleton className="h-28 w-full" />
         <Skeleton className="h-64 w-full" />
       </main>
@@ -175,7 +175,7 @@ function PublicBooking() {
 
   if (!shop) {
     return (
-      <main className="zaka-public flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
         <h1 className="text-xl font-bold">Estabelecimento não encontrado</h1>
         <Button asChild variant="outline">
           <Link to="/">Voltar ao início</Link>
@@ -192,7 +192,7 @@ function PublicBooking() {
 
   if (confirmed) {
     return (
-      <main className="zaka-public flex min-h-screen items-center justify-center surface-hero p-4">
+      <main className="flex min-h-screen items-center justify-center surface-hero p-4">
         <Reveal className="w-full max-w-md">
           <Card className="shadow-glow">
             <CardContent className="space-y-4 p-6 text-center">
@@ -231,7 +231,7 @@ function PublicBooking() {
   }
 
   return (
-    <main className="zaka-public min-h-screen surface-hero pb-16">
+    <main className="min-h-screen surface-hero pb-16">
       <div className="mx-auto max-w-2xl px-4 py-6">
         <Link
           to="/"
