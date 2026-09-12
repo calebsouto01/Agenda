@@ -80,7 +80,9 @@ function AdminLayout() {
             <Menu className="size-5" />
           </Button>
           <span className="flex min-w-0 items-center gap-2">
-            <CalendarCheck className="size-5 shrink-0 text-primary" />
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <CalendarCheck className="size-3.5" />
+            </span>
             <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
           </span>
         </header>
@@ -118,8 +120,10 @@ function NavContent({
 }) {
   return (
     <>
-      <div className="flex items-center gap-2 border-b px-4 py-3.5">
-        <CalendarCheck className="size-5 shrink-0 text-primary" />
+      <div className="flex items-center gap-2.5 border-b px-4 py-3.5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow">
+          <CalendarCheck className="size-4" />
+        </span>
         <span className="truncate text-sm font-bold">{establishment.name}</span>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
@@ -130,10 +134,10 @@ function NavContent({
               key={item.to}
               to={item.to}
               onClick={onNavigate}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-glow"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <item.icon className="size-4" />

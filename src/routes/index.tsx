@@ -176,7 +176,7 @@ function Home() {
   });
 
   return (
-    <main className="zaka-public min-h-screen surface-hero">
+    <main className="min-h-screen surface-hero">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
         <span className="flex items-center gap-2 text-base font-bold">
           <CalendarCheck className="size-5 text-primary" />
