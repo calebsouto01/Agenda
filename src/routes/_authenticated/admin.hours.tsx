@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import { WEEKDAYS, dateTimeInZone } from "@/lib/booking";
+import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -244,7 +245,7 @@ function HoursPage() {
   if (loadError) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-extrabold">Horários de funcionamento</h1>
+        <PageTitle icon={Clock}>Horários de funcionamento</PageTitle>
         <Card className="shadow-soft">
           <CardContent className="space-y-1 p-6 text-sm">
             <p className="font-semibold text-destructive">Não foi possível carregar os horários</p>

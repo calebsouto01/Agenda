@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import { cn } from "@/lib/utils";
 import { isPro } from "@/lib/plans";
+import { PageTitle } from "@/components/page-title";
 import {
   PAYMENT_METHOD_LABEL,
   addDays,
@@ -285,7 +286,7 @@ function FinancePage() {
   if (establishment && !isPro(establishment.plan)) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-extrabold">Financeiro</h1>
+        <PageTitle icon={Wallet}>Financeiro</PageTitle>
         <Card className="shadow-soft">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <div className="rounded-full bg-primary/10 p-3 text-primary">
@@ -310,7 +311,7 @@ function FinancePage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-extrabold">Financeiro</h1>
+        <PageTitle icon={Wallet}>Financeiro</PageTitle>
         <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
           <TabsList>
             <TabsTrigger value="day">Dia</TabsTrigger>

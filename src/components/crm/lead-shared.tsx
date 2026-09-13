@@ -36,20 +36,26 @@ export function LeadCard({
   children?: React.ReactNode;
 }) {
   const hasValue = lead.valor_estimado_cents != null || Boolean(responsavelNome);
+  const initial = lead.name.trim().charAt(0).toUpperCase() || "?";
   return (
-    <Card>
-      <CardContent className="space-y-1.5 p-3">
-        <div className="flex items-baseline gap-2">
-          <p className="min-w-0 flex-1 truncate text-sm font-medium">{lead.name}</p>
-          <p className="shrink-0 text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
+    <Card className="card-interactive overflow-hidden rounded-2xl">
+      <CardContent className="space-y-2 p-3">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {initial}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{lead.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
+          </div>
           {lead.phone ? (
             <WhatsAppLink
               phone={lead.phone}
               message={`Oi ${lead.name.split(" ")[0]}! `}
               ariaLabel="Conversar no WhatsApp"
-              className="flex size-6 shrink-0 items-center justify-center rounded-md text-success hover:bg-accent hover:text-success"
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-success hover:bg-success/10"
             >
-              <MessageCircle className="size-3.5" />
+              <MessageCircle className="size-4" />
             </WhatsAppLink>
           ) : null}
         </div>

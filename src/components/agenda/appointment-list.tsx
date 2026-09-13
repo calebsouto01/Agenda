@@ -66,7 +66,7 @@ export function AppointmentList({
     <>
       <div className="space-y-2">
         {appointments.map((a) => (
-          <Card key={a.id} className="shadow-soft">
+          <Card key={a.id} className="card-interactive rounded-2xl shadow-soft">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
               <button
                 type="button"

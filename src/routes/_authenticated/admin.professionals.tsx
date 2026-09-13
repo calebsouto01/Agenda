@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import { FREE_LIMITS, isPro } from "@/lib/plans";
+import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -95,7 +96,7 @@ function ProfessionalsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold">Profissionais</h1>
+        <PageTitle icon={UserRound}>Profissionais</PageTitle>
         <Button
           size="sm"
           disabled={atFreeLimit}
@@ -168,9 +169,12 @@ function ProfessionalsPage() {
       ) : professionals && professionals.length > 0 ? (
         <div className="grid gap-2">
           {professionals.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
+            <Card key={p.id} className="card-interactive rounded-2xl">
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  {p.name.trim().charAt(0).toUpperCase() || "?"}
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">
                     {p.name}
                     {!p.active ? (
