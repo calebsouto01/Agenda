@@ -1,11 +1,12 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { PageTitle } from "@/components/page-title";
 import {
   addDays,
   dateTimeInZone,
@@ -246,7 +247,7 @@ function Agenda() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-extrabold">Agenda</h1>
+          <PageTitle icon={CalendarDays}>Agenda</PageTitle>
           <Tabs
             value={viewMode === "list" ? "list" : range}
             onValueChange={(v) => {

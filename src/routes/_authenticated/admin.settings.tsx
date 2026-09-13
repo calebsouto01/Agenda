@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Building2, Check, CreditCard } from "lucide-react";
+import { PageTitle } from "@/components/page-title";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -108,7 +109,7 @@ function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-extrabold">Plano</h1>
+      <PageTitle icon={CreditCard}>Plano</PageTitle>
       <Card className="shadow-soft">
         <CardContent className="space-y-4 p-5">
           <div className="flex items-center justify-between">
@@ -173,7 +174,7 @@ function SettingsPage() {
         </CardContent>
       </Card>
 
-      <h1 className="text-xl font-extrabold">Dados da empresa</h1>
+      <PageTitle icon={Building2}>Dados da empresa</PageTitle>
       <Card className="shadow-soft">
         <CardContent className="grid gap-3 p-5">
           <div className="grid gap-1.5">

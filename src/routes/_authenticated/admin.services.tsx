@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Scissors, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import { formatDuration, formatPrice } from "@/lib/booking";
+import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -105,7 +106,7 @@ function ServicesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold">Serviços</h1>
+        <PageTitle icon={Scissors}>Serviços</PageTitle>
         <Button
           size="sm"
           onClick={() => {
@@ -183,9 +184,12 @@ function ServicesPage() {
       ) : services && services.length > 0 ? (
         <div className="grid gap-2">
           {services.map((s) => (
-            <Card key={s.id}>
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
+            <Card key={s.id} className="card-interactive rounded-2xl">
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Scissors className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">
                     {s.name}
                     {!s.active ? (

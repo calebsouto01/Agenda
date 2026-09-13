@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { NotebookPen, Phone } from "lucide-react";
+import { NotebookPen, Phone, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import type { AppointmentStatus } from "@/lib/booking";
 import { WhatsAppLink } from "@/components/whatsapp-link";
+import { PageTitle } from "@/components/page-title";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -141,7 +142,7 @@ function CustomersPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-extrabold">Clientes</h1>
+      <PageTitle icon={Users}>Clientes</PageTitle>
 
       <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
         <TabsList>
