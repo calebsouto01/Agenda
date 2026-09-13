@@ -22,6 +22,7 @@ import { Route as AuthenticatedAdminFinanceRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminHoursRouteImport } from './routes/_authenticated/admin.hours'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminProfessionalsRouteImport } from './routes/_authenticated/admin.professionals'
+import { Route as AuthenticatedAdminProspeccaoRouteImport } from './routes/_authenticated/admin.prospeccao'
 import { Route as AuthenticatedAdminServicesRouteImport } from './routes/_authenticated/admin.services'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 
@@ -92,6 +93,12 @@ const AuthenticatedAdminProfessionalsRoute =
     path: '/professionals',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminProspeccaoRoute =
+  AuthenticatedAdminProspeccaoRouteImport.update({
+    id: '/prospeccao',
+    path: '/prospeccao',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminServicesRoute =
   AuthenticatedAdminServicesRouteImport.update({
     id: '/services',
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
+  '/admin/prospeccao': typeof AuthenticatedAdminProspeccaoRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -132,6 +140,7 @@ export interface FileRoutesByTo {
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
+  '/admin/prospeccao': typeof AuthenticatedAdminProspeccaoRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -150,6 +159,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/hours': typeof AuthenticatedAdminHoursRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
   '/_authenticated/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
+  '/_authenticated/admin/prospeccao': typeof AuthenticatedAdminProspeccaoRoute
   '/_authenticated/admin/services': typeof AuthenticatedAdminServicesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/admin/hours'
     | '/admin/new'
     | '/admin/professionals'
+    | '/admin/prospeccao'
     | '/admin/services'
     | '/admin/settings'
     | '/admin/'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/admin/hours'
     | '/admin/new'
     | '/admin/professionals'
+    | '/admin/prospeccao'
     | '/admin/services'
     | '/admin/settings'
     | '/admin'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/hours'
     | '/_authenticated/admin/new'
     | '/_authenticated/admin/professionals'
+    | '/_authenticated/admin/prospeccao'
     | '/_authenticated/admin/services'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/'
@@ -307,6 +320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminProfessionalsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/prospeccao': {
+      id: '/_authenticated/admin/prospeccao'
+      path: '/prospeccao'
+      fullPath: '/admin/prospeccao'
+      preLoaderRoute: typeof AuthenticatedAdminProspeccaoRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/services': {
       id: '/_authenticated/admin/services'
       path: '/services'
@@ -330,6 +350,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminHoursRoute: typeof AuthenticatedAdminHoursRoute
   AuthenticatedAdminNewRoute: typeof AuthenticatedAdminNewRoute
   AuthenticatedAdminProfessionalsRoute: typeof AuthenticatedAdminProfessionalsRoute
+  AuthenticatedAdminProspeccaoRoute: typeof AuthenticatedAdminProspeccaoRoute
   AuthenticatedAdminServicesRoute: typeof AuthenticatedAdminServicesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -341,6 +362,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminHoursRoute: AuthenticatedAdminHoursRoute,
   AuthenticatedAdminNewRoute: AuthenticatedAdminNewRoute,
   AuthenticatedAdminProfessionalsRoute: AuthenticatedAdminProfessionalsRoute,
+  AuthenticatedAdminProspeccaoRoute: AuthenticatedAdminProspeccaoRoute,
   AuthenticatedAdminServicesRoute: AuthenticatedAdminServicesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
