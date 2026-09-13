@@ -24,7 +24,15 @@ export type Lead = {
 
 export type Professional = { id: string; name: string };
 
-export const ORIGENS = ["Indicação", "Instagram", "WhatsApp", "Google", "Página pública", "Outro"];
+export const ORIGENS = [
+  "Indicação",
+  "Instagram",
+  "WhatsApp",
+  "Google",
+  "Página pública",
+  "Prospecção Maps",
+  "Outro",
+];
 
 export function LeadCard({
   lead,
