@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CheckCircle2, NotebookPen, Phone, Users } from "lucide-react";
+import { NotebookPen, Phone, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactsTab } from "@/components/crm/contacts-tab";
 import { PipelineTab } from "@/components/crm/pipeline-tab";
-import { ActivitiesTab } from "@/components/crm/activities-tab";
 
 export const Route = createFileRoute("/_authenticated/admin/customers")({
   component: CustomersPage,
@@ -69,7 +68,6 @@ function CustomersPage() {
   const queryClient = useQueryClient();
   const [section, setSection] = useState<Section>("funil");
   const [dirView, setDirView] = useState<DirView>("leads");
-  const [showTasks, setShowTasks] = useState(false);
   const [term, setTerm] = useState("");
   const [view, setView] = useState<View>("list");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
@@ -167,22 +165,12 @@ function CustomersPage() {
         </TabsContent>
 
         <TabsContent value="diretorio" className="space-y-4 pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Tabs value={dirView} onValueChange={(v) => setDirView(v as DirView)}>
-              <TabsList>
-                <TabsTrigger value="leads">Leads</TabsTrigger>
-                <TabsTrigger value="clientes">Clientes</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Button variant="outline" size="sm" onClick={() => setShowTasks((v) => !v)}>
-              <CheckCircle2 className="size-4" />
-              {showTasks ? "Ocultar tarefas" : "Tarefas"}
-            </Button>
-          </div>
-
-          {showTasks && establishment ? (
-            <ActivitiesTab establishmentId={establishment.id} tz={establishment.timezone} />
-          ) : null}
+          <Tabs value={dirView} onValueChange={(v) => setDirView(v as DirView)}>
+            <TabsList>
+              <TabsTrigger value="leads">Leads</TabsTrigger>
+              <TabsTrigger value="clientes">Clientes</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {dirView === "leads" ? (
             establishment ? (
