@@ -1,8 +1,17 @@
-import { Clock, MessageCircle, Target } from "lucide-react";
+import { useState } from "react";
+import { Clock, Eye, MessageCircle, Target } from "lucide-react";
 
 import { formatPrice } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 
 /** Etapas do funil de vendas — genéricas, independentes de canal (WhatsApp, ligação etc.). */
@@ -51,6 +60,64 @@ export const ORIGENS = [
   "Prospecção Maps",
   "Outro",
 ];
+
+function LeadDetailsDialog({
+  lead,
+  responsavelNome,
+}: {
+  lead: Lead;
+  responsavelNome: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Eye className="size-3 shrink-0" /> Ver dados
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{lead.name}</DialogTitle>
+          <DialogDescription>
+            {lead.origem} · {STAGE_LABEL[lead.stage]}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Telefone</p>
+              <p>{lead.phone ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Valor estimado</p>
+              <p>
+                {lead.valor_estimado_cents != null ? formatPrice(lead.valor_estimado_cents) : "—"}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Responsável</p>
+            <p>{responsavelNome ?? "—"}</p>
+          </div>
+          {lead.motivo_perda ? (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Motivo da perda</p>
+              <p className="text-destructive">{lead.motivo_perda}</p>
+            </div>
+          ) : null}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Notas</p>
+            <p className="whitespace-pre-wrap break-words">{lead.notes ?? "—"}</p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export function LeadCard({
   lead,
@@ -121,6 +188,7 @@ export function LeadCard({
             ) : null}
           </div>
         ) : null}
+        <LeadDetailsDialog lead={lead} responsavelNome={responsavelNome} />
         {children}
       </CardContent>
     </Card>
