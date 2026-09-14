@@ -1,12 +1,28 @@
-import { MessageCircle, Target } from "lucide-react";
+import { Clock, MessageCircle, Target } from "lucide-react";
 
 import { formatPrice } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 
-export type LeadStage =
-  "novo" | "mensagem_1" | "confirmacao_dia" | "contato" | "agendado" | "convertido" | "perdido";
+/** Etapas do funil de vendas — genéricas, independentes de canal (WhatsApp, ligação etc.). */
+export type LeadStage = "novo" | "contato" | "agendado" | "convertido" | "perdido";
+
+export const STAGE_LABEL: Record<LeadStage, string> = {
+  novo: "Novo",
+  contato: "Em contato",
+  agendado: "Proposta",
+  convertido: "Ganho",
+  perdido: "Perdido",
+};
+
+export const STAGE_BADGE: Record<LeadStage, string> = {
+  novo: "bg-muted text-muted-foreground",
+  contato: "bg-primary/10 text-primary",
+  agendado: "bg-warning/20 text-warning-foreground",
+  convertido: "bg-success/20 text-success",
+  perdido: "bg-destructive/10 text-destructive",
+};
 
 export type Lead = {
   id: string;
@@ -20,6 +36,8 @@ export type Lead = {
   responsavel_id: string | null;
   notes: string | null;
   motivo_perda: string | null;
+  whatsapp_msg1_sent_at?: string | null;
+  whatsapp_confirmacao_sent_at?: string | null;
 };
 
 export type Professional = { id: string; name: string };
@@ -37,10 +55,14 @@ export const ORIGENS = [
 export function LeadCard({
   lead,
   responsavelNome,
+  showStage = false,
+  pendingActivities = 0,
   children,
 }: {
   lead: Lead;
   responsavelNome: string | null;
+  showStage?: boolean;
+  pendingActivities?: number;
   children?: React.ReactNode;
 }) {
   const hasValue = lead.valor_estimado_cents != null || Boolean(responsavelNome);
@@ -67,10 +89,26 @@ export function LeadCard({
             </WhatsAppLink>
           ) : null}
         </div>
-        <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">
-          <Target className="mr-1 size-2.5" />
-          {lead.origem}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">
+            <Target className="mr-1 size-2.5" />
+            {lead.origem}
+          </Badge>
+          {showStage ? (
+            <Badge variant="outline" className={`border-0 text-[10px] ${STAGE_BADGE[lead.stage]}`}>
+              {STAGE_LABEL[lead.stage]}
+            </Badge>
+          ) : null}
+          {pendingActivities > 0 ? (
+            <Badge
+              variant="outline"
+              className="border-0 bg-warning/20 text-[10px] text-warning-foreground"
+            >
+              <Clock className="mr-1 size-2.5" />
+              {pendingActivities} tarefa{pendingActivities === 1 ? "" : "s"}
+            </Badge>
+          ) : null}
+        </div>
         {hasValue ? (
           <div className="flex items-center justify-between gap-2">
             {lead.valor_estimado_cents != null ? (

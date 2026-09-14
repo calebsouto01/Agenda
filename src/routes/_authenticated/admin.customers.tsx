@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { NotebookPen, Phone, Users } from "lucide-react";
+import { CheckCircle2, NotebookPen, Phone, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -35,7 +35,9 @@ type Customer = {
 };
 
 type View = "list" | "rank";
-type Section = "contatos" | "pipeline" | "clientes" | "atividades";
+/** Funil = pipeline de vendas (tela padrão). Diretório = todo mundo cadastrado (leads + clientes). */
+type Section = "funil" | "diretorio";
+type DirView = "leads" | "clientes";
 type Segment = "new" | "recurring" | "inactive";
 
 /** Days since the last completed visit after which a customer is considered inactive. */
@@ -65,7 +67,9 @@ function segmentOf(visits: number, lastVisitAt: string | null): Segment {
 function CustomersPage() {
   const { data: establishment } = useEstablishment();
   const queryClient = useQueryClient();
-  const [section, setSection] = useState<Section>("clientes");
+  const [section, setSection] = useState<Section>("funil");
+  const [dirView, setDirView] = useState<DirView>("leads");
+  const [showTasks, setShowTasks] = useState(false);
   const [term, setTerm] = useState("");
   const [view, setView] = useState<View>("list");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
@@ -126,8 +130,8 @@ function CustomersPage() {
     [customers],
   );
 
-  // Cliente = concluiu pelo menos um serviço. Contatos/leads que nunca chegaram
-  // a um atendimento concluído ficam nas abas Contatos/Pipeline, não aqui.
+  // Cliente = concluiu pelo menos um serviço. Leads que nunca chegaram a um
+  // atendimento concluído ficam no Funil/Diretório → Leads, não aqui.
   const filtered = withCounts.filter((c) => {
     const matchesTerm = `${c.name} ${c.phone} ${c.email ?? ""}`
       .toLowerCase()
@@ -146,17 +150,11 @@ function CustomersPage() {
 
       <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
         <TabsList>
-          <TabsTrigger value="contatos">Contatos</TabsTrigger>
-          <TabsTrigger value="pipeline">Funil</TabsTrigger>
-          <TabsTrigger value="clientes">Clientes</TabsTrigger>
-          <TabsTrigger value="atividades">Atividades</TabsTrigger>
+          <TabsTrigger value="funil">Funil</TabsTrigger>
+          <TabsTrigger value="diretorio">Diretório</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="contatos" className="pt-4">
-          {establishment ? <ContactsTab establishmentId={establishment.id} /> : null}
-        </TabsContent>
-
-        <TabsContent value="pipeline" className="pt-4">
+        <TabsContent value="funil" className="pt-4">
           {establishment ? (
             <PipelineTab
               establishmentId={establishment.id}
@@ -168,148 +166,178 @@ function CustomersPage() {
           ) : null}
         </TabsContent>
 
-        <TabsContent value="clientes" className="space-y-4 pt-4">
-          <div className="flex justify-end">
-            <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+        <TabsContent value="diretorio" className="space-y-4 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Tabs value={dirView} onValueChange={(v) => setDirView(v as DirView)}>
               <TabsList>
-                <TabsTrigger value="list">Lista</TabsTrigger>
-                <TabsTrigger value="rank">Rank</TabsTrigger>
+                <TabsTrigger value="leads">Leads</TabsTrigger>
+                <TabsTrigger value="clientes">Clientes</TabsTrigger>
               </TabsList>
             </Tabs>
+            <Button variant="outline" size="sm" onClick={() => setShowTasks((v) => !v)}>
+              <CheckCircle2 className="size-4" />
+              {showTasks ? "Ocultar tarefas" : "Tarefas"}
+            </Button>
           </div>
 
-          <Input
-            placeholder="Buscar por nome, telefone ou e-mail"
-            maxLength={80}
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-          />
-
-          {isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : filtered.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-sm text-muted-foreground">
-                Nenhum cliente encontrado.
-              </CardContent>
-            </Card>
-          ) : view === "list" ? (
-            <div className="grid grid-cols-1 gap-2">
-              {filtered.map((c) => (
-                <Card key={c.id}>
-                  <CardContent className="space-y-2 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="min-w-0 flex-1 truncate text-sm font-semibold">{c.name}</p>
-                          <Badge
-                            variant="outline"
-                            className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
-                          >
-                            {SEGMENT_LABEL[c.segment]}
-                          </Badge>
-                        </div>
-                        <WhatsAppLink
-                          phone={c.phone}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary"
-                        >
-                          <Phone className="size-3" />
-                          {c.phone}
-                        </WhatsAppLink>
-                        {c.email ? (
-                          <p className="truncate text-xs text-muted-foreground">{c.email}</p>
-                        ) : null}
-                        {c.notes && editingNotesId !== c.id ? (
-                          <p className="mt-1 truncate text-xs italic text-muted-foreground">
-                            {c.notes}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {c.total} agendamento(s)
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingNotesId(editingNotesId === c.id ? null : c.id);
-                            setNoteDraft(c.notes ?? "");
-                          }}
-                        >
-                          <NotebookPen className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    {editingNotesId === c.id ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="Observações sobre este cliente"
-                          maxLength={500}
-                          value={noteDraft}
-                          onChange={(e) => setNoteDraft(e.target.value)}
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            disabled={saveNotes.isPending}
-                            onClick={() => saveNotes.mutate(c.id)}
-                          >
-                            Salvar notas
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setEditingNotesId(null)}>
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-2">
-              {ranked.map((c, i) => (
-                <Card key={c.id}>
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <span
-                      className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                        i === 0
-                          ? "bg-warning/20 text-warning-foreground"
-                          : "bg-primary/10 text-primary"
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{c.name}</p>
-                        <Badge variant="outline" className={`border-0 ${SEGMENT_BADGE[c.segment]}`}>
-                          {SEGMENT_LABEL[c.segment]}
-                        </Badge>
-                      </div>
-                      <WhatsAppLink
-                        phone={c.phone}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary"
-                      >
-                        <Phone className="size-3" />
-                        {c.phone}
-                      </WhatsAppLink>
-                    </div>
-                    <span className="shrink-0 text-sm font-bold">
-                      {c.visits} visita{c.visits === 1 ? "" : "s"}
-                    </span>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="atividades" className="pt-4">
-          {establishment ? (
+          {showTasks && establishment ? (
             <ActivitiesTab establishmentId={establishment.id} tz={establishment.timezone} />
           ) : null}
+
+          {dirView === "leads" ? (
+            establishment ? (
+              <ContactsTab establishmentId={establishment.id} />
+            ) : null
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+                  <TabsList>
+                    <TabsTrigger value="list">Lista</TabsTrigger>
+                    <TabsTrigger value="rank">Rank</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              <Input
+                placeholder="Buscar por nome, telefone ou e-mail"
+                maxLength={80}
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+              />
+
+              {isLoading ? (
+                <Skeleton className="h-32 w-full" />
+              ) : filtered.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                    Nenhum cliente encontrado.
+                  </CardContent>
+                </Card>
+              ) : view === "list" ? (
+                <div className="grid grid-cols-1 gap-2">
+                  {filtered.map((c) => (
+                    <Card key={c.id}>
+                      <CardContent className="space-y-2 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+                                {c.name}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
+                              >
+                                {SEGMENT_LABEL[c.segment]}
+                              </Badge>
+                            </div>
+                            <WhatsAppLink
+                              phone={c.phone}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary"
+                            >
+                              <Phone className="size-3" />
+                              {c.phone}
+                            </WhatsAppLink>
+                            {c.email ? (
+                              <p className="truncate text-xs text-muted-foreground">{c.email}</p>
+                            ) : null}
+                            {c.notes && editingNotesId !== c.id ? (
+                              <p className="mt-1 truncate text-xs italic text-muted-foreground">
+                                {c.notes}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {c.total} agendamento(s)
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingNotesId(editingNotesId === c.id ? null : c.id);
+                                setNoteDraft(c.notes ?? "");
+                              }}
+                            >
+                              <NotebookPen className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        {editingNotesId === c.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              placeholder="Observações sobre este cliente"
+                              maxLength={500}
+                              value={noteDraft}
+                              onChange={(e) => setNoteDraft(e.target.value)}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                disabled={saveNotes.isPending}
+                                onClick={() => saveNotes.mutate(c.id)}
+                              >
+                                Salvar notas
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingNotesId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {ranked.map((c, i) => (
+                    <Card key={c.id}>
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <span
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                            i === 0
+                              ? "bg-warning/20 text-warning-foreground"
+                              : "bg-primary/10 text-primary"
+                          }`}
+                        >
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="min-w-0 flex-1 truncate text-sm font-semibold">
+                              {c.name}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
+                            >
+                              {SEGMENT_LABEL[c.segment]}
+                            </Badge>
+                          </div>
+                          <WhatsAppLink
+                            phone={c.phone}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-primary"
+                          >
+                            <Phone className="size-3" />
+                            {c.phone}
+                          </WhatsAppLink>
+                        </div>
+                        <span className="shrink-0 text-sm font-bold">
+                          {c.visits} visita{c.visits === 1 ? "" : "s"}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
