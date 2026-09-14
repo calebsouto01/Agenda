@@ -5,7 +5,6 @@ import {
   Eye,
   EyeOff,
   MessageSquareText,
-  Plus,
   Send,
   Sparkles,
   Trophy,
@@ -27,9 +26,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LeadCard, STAGE_LABEL, type Lead, type LeadStage, type Professional } from "./lead-shared";
+import {
+  LeadCard,
+  ORIGENS,
+  STAGE_LABEL,
+  type Lead,
+  type LeadStage,
+  type Professional,
+} from "./lead-shared";
 
 type FunnelLead = Lead & { appointment: { starts_at: string } | null };
 
@@ -96,6 +109,8 @@ const REMINDER_LABEL: Record<"msg1" | "confirmacao", string> = {
   confirmacao: "Enviar confirmação",
 };
 
+const EMPTY_CONTACT_FORM = { name: "", phone: "", origem: "", valor: "", responsavelId: "" };
+
 export function PipelineTab({
   establishmentId,
   establishmentName,
@@ -118,8 +133,8 @@ export function PipelineTab({
   const [messageConfirmacaoDraft, setMessageConfirmacaoDraft] = useState(
     messageConfirmacaoTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO,
   );
-  const [quickAdd, setQuickAdd] = useState({ name: "", phone: "" });
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [openNewContact, setOpenNewContact] = useState(false);
+  const [contactForm, setContactForm] = useState({ ...EMPTY_CONTACT_FORM });
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["crm-leads", establishmentId, "pipeline"],
@@ -172,22 +187,27 @@ export function PipelineTab({
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
 
-  const createQuickLead = useMutation({
+  const createContact = useMutation({
     mutationFn: async () => {
-      const name = quickAdd.name.trim();
+      const name = contactForm.name.trim();
       if (name.length < 2) throw new Error("Informe o nome");
+      const cents = contactForm.valor
+        ? Math.round(Number(contactForm.valor.replace(",", ".")) * 100)
+        : null;
       const { error } = await supabase.from("crm_leads").insert({
         establishment_id: establishmentId,
         name,
-        phone: quickAdd.phone.trim() || null,
-        origem: "Outro",
+        phone: contactForm.phone.trim() || null,
+        origem: contactForm.origem.trim() || "Outro",
+        valor_estimado_cents: cents,
+        responsavel_id: contactForm.responsavelId || null,
       });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Lead adicionado ao funil");
-      setQuickAdd({ name: "", phone: "" });
-      setQuickAddOpen(false);
+      toast.success("Contato cadastrado no funil");
+      setContactForm({ ...EMPTY_CONTACT_FORM });
+      setOpenNewContact(false);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -295,30 +315,115 @@ export function PipelineTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Todo lead novo — criado aqui, importado ou vindo de agendamento — já nasce na coluna
-          "Novo".
-        </p>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setMessage1Draft(message1Template ?? DEFAULT_MESSAGE_1);
-              setMessageConfirmacaoDraft(messageConfirmacaoTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO);
-              setEditingMessages((v) => !v);
-            }}
-          >
-            <MessageSquareText className="size-4" />
-            Editar mensagens
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
-            {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            {showClosed ? "Ocultar fechados" : `Mostrar fechados (${closedTotal})`}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          size="sm"
+          onClick={() => {
+            setContactForm({ ...EMPTY_CONTACT_FORM });
+            setOpenNewContact((v) => !v);
+          }}
+        >
+          <UserPlus className="size-4" />
+          Cadastrar contato
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setMessage1Draft(message1Template ?? DEFAULT_MESSAGE_1);
+            setMessageConfirmacaoDraft(messageConfirmacaoTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO);
+            setEditingMessages((v) => !v);
+          }}
+        >
+          <MessageSquareText className="size-4" />
+          Editar mensagens
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
+          {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {showClosed ? "Ocultar fechados" : `Mostrar fechados (${closedTotal})`}
+        </Button>
       </div>
+
+      {openNewContact ? (
+        <Card className="shadow-soft">
+          <CardContent className="grid gap-3 p-5">
+            <div className="grid gap-1.5">
+              <Label htmlFor="pipeline-contact-name">Nome</Label>
+              <Input
+                id="pipeline-contact-name"
+                maxLength={120}
+                value={contactForm.name}
+                onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="pipeline-contact-phone">Telefone</Label>
+                <Input
+                  id="pipeline-contact-phone"
+                  maxLength={30}
+                  value={contactForm.phone}
+                  onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="pipeline-contact-valor">Valor estimado (R$)</Label>
+                <Input
+                  id="pipeline-contact-valor"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={contactForm.valor}
+                  onChange={(e) => setContactForm({ ...contactForm, valor: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="pipeline-contact-origem">Origem</Label>
+                <Input
+                  id="pipeline-contact-origem"
+                  list="pipeline-contact-origens"
+                  maxLength={60}
+                  value={contactForm.origem}
+                  onChange={(e) => setContactForm({ ...contactForm, origem: e.target.value })}
+                />
+                <datalist id="pipeline-contact-origens">
+                  {ORIGENS.map((o) => (
+                    <option key={o} value={o} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Responsável</Label>
+                <Select
+                  value={contactForm.responsavelId}
+                  onValueChange={(v) => setContactForm({ ...contactForm, responsavelId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {professionals?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button disabled={createContact.isPending} onClick={() => createContact.mutate()}>
+                Cadastrar
+              </Button>
+              <Button variant="ghost" onClick={() => setOpenNewContact(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {editingMessages ? (
         <Card className="shadow-soft">
@@ -427,7 +532,7 @@ export function PipelineTab({
             <div>
               <p className="text-sm font-medium">Nenhum lead no funil ainda</p>
               <p className="text-sm text-muted-foreground">
-                Adicione um lead na coluna "Novo" pra começar.
+                Clique em "Cadastrar contato" pra começar.
               </p>
             </div>
           </CardContent>
@@ -443,55 +548,11 @@ export function PipelineTab({
                     <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {STAGE_LABEL[stage]}
                     </h2>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {stageLeads.length}
-                      </span>
-                      {stage === "novo" ? (
-                        <button
-                          type="button"
-                          onClick={() => setQuickAddOpen((v) => !v)}
-                          className="rounded-md p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
-                          aria-label="Adicionar lead"
-                        >
-                          <Plus className="size-3.5" />
-                        </button>
-                      ) : null}
-                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {stageLeads.length}
+                    </span>
                   </div>
                 </div>
-
-                {stage === "novo" && quickAddOpen ? (
-                  <Card className="shadow-soft">
-                    <CardContent className="grid gap-2 p-3">
-                      <Input
-                        placeholder="Nome"
-                        maxLength={120}
-                        value={quickAdd.name}
-                        onChange={(e) => setQuickAdd({ ...quickAdd, name: e.target.value })}
-                      />
-                      <Input
-                        placeholder="Telefone (opcional)"
-                        maxLength={30}
-                        value={quickAdd.phone}
-                        onChange={(e) => setQuickAdd({ ...quickAdd, phone: e.target.value })}
-                      />
-                      <div className="flex gap-1.5">
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          disabled={createQuickLead.isPending}
-                          onClick={() => createQuickLead.mutate()}
-                        >
-                          Adicionar
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setQuickAddOpen(false)}>
-                          Cancelar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : null}
 
                 <div className="space-y-2">
                   {stageLeads.map((lead) => {
