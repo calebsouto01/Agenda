@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Check, CreditCard } from "lucide-react";
+import { Building2, Check, CreditCard, KeyRound } from "lucide-react";
 import { PageTitle } from "@/components/page-title";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -50,9 +50,26 @@ const schema = z.object({
   address: z.string().trim().max(200),
 });
 
+const PROVIDER_LABEL: Record<string, string> = {
+  email: "E-mail e senha",
+  google: "Google",
+  facebook: "Facebook",
+};
+
+const passwordSchema = z
+  .object({
+    password: z.string().min(6, "A senha deve ter ao menos 6 caracteres").max(72),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, {
+    message: "As senhas não coincidem",
+    path: ["confirm"],
+  });
+
 function SettingsPage() {
   const { data: establishment, isLoading } = useEstablishment();
   const queryClient = useQueryClient();
+  const [passwordForm, setPasswordForm] = useState({ password: "", confirm: "" });
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -103,6 +120,36 @@ function SettingsPage() {
     },
     onError: (e: Error) =>
       toast.error(e.message.includes("duplicate") ? "Este link público já está em uso" : e.message),
+  });
+
+  const { data: authUser } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return data.user;
+    },
+  });
+
+  const identityProviders: string[] = (authUser?.identities ?? []).map(
+    (i: { provider: string }) => i.provider,
+  );
+  const providers = identityProviders
+    .filter((p, idx) => identityProviders.indexOf(p) === idx)
+    .map((p) => PROVIDER_LABEL[p] ?? p);
+
+  const changePassword = useMutation({
+    mutationFn: async () => {
+      const parsed = passwordSchema.safeParse(passwordForm);
+      if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
+      const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Senha atualizada");
+      setPasswordForm({ password: "", confirm: "" });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   if (isLoading || !establishment) return <Skeleton className="h-64 w-full" />;
@@ -270,6 +317,63 @@ function SettingsPage() {
           </div>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? "Salvando..." : "Salvar alterações"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <PageTitle icon={KeyRound}>Acesso e senha</PageTitle>
+      <Card className="shadow-soft">
+        <CardContent className="grid gap-4 p-5">
+          <div className="grid gap-1.5">
+            <Label>Método de autenticação</Label>
+            {authUser?.email ? (
+              <p className="text-sm text-muted-foreground">
+                Logado como <strong>{authUser.email}</strong>
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-1.5">
+              {providers.length > 0 ? (
+                providers.map((p) => (
+                  <Badge key={p} variant="outline" className="border-0 bg-primary/10 text-primary">
+                    {p}
+                  </Badge>
+                ))
+              ) : (
+                <Badge variant="outline" className="border-0 bg-muted text-muted-foreground">
+                  Não identificado
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="e-new-password">Nova senha</Label>
+              <Input
+                id="e-new-password"
+                type="password"
+                maxLength={72}
+                value={passwordForm.password}
+                onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="e-confirm-password">Confirmar nova senha</Label>
+              <Input
+                id="e-confirm-password"
+                type="password"
+                maxLength={72}
+                value={passwordForm.confirm}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+              />
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            disabled={changePassword.isPending}
+            onClick={() => changePassword.mutate()}
+          >
+            {changePassword.isPending ? "Alterando..." : "Alterar senha"}
           </Button>
         </CardContent>
       </Card>
