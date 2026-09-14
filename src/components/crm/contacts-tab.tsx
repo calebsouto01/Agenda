@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Plus, RotateCcw, Smartphone, UserPlus } from "lucide-react";
+import { Plus, RotateCcw, Smartphone, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -29,10 +29,10 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const [leadToHide, setLeadToHide] = useState<Lead | null>(null);
   const [motivo, setMotivo] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"ativos" | "ocultos">("ativos");
+  const [filter, setFilter] = useState<"ativos" | "perdidos">("ativos");
 
-  const { data: contacts, isLoading } = useQuery({
-    queryKey: ["crm-leads", establishmentId, "contatos"],
+  const { data: leads, isLoading } = useQuery({
+    queryKey: ["crm-leads", establishmentId, "diretorio"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("crm_leads")
@@ -40,7 +40,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
           "id, customer_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda",
         )
         .eq("establishment_id", establishmentId)
-        .in("stage", ["novo", "perdido"])
+        .neq("stage", "convertido")
         .order("name", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Lead[];
@@ -80,24 +80,9 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Contato criado");
+      toast.success("Lead criado e já está no Funil");
       setForm({ ...EMPTY_FORM });
       setOpenNew(false);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const activate = useMutation({
-    mutationFn: async (lead: Lead) => {
-      const { error } = await supabase
-        .from("crm_leads")
-        .update({ stage: "contato" })
-        .eq("id", lead.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Contato ativado no funil");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -114,7 +99,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Contato ocultado");
+      toast.success("Marcado como perdido");
       setLeadToHide(null);
       setMotivo("");
       invalidate();
@@ -131,7 +116,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      toast.success("Contato reativado");
+      toast.success("Lead reativado no Funil");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -176,7 +161,9 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
     },
     onSuccess: (count) => {
       toast.success(
-        count > 0 ? `${count} novo(s) contato(s) importado(s)` : "Nenhum contato novo encontrado",
+        count > 0
+          ? `${count} novo(s) lead(s) importado(s) pro Funil`
+          : "Nenhum contato novo encontrado",
       );
       invalidate();
     },
@@ -186,10 +173,10 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const responsavelNome = (id: string | null) =>
     professionals?.find((p) => p.id === id)?.name ?? null;
 
-  const activeContacts = (contacts ?? []).filter((c) => c.stage === "novo");
-  const hiddenContacts = (contacts ?? []).filter((c) => c.stage === "perdido");
-  const baseList = filter === "ativos" ? activeContacts : hiddenContacts;
-  const filteredContacts = baseList.filter((c) =>
+  const activeLeads = (leads ?? []).filter((l) => l.stage !== "perdido");
+  const lostLeads = (leads ?? []).filter((l) => l.stage === "perdido");
+  const baseList = filter === "ativos" ? activeLeads : lostLeads;
+  const filteredLeads = baseList.filter((c) =>
     c.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
 
@@ -197,7 +184,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
     <div className="space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Contatos ainda não trabalhados. Ative os que valem a pena abordar.
+          Todos os leads, em qualquer etapa do funil. Cadastre ou importe pra alimentar o Funil.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {isNativeApp() ? (
@@ -222,7 +209,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
               setOpenNew(true);
             }}
           >
-            <Plus className="size-4 shrink-0" /> Novo contato
+            <Plus className="size-4 shrink-0" /> Novo lead
           </Button>
         </div>
       </div>
@@ -238,18 +225,18 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Ativos ({activeContacts.length})
+            Ativos ({activeLeads.length})
           </button>
           <button
             type="button"
-            onClick={() => setFilter("ocultos")}
+            onClick={() => setFilter("perdidos")}
             className={`rounded-md px-3 py-1 text-xs font-medium ${
-              filter === "ocultos"
+              filter === "perdidos"
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Ocultos ({hiddenContacts.length})
+            Perdidos ({lostLeads.length})
           </button>
         </div>
         <Input
@@ -331,7 +318,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
             </div>
             <div className="flex gap-2">
               <Button disabled={createContact.isPending} onClick={() => createContact.mutate()}>
-                Criar contato
+                Criar lead
               </Button>
               <Button variant="ghost" onClick={() => setOpenNew(false)}>
                 Cancelar
@@ -344,7 +331,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
       {leadToHide ? (
         <Card className="border-destructive/30 shadow-soft">
           <CardContent className="grid gap-3 p-5">
-            <p className="text-sm font-semibold">Ocultar "{leadToHide.name}"</p>
+            <p className="text-sm font-semibold">Marcar "{leadToHide.name}" como perdido</p>
             <div className="grid gap-1.5">
               <Label htmlFor="contact-motivo">Motivo</Label>
               <Input
@@ -360,7 +347,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
                 disabled={hideContact.isPending}
                 onClick={() => hideContact.mutate()}
               >
-                Ocultar contato
+                Marcar como perdido
               </Button>
               <Button
                 variant="ghost"
@@ -387,64 +374,56 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
             <div>
               {filter === "ativos" ? (
                 <>
-                  <p className="text-sm font-medium">Nenhum contato pendente</p>
+                  <p className="text-sm font-medium">Nenhum lead cadastrado</p>
                   <p className="text-sm text-muted-foreground">
-                    Importe do celular ou cadastre um contato pra começar.
+                    Importe do celular ou cadastre um lead pra começar.
                   </p>
                 </>
               ) : (
-                <p className="text-sm font-medium">Nenhum contato oculto</p>
+                <p className="text-sm font-medium">Nenhum lead perdido</p>
               )}
             </div>
           </CardContent>
         </Card>
-      ) : filteredContacts.length === 0 ? (
+      ) : filteredLeads.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum contato encontrado.
+            Nenhum lead encontrado.
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredContacts.map((contact) => (
+          {filteredLeads.map((lead) => (
             <LeadCard
-              key={contact.id}
-              lead={contact}
-              responsavelNome={responsavelNome(contact.responsavel_id)}
+              key={lead.id}
+              lead={lead}
+              responsavelNome={responsavelNome(lead.responsavel_id)}
+              showStage
             >
-              {filter === "ativos" ? (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => activate.mutate(contact)}
-                    className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
-                  >
-                    Ativar <ArrowRight className="size-3 shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLeadToHide(contact);
-                      setMotivo("");
-                    }}
-                    className="shrink-0 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    Ocultar
-                  </button>
-                </div>
-              ) : (
+              {filter === "perdidos" ? (
                 <div className="space-y-1.5">
-                  {contact.motivo_perda ? (
-                    <p className="truncate text-xs text-muted-foreground">{contact.motivo_perda}</p>
+                  {lead.motivo_perda ? (
+                    <p className="truncate text-xs text-muted-foreground">{lead.motivo_perda}</p>
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => reactivate.mutate(contact)}
+                    onClick={() => reactivate.mutate(lead)}
                     className="flex w-full items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
                   >
                     <RotateCcw className="size-3 shrink-0" /> Reativar
                   </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeadToHide(lead);
+                    setMotivo("");
+                  }}
+                  className="w-full rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  Marcar perdido
+                </button>
               )}
             </LeadCard>
           ))}

@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   MessageSquareText,
+  Plus,
   Send,
   Sparkles,
   Trophy,
@@ -28,28 +29,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LeadCard, type Lead, type LeadStage, type Professional } from "./lead-shared";
+import { LeadCard, STAGE_LABEL, type Lead, type LeadStage, type Professional } from "./lead-shared";
 
 type FunnelLead = Lead & { appointment: { starts_at: string } | null };
 
-const ACTIVE_STAGES: { value: LeadStage; label: string }[] = [
-  { value: "mensagem_1", label: "Mensagem 1" },
-  { value: "confirmacao_dia", label: "Confirmação do dia" },
-  { value: "contato", label: "Em contato" },
-  { value: "agendado", label: "Agendado" },
-];
+const ACTIVE_STAGES: LeadStage[] = ["novo", "contato", "agendado"];
 
 function nextStage(stage: LeadStage): LeadStage | null {
   switch (stage) {
-    case "mensagem_1":
-      return "confirmacao_dia";
-    case "confirmacao_dia":
-      return "convertido";
+    case "novo":
+      return "contato";
     case "contato":
       return "agendado";
     default:
       return null;
   }
+}
+
+/** Próximo lembrete de WhatsApp pendente pra um lead com agendamento vinculado, independente da etapa do funil. */
+function nextReminderStep(lead: Lead): "msg1" | "confirmacao" | null {
+  if (!lead.appointment_id) return null;
+  if (!lead.whatsapp_msg1_sent_at) return "msg1";
+  if (!lead.whatsapp_confirmacao_sent_at) return "confirmacao";
+  return null;
 }
 
 function formatDateTime(iso: string, timezone: string) {
@@ -68,7 +70,7 @@ function formatDateTime(iso: string, timezone: string) {
 }
 
 function buildMessage(
-  stage: "mensagem_1" | "confirmacao_dia",
+  step: "msg1" | "confirmacao",
   lead: FunnelLead,
   establishmentName: string,
   timezone: string,
@@ -77,7 +79,7 @@ function buildMessage(
   const firstName = lead.name.split(" ")[0] || lead.name;
   const when = lead.appointment ? formatDateTime(lead.appointment.starts_at, timezone) : null;
   const template =
-    stage === "mensagem_1"
+    step === "msg1"
       ? (templates.message1 ?? DEFAULT_MESSAGE_1)
       : (templates.messageConfirmacao ?? DEFAULT_MESSAGE_CONFIRMACAO);
 
@@ -88,6 +90,11 @@ function buildMessage(
     estabelecimento: establishmentName,
   });
 }
+
+const REMINDER_LABEL: Record<"msg1" | "confirmacao", string> = {
+  msg1: "Enviar mensagem",
+  confirmacao: "Enviar confirmação",
+};
 
 export function PipelineTab({
   establishmentId,
@@ -111,6 +118,8 @@ export function PipelineTab({
   const [messageConfirmacaoDraft, setMessageConfirmacaoDraft] = useState(
     messageConfirmacaoTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO,
   );
+  const [quickAdd, setQuickAdd] = useState({ name: "", phone: "" });
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["crm-leads", establishmentId, "pipeline"],
@@ -118,10 +127,9 @@ export function PipelineTab({
       const { data, error } = await supabase
         .from("crm_leads")
         .select(
-          "id, customer_id, appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, appointment:appointments(starts_at)",
+          "id, customer_id, appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, whatsapp_msg1_sent_at, whatsapp_confirmacao_sent_at, appointment:appointments(starts_at)",
         )
         .eq("establishment_id", establishmentId)
-        .neq("stage", "novo")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as FunnelLead[];
@@ -141,16 +149,68 @@ export function PipelineTab({
     },
   });
 
+  const { data: pendingActivityCounts } = useQuery({
+    queryKey: ["crm-activities-pending-count", establishmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("crm_activities")
+        .select("lead_id")
+        .eq("establishment_id", establishmentId)
+        .eq("status", "pendente")
+        .not("lead_id", "is", null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of (data ?? []) as { lead_id: string }[]) {
+        counts[row.lead_id] = (counts[row.lead_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+  });
+
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["crm-leads"] });
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
+
+  const createQuickLead = useMutation({
+    mutationFn: async () => {
+      const name = quickAdd.name.trim();
+      if (name.length < 2) throw new Error("Informe o nome");
+      const { error } = await supabase.from("crm_leads").insert({
+        establishment_id: establishmentId,
+        name,
+        phone: quickAdd.phone.trim() || null,
+        origem: "Outro",
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Lead adicionado ao funil");
+      setQuickAdd({ name: "", phone: "" });
+      setQuickAddOpen(false);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const advance = useMutation({
     mutationFn: async (lead: Lead) => {
       const next = nextStage(lead.stage);
       if (!next) return;
       const { error } = await supabase.from("crm_leads").update({ stage: next }).eq("id", lead.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: invalidate,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const markReminderSent = useMutation({
+    mutationFn: async ({ lead, step }: { lead: Lead; step: "msg1" | "confirmacao" }) => {
+      const field = step === "msg1" ? "whatsapp_msg1_sent_at" : "whatsapp_confirmacao_sent_at";
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ [field]: new Date().toISOString() })
+        .eq("id", lead.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: invalidate,
@@ -237,8 +297,8 @@ export function PipelineTab({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Todo agendamento novo entra aqui automaticamente. Contatos ativados na aba Contatos também
-          aparecem.
+          Todo lead novo — criado aqui, importado ou vindo de agendamento — já nasce na coluna
+          "Novo".
         </p>
         <div className="flex gap-2">
           <Button
@@ -367,7 +427,7 @@ export function PipelineTab({
             <div>
               <p className="text-sm font-medium">Nenhum lead no funil ainda</p>
               <p className="text-sm text-muted-foreground">
-                Novos agendamentos entram aqui automaticamente, ou ative contatos na aba Contatos.
+                Adicione um lead na coluna "Novo" pra começar.
               </p>
             </div>
           </CardContent>
@@ -375,41 +435,109 @@ export function PipelineTab({
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-2">
           {ACTIVE_STAGES.map((stage) => {
-            const stageLeads = active.filter((l) => l.stage === stage.value);
+            const stageLeads = active.filter((l) => l.stage === stage);
             return (
-              <div key={stage.value} className="flex w-64 shrink-0 flex-col gap-2">
+              <div key={stage} className="flex w-64 shrink-0 flex-col gap-2">
                 <div className="rounded-lg bg-muted px-2.5 py-2">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {stage.label}
+                      {STAGE_LABEL[stage]}
                     </h2>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {stageLeads.length}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {stageLeads.length}
+                      </span>
+                      {stage === "novo" ? (
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddOpen((v) => !v)}
+                          className="rounded-md p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+                          aria-label="Adicionar lead"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
+
+                {stage === "novo" && quickAddOpen ? (
+                  <Card className="shadow-soft">
+                    <CardContent className="grid gap-2 p-3">
+                      <Input
+                        placeholder="Nome"
+                        maxLength={120}
+                        value={quickAdd.name}
+                        onChange={(e) => setQuickAdd({ ...quickAdd, name: e.target.value })}
+                      />
+                      <Input
+                        placeholder="Telefone (opcional)"
+                        maxLength={30}
+                        value={quickAdd.phone}
+                        onChange={(e) => setQuickAdd({ ...quickAdd, phone: e.target.value })}
+                      />
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          disabled={createQuickLead.isPending}
+                          onClick={() => createQuickLead.mutate()}
+                        >
+                          Adicionar
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setQuickAddOpen(false)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : null}
+
                 <div className="space-y-2">
-                  {stageLeads.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      responsavelNome={responsavelNome(lead.responsavel_id)}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {stage.value === "agendado" ? (
-                          <button
-                            type="button"
-                            onClick={() => convert.mutate(lead)}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-success px-2 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90"
-                          >
-                            <Sparkles className="size-3 shrink-0" /> Converter
-                          </button>
-                        ) : stage.value === "mensagem_1" || stage.value === "confirmacao_dia" ? (
-                          lead.phone ? (
+                  {stageLeads.map((lead) => {
+                    const reminderStep = nextReminderStep(lead);
+                    return (
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        responsavelNome={responsavelNome(lead.responsavel_id)}
+                        pendingActivities={pendingActivityCounts?.[lead.id] ?? 0}
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            {stage === "agendado" ? (
+                              <button
+                                type="button"
+                                onClick={() => convert.mutate(lead)}
+                                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-success px-2 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90"
+                              >
+                                <Sparkles className="size-3 shrink-0" /> Converter
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => advance.mutate(lead)}
+                                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                              >
+                                Avançar <ArrowRight className="size-3 shrink-0" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLeadPerdido(lead);
+                                setMotivo("");
+                              }}
+                              className="shrink-0 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              Perdido
+                            </button>
+                          </div>
+                          {reminderStep && lead.phone ? (
                             <WhatsAppLink
                               phone={lead.phone}
                               message={buildMessage(
-                                stage.value,
+                                reminderStep,
                                 lead,
                                 establishmentName,
                                 timezone,
@@ -418,41 +546,17 @@ export function PipelineTab({
                                   messageConfirmacao: messageConfirmacaoTemplate,
                                 },
                               )}
-                              onSend={() => advance.mutate(lead)}
-                              className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
+                              onSend={() => markReminderSent.mutate({ lead, step: reminderStep })}
+                              className="flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-accent"
                             >
                               <Send className="size-3 shrink-0" />
-                              {stage.value === "mensagem_1"
-                                ? "Enviar mensagem"
-                                : "Enviar confirmação"}
+                              {REMINDER_LABEL[reminderStep]}
                             </WhatsAppLink>
-                          ) : (
-                            <span className="flex-1 rounded-md bg-muted px-2 py-1.5 text-center text-xs text-muted-foreground">
-                              Sem telefone
-                            </span>
-                          )
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => advance.mutate(lead)}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
-                          >
-                            Avançar <ArrowRight className="size-3 shrink-0" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLeadPerdido(lead);
-                            setMotivo("");
-                          }}
-                          className="shrink-0 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          Perdido
-                        </button>
-                      </div>
-                    </LeadCard>
-                  ))}
+                          ) : null}
+                        </div>
+                      </LeadCard>
+                    );
+                  })}
                   {stageLeads.length === 0 ? (
                     <p className="px-1 text-xs text-muted-foreground">Nenhum lead aqui.</p>
                   ) : null}
@@ -467,7 +571,7 @@ export function PipelineTab({
                 <div className="flex items-center gap-1.5 rounded-lg bg-success/15 px-2.5 py-2">
                   <Trophy className="size-3.5 text-success" />
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-success">
-                    Convertido
+                    {STAGE_LABEL.convertido}
                   </h2>
                   <span className="text-xs text-success">{converted.length}</span>
                 </div>
@@ -488,7 +592,7 @@ export function PipelineTab({
                 <div className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-2">
                   <XCircle className="size-3.5 text-muted-foreground" />
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Perdido
+                    {STAGE_LABEL.perdido}
                   </h2>
                   <span className="text-xs text-muted-foreground">{lost.length}</span>
                 </div>
