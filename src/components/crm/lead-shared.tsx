@@ -26,8 +26,8 @@ export type LeadStage = "novo" | "contato" | "agendado" | "convertido" | "perdid
 export const STAGE_LABEL: Record<LeadStage, string> = {
   novo: "Novo",
   contato: "Em contato",
-  agendado: "Proposta",
-  convertido: "Ganho",
+  agendado: "Agendado",
+  convertido: "Cliente",
   perdido: "Perdido",
 };
 
@@ -65,15 +65,7 @@ function isOverdue(lead: Lead) {
 
 export type Professional = { id: string; name: string };
 
-export const ORIGENS = [
-  "Indicação",
-  "Instagram",
-  "WhatsApp",
-  "Google",
-  "Página pública",
-  "Prospecção Maps",
-  "Outro",
-];
+export const ORIGENS = ["Indicação", "Instagram", "WhatsApp", "Google", "Página pública", "Outro"];
 
 function LeadDetailsDialog({
   lead,
