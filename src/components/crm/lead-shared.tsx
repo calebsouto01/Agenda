@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarPlus, Clock, Eye, MessageCircle, Target } from "lucide-react";
+import { CalendarPlus, Eye, MessageCircle, Target } from "lucide-react";
 
 import { formatPrice } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
@@ -125,14 +125,12 @@ export function LeadCard({
   responsavelNome,
   showStage = false,
   showSchedule = false,
-  pendingActivities = 0,
   children,
 }: {
   lead: Lead;
   responsavelNome: string | null;
   showStage?: boolean;
   showSchedule?: boolean;
-  pendingActivities?: number;
   children?: React.ReactNode;
 }) {
   const hasValue = lead.valor_estimado_cents != null || Boolean(responsavelNome);
@@ -167,15 +165,6 @@ export function LeadCard({
           {showStage ? (
             <Badge variant="outline" className={`border-0 text-[10px] ${STAGE_BADGE[lead.stage]}`}>
               {STAGE_LABEL[lead.stage]}
-            </Badge>
-          ) : null}
-          {pendingActivities > 0 ? (
-            <Badge
-              variant="outline"
-              className="border-0 bg-warning/20 text-[10px] text-warning-foreground"
-            >
-              <Clock className="mr-1 size-2.5" />
-              {pendingActivities} tarefa{pendingActivities === 1 ? "" : "s"}
             </Badge>
           ) : null}
         </div>
