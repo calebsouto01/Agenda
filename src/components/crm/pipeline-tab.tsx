@@ -142,7 +142,7 @@ export function PipelineTab({
       const { data, error } = await supabase
         .from("crm_leads")
         .select(
-          "id, customer_id, appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, whatsapp_msg1_sent_at, whatsapp_confirmacao_sent_at, appointment:appointments(starts_at)",
+          "id, customer_id, appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, whatsapp_msg1_sent_at, whatsapp_confirmacao_sent_at, next_contact_at, appointment:appointments(starts_at)",
         )
         .eq("establishment_id", establishmentId)
         .order("created_at", { ascending: false });

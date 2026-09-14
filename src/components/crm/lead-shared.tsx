@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarPlus, Eye, MessageCircle, Target } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, CalendarPlus, Eye, MessageCircle, Target } from "lucide-react";
 
-import { formatPrice } from "@/lib/booking";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDateLabel, formatPrice, isoDateInZone } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -13,6 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 
 /** Etapas do funil de vendas — genéricas, independentes de canal (WhatsApp, ligação etc.). */
@@ -48,7 +53,15 @@ export type Lead = {
   motivo_perda: string | null;
   whatsapp_msg1_sent_at?: string | null;
   whatsapp_confirmacao_sent_at?: string | null;
+  next_contact_at?: string | null;
 };
+
+const OPEN_STAGES: LeadStage[] = ["novo", "contato", "agendado"];
+
+function isOverdue(lead: Lead) {
+  if (!lead.next_contact_at || !OPEN_STAGES.includes(lead.stage)) return false;
+  return lead.next_contact_at < isoDateInZone(new Date(), "UTC");
+}
 
 export type Professional = { id: string; name: string };
 
@@ -70,6 +83,20 @@ function LeadDetailsDialog({
   responsavelNome: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [nextContact, setNextContact] = useState(lead.next_contact_at ?? "");
+  const queryClient = useQueryClient();
+
+  const saveNextContact = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ next_contact_at: nextContact || null })
+        .eq("id", lead.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm-leads"] }),
+  });
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -104,6 +131,31 @@ function LeadDetailsDialog({
             <p className="text-xs font-medium text-muted-foreground">Responsável</p>
             <p>{responsavelNome ?? "—"}</p>
           </div>
+          <div className="grid gap-1.5">
+            <Label
+              htmlFor={`next-contact-${lead.id}`}
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Próximo contato
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id={`next-contact-${lead.id}`}
+                type="date"
+                className="h-8"
+                value={nextContact}
+                onChange={(e) => setNextContact(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={saveNextContact.isPending || nextContact === (lead.next_contact_at ?? "")}
+                onClick={() => saveNextContact.mutate()}
+              >
+                Salvar
+              </Button>
+            </div>
+          </div>
           {lead.motivo_perda ? (
             <div>
               <p className="text-xs font-medium text-muted-foreground">Motivo da perda</p>
@@ -135,6 +187,7 @@ export function LeadCard({
 }) {
   const hasValue = lead.valor_estimado_cents != null || Boolean(responsavelNome);
   const initial = lead.name.trim().charAt(0).toUpperCase() || "?";
+  const overdue = isOverdue(lead);
   return (
     <Card className="card-interactive overflow-hidden rounded-2xl">
       <CardContent className="space-y-2 p-3">
@@ -165,6 +218,15 @@ export function LeadCard({
           {showStage ? (
             <Badge variant="outline" className={`border-0 text-[10px] ${STAGE_BADGE[lead.stage]}`}>
               {STAGE_LABEL[lead.stage]}
+            </Badge>
+          ) : null}
+          {overdue ? (
+            <Badge
+              variant="outline"
+              className="border-0 bg-warning/20 text-[10px] text-warning-foreground"
+            >
+              <AlertTriangle className="mr-1 size-2.5" />
+              Atrasado · previsto {formatDateLabel(lead.next_contact_at!)}
             </Badge>
           ) : null}
         </div>
