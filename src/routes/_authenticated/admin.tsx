@@ -6,7 +6,6 @@ import {
   CalendarCheck,
   ExternalLink,
   LogOut,
-  MapPin,
   Menu,
   Scissors,
   Settings,
@@ -41,7 +40,6 @@ const NAV: { to: string; label: string; icon: typeof CalendarDays; exact?: boole
   { to: "/admin/hours", label: "Funcionamento", icon: Clock },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/finance", label: "Financeiro", icon: Wallet },
-  { to: "/admin/prospeccao", label: "Prospecção", icon: MapPin },
   { to: "/admin/settings", label: "Dados da empresa", icon: Settings },
 ];
 

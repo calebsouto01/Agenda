@@ -21,8 +21,6 @@ export type Establishment = {
   plan_renews_at: string | null;
   whatsapp_message_1: string | null;
   whatsapp_message_confirmacao: string | null;
-  prospect_searches_used_this_month: number;
-  prospect_quota_reset_at: string;
 };
 
 /** The establishment owned by the signed-in user (one per account in this version). */
@@ -35,7 +33,7 @@ export function useEstablishment() {
       const { data, error } = await supabase
         .from("establishments")
         .select(
-          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at, whatsapp_message_1, whatsapp_message_confirmacao, prospect_searches_used_this_month, prospect_quota_reset_at",
+          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at, whatsapp_message_1, whatsapp_message_confirmacao",
         )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })
