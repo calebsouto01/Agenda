@@ -37,7 +37,7 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
       const { data, error } = await supabase
         .from("crm_leads")
         .select(
-          "id, customer_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda",
+          "id, customer_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, next_contact_at",
         )
         .eq("establishment_id", establishmentId)
         .neq("stage", "convertido")
