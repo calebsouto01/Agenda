@@ -563,6 +563,7 @@ export function PipelineTab({
                         lead={lead}
                         responsavelNome={responsavelNome(lead.responsavel_id)}
                         pendingActivities={pendingActivityCounts?.[lead.id] ?? 0}
+                        showSchedule
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-1.5">
