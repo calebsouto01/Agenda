@@ -95,12 +95,16 @@ function AuthPage() {
     navigate({ to: target, replace: true });
   }
 
-  async function signInWithGoogle() {
+  async function signInWithOAuth(provider: "google" | "facebook") {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: { redirectTo: `${window.location.origin}${target}` },
     });
-    if (error) toast.error("Não foi possível entrar com o Google");
+    if (error) {
+      toast.error(
+        `Não foi possível entrar com ${provider === "google" ? "o Google" : "o Facebook"}`,
+      );
+    }
   }
 
   return (
@@ -156,8 +160,19 @@ function AuthPage() {
                 <div className="relative py-1 text-center text-xs text-muted-foreground">
                   <span className="bg-card px-2">ou</span>
                 </div>
-                <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => signInWithOAuth("google")}
+                >
                   Continuar com Google
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => signInWithOAuth("facebook")}
+                >
+                  Continuar com Facebook
                 </Button>
               </div>
             </Tabs>
