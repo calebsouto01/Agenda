@@ -102,6 +102,15 @@ export function addDays(dateIso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Converts a wall-clock date + "HH:mm" time in the given IANA timezone into a UTC ISO instant. */
+export function zonedDateTimeToIso(dateIso: string, time: string, timeZone: string) {
+  const naiveUtc = new Date(`${dateIso}T${time}:00Z`);
+  const asIfUtc = new Date(naiveUtc.toLocaleString("en-US", { timeZone: "UTC" }));
+  const asIfZoned = new Date(naiveUtc.toLocaleString("en-US", { timeZone }));
+  const offsetMs = asIfUtc.getTime() - asIfZoned.getTime();
+  return new Date(naiveUtc.getTime() + offsetMs).toISOString();
+}
+
 export function weekdayOf(dateIso: string) {
   return new Date(`${dateIso}T12:00:00Z`).getUTCDay();
 }

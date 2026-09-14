@@ -164,24 +164,6 @@ export function PipelineTab({
     },
   });
 
-  const { data: pendingActivityCounts } = useQuery({
-    queryKey: ["crm-activities-pending-count", establishmentId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("crm_activities")
-        .select("lead_id")
-        .eq("establishment_id", establishmentId)
-        .eq("status", "pendente")
-        .not("lead_id", "is", null);
-      if (error) throw error;
-      const counts: Record<string, number> = {};
-      for (const row of (data ?? []) as { lead_id: string }[]) {
-        counts[row.lead_id] = (counts[row.lead_id] ?? 0) + 1;
-      }
-      return counts;
-    },
-  });
-
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["crm-leads"] });
     queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -562,7 +544,6 @@ export function PipelineTab({
                         key={lead.id}
                         lead={lead}
                         responsavelNome={responsavelNome(lead.responsavel_id)}
-                        pendingActivities={pendingActivityCounts?.[lead.id] ?? 0}
                         showSchedule
                       >
                         <div className="space-y-1.5">

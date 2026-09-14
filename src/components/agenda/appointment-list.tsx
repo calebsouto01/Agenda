@@ -1,17 +1,22 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { CalendarClock, Trash2 } from "lucide-react";
 
 import {
   dateTimeInZone,
   formatPrice,
+  isoDateInZone,
   STATUS_LABEL,
   serviceLabel,
+  timeInZone,
   totalPriceCents,
+  zonedDateTimeToIso,
   type PaymentMethod,
 } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -34,6 +39,7 @@ export function AppointmentList({
   onFinalize,
   onCancel,
   onDelete,
+  onReschedule,
   onAddPayment,
   onRemovePayment,
 }: {
@@ -43,6 +49,7 @@ export function AppointmentList({
   onFinalize: (id: string) => void;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
+  onReschedule: (id: string, startsAt: string, endsAt: string) => void;
   onAddPayment: (
     appointmentId: string,
     method: PaymentMethod,
@@ -53,6 +60,27 @@ export function AppointmentList({
 }) {
   const [payingId, setPayingId] = useState<string | null>(null);
   const payingAppointment = appointments.find((a) => a.id === payingId) ?? null;
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const reschedulingAppointment = appointments.find((a) => a.id === reschedulingId) ?? null;
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+
+  function openReschedule(a: Row) {
+    setReschedulingId(a.id);
+    setNewDate(isoDateInZone(new Date(a.starts_at), tz));
+    setNewTime(timeInZone(a.starts_at, tz));
+  }
+
+  function confirmReschedule() {
+    if (!reschedulingAppointment || !newDate || !newTime) return;
+    const startsAt = zonedDateTimeToIso(newDate, newTime, tz);
+    const durationMs =
+      new Date(reschedulingAppointment.ends_at).getTime() -
+      new Date(reschedulingAppointment.starts_at).getTime();
+    const endsAt = new Date(new Date(startsAt).getTime() + durationMs).toISOString();
+    onReschedule(reschedulingAppointment.id, startsAt, endsAt);
+    setReschedulingId(null);
+  }
 
   if (appointments.length === 0) {
     return (
@@ -95,6 +123,12 @@ export function AppointmentList({
                 {a.status === "completed" ? (
                   <Button size="sm" variant="outline" onClick={() => setPayingId(a.id)}>
                     Editar dados financeiros
+                  </Button>
+                ) : null}
+                {a.status !== "completed" && a.status !== "cancelled" ? (
+                  <Button size="sm" variant="outline" onClick={() => openReschedule(a)}>
+                    <CalendarClock className="size-4" />
+                    Reagendar
                   </Button>
                 ) : null}
                 {a.status !== "cancelled" ? (
@@ -180,6 +214,52 @@ export function AppointmentList({
                   </Button>
                 )}
               </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(reschedulingAppointment)}
+        onOpenChange={(open) => !open && setReschedulingId(null)}
+      >
+        <DialogContent className="max-w-sm">
+          {reschedulingAppointment ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Reagendar</DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  {reschedulingAppointment.customers?.name}
+                </p>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="reschedule-date">Data</Label>
+                  <Input
+                    id="reschedule-date"
+                    type="date"
+                    min={isoDateInZone(new Date(), tz)}
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="reschedule-time">Horário</Label>
+                  <Input
+                    id="reschedule-time"
+                    type="time"
+                    value={newTime}
+                    onChange={(e) => setNewTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={!newDate || !newTime}
+                onClick={confirmReschedule}
+              >
+                Confirmar novo horário
+              </Button>
             </>
           ) : null}
         </DialogContent>
