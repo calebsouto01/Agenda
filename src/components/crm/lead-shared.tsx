@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Clock, Eye, MessageCircle, Target } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CalendarPlus, Clock, Eye, MessageCircle, Target } from "lucide-react";
 
 import { formatPrice } from "@/lib/booking";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +75,7 @@ function LeadDetailsDialog({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <Eye className="size-3 shrink-0" /> Ver dados
         </button>
@@ -123,12 +124,14 @@ export function LeadCard({
   lead,
   responsavelNome,
   showStage = false,
+  showSchedule = false,
   pendingActivities = 0,
   children,
 }: {
   lead: Lead;
   responsavelNome: string | null;
   showStage?: boolean;
+  showSchedule?: boolean;
   pendingActivities?: number;
   children?: React.ReactNode;
 }) {
@@ -188,7 +191,18 @@ export function LeadCard({
             ) : null}
           </div>
         ) : null}
-        <LeadDetailsDialog lead={lead} responsavelNome={responsavelNome} />
+        <div className="flex items-center gap-1.5">
+          <LeadDetailsDialog lead={lead} responsavelNome={responsavelNome} />
+          {showSchedule ? (
+            <Link
+              to="/admin/new"
+              search={{ leadId: lead.id, name: lead.name, phone: lead.phone ?? undefined }}
+              className="flex flex-1 items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+            >
+              <CalendarPlus className="size-3 shrink-0" /> Agendar
+            </Link>
+          ) : null}
+        </div>
         {children}
       </CardContent>
     </Card>

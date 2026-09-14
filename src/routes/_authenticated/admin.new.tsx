@@ -1,7 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
@@ -19,7 +20,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const searchSchema = z.object({
+  leadId: z.string().optional(),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/admin/new")({
+  validateSearch: searchSchema,
   component: ManualBooking,
 });
 
@@ -27,6 +35,7 @@ function ManualBooking() {
   const { data: establishment, isLoading: loadingShop } = useEstablishment();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const search = useSearch({ from: "/_authenticated/admin/new" });
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
 
   const [serviceIds, setServiceIds] = useState<string[]>([]);
@@ -34,7 +43,12 @@ function ManualBooking() {
   const today = isoDateInZone(new Date(), tz);
   const [date, setDate] = useState(today);
   const [slot, setSlot] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
+  const [form, setForm] = useState({
+    name: search.name ?? "",
+    phone: search.phone ?? "",
+    email: "",
+    notes: "",
+  });
 
   const { data: services } = useQuery({
     queryKey: ["admin-services", establishment?.id],
