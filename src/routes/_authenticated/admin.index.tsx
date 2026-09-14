@@ -1,12 +1,20 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Plus,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import { PageTitle } from "@/components/page-title";
+import { ActivitiesTab } from "@/components/crm/activities-tab";
 import {
   addDays,
   dateTimeInZone,
@@ -36,6 +44,7 @@ function Agenda() {
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
   const [range, setRange] = useState<Range>("week");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showTasks, setShowTasks] = useState(true);
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
   const [selected, setSelected] = useState<Row | null>(null);
 
@@ -272,6 +281,20 @@ function Agenda() {
             Novo agendamento
           </Link>
         </Button>
+      </div>
+
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setShowTasks((v) => !v)}
+          className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+        >
+          {showTasks ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          Tarefas do dia
+        </button>
+        {showTasks && establishment ? (
+          <ActivitiesTab establishmentId={establishment.id} tz={tz} />
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between rounded-2xl border bg-card p-2 shadow-soft">
