@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Eye,
-  EyeOff,
-  MessageSquareText,
-  Send,
-  Sparkles,
-  Trophy,
-  UserPlus,
-  XCircle,
-} from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Send, Sparkles, Trophy, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +8,6 @@ import { formatPrice } from "@/lib/booking";
 import {
   DEFAULT_MESSAGE_1,
   DEFAULT_MESSAGE_CONFIRMACAO,
-  MESSAGE_PLACEHOLDERS,
   fillTemplate,
 } from "@/lib/message-templates";
 import { WhatsAppLink } from "@/components/whatsapp-link";
@@ -33,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   LeadCard,
@@ -128,11 +116,6 @@ export function PipelineTab({
   const [leadPerdido, setLeadPerdido] = useState<Lead | null>(null);
   const [motivo, setMotivo] = useState("");
   const [showClosed, setShowClosed] = useState(false);
-  const [editingMessages, setEditingMessages] = useState(false);
-  const [message1Draft, setMessage1Draft] = useState(message1Template ?? DEFAULT_MESSAGE_1);
-  const [messageConfirmacaoDraft, setMessageConfirmacaoDraft] = useState(
-    messageConfirmacaoTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO,
-  );
   const [openNewContact, setOpenNewContact] = useState(false);
   const [contactForm, setContactForm] = useState({ ...EMPTY_CONTACT_FORM });
 
@@ -266,25 +249,6 @@ export function PipelineTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const saveMessages = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("establishments")
-        .update({
-          whatsapp_message_1: message1Draft.trim() || null,
-          whatsapp_message_confirmacao: messageConfirmacaoDraft.trim() || null,
-        })
-        .eq("id", establishmentId);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Mensagens salvas");
-      setEditingMessages(false);
-      queryClient.invalidateQueries({ queryKey: ["my-establishment"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const responsavelNome = (id: string | null) =>
     professionals?.find((p) => p.id === id)?.name ?? null;
 
@@ -307,18 +271,6 @@ export function PipelineTab({
         >
           <UserPlus className="size-4" />
           Cadastrar contato
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setMessage1Draft(message1Template ?? DEFAULT_MESSAGE_1);
-            setMessageConfirmacaoDraft(messageConfirmacaoTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO);
-            setEditingMessages((v) => !v);
-          }}
-        >
-          <MessageSquareText className="size-4" />
-          Editar mensagens
         </Button>
         <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
           {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -400,44 +352,6 @@ export function PipelineTab({
                 Cadastrar
               </Button>
               <Button variant="ghost" onClick={() => setOpenNewContact(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {editingMessages ? (
-        <Card className="shadow-soft">
-          <CardContent className="grid gap-4 p-5">
-            <p className="text-xs text-muted-foreground">
-              Variáveis disponíveis: {MESSAGE_PLACEHOLDERS.join(" · ")}
-            </p>
-            <div className="grid gap-1.5">
-              <Label htmlFor="msg-1">Mensagem 1 (após o agendamento)</Label>
-              <Textarea
-                id="msg-1"
-                maxLength={500}
-                rows={3}
-                value={message1Draft}
-                onChange={(e) => setMessage1Draft(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="msg-confirmacao">Confirmação do dia</Label>
-              <Textarea
-                id="msg-confirmacao"
-                maxLength={500}
-                rows={3}
-                value={messageConfirmacaoDraft}
-                onChange={(e) => setMessageConfirmacaoDraft(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button disabled={saveMessages.isPending} onClick={() => saveMessages.mutate()}>
-                Salvar mensagens
-              </Button>
-              <Button variant="ghost" onClick={() => setEditingMessages(false)}>
                 Cancelar
               </Button>
             </div>

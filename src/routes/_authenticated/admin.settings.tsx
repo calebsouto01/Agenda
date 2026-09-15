@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Check, CreditCard, KeyRound } from "lucide-react";
+import { Building2, Check, CreditCard, KeyRound, MessageSquareText } from "lucide-react";
 import { PageTitle } from "@/components/page-title";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -10,6 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
 import { formatPrice, slugify } from "@/lib/booking";
 import { FREE_LIMITS, PLAN_LABEL, PRO_PRICE_CENTS, isPro } from "@/lib/plans";
+import {
+  DEFAULT_MESSAGE_1,
+  DEFAULT_MESSAGE_ATENCAO,
+  DEFAULT_MESSAGE_CONFIRMACAO,
+  DEFAULT_MESSAGE_REENGAJAMENTO,
+  MESSAGE_PLACEHOLDERS,
+} from "@/lib/message-templates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,6 +77,12 @@ function SettingsPage() {
   const { data: establishment, isLoading } = useEstablishment();
   const queryClient = useQueryClient();
   const [passwordForm, setPasswordForm] = useState({ password: "", confirm: "" });
+  const [messagesForm, setMessagesForm] = useState({
+    message1: "",
+    confirmacao: "",
+    atencao: "",
+    reengajamento: "",
+  });
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -92,6 +105,12 @@ function SettingsPage() {
       timezone: establishment.timezone,
       sellsProducts: establishment.sells_products,
       whatsappApiConnected: establishment.whatsapp_business_api_connected,
+    });
+    setMessagesForm({
+      message1: establishment.whatsapp_message_1 ?? DEFAULT_MESSAGE_1,
+      confirmacao: establishment.whatsapp_message_confirmacao ?? DEFAULT_MESSAGE_CONFIRMACAO,
+      atencao: establishment.whatsapp_message_atencao ?? DEFAULT_MESSAGE_ATENCAO,
+      reengajamento: establishment.whatsapp_message_reengajamento ?? DEFAULT_MESSAGE_REENGAJAMENTO,
     });
   }, [establishment]);
 
@@ -120,6 +139,26 @@ function SettingsPage() {
     },
     onError: (e: Error) =>
       toast.error(e.message.includes("duplicate") ? "Este link público já está em uso" : e.message),
+  });
+
+  const saveMessages = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("establishments")
+        .update({
+          whatsapp_message_1: messagesForm.message1.trim() || null,
+          whatsapp_message_confirmacao: messagesForm.confirmacao.trim() || null,
+          whatsapp_message_atencao: messagesForm.atencao.trim() || null,
+          whatsapp_message_reengajamento: messagesForm.reengajamento.trim() || null,
+        })
+        .eq("id", establishment!.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Mensagens salvas");
+      queryClient.invalidateQueries({ queryKey: ["my-establishment"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const { data: authUser } = useQuery({
@@ -317,6 +356,58 @@ function SettingsPage() {
           </div>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? "Salvando..." : "Salvar alterações"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <PageTitle icon={MessageSquareText}>Mensagens de WhatsApp</PageTitle>
+      <Card className="shadow-soft">
+        <CardContent className="grid gap-4 p-5">
+          <p className="text-xs text-muted-foreground">
+            Variáveis disponíveis: {MESSAGE_PLACEHOLDERS.join(" · ")}
+          </p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="msg-1">Mensagem 1 (após o agendamento)</Label>
+            <Textarea
+              id="msg-1"
+              maxLength={500}
+              rows={3}
+              value={messagesForm.message1}
+              onChange={(e) => setMessagesForm({ ...messagesForm, message1: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="msg-confirmacao">Confirmação do dia</Label>
+            <Textarea
+              id="msg-confirmacao"
+              maxLength={500}
+              rows={3}
+              value={messagesForm.confirmacao}
+              onChange={(e) => setMessagesForm({ ...messagesForm, confirmacao: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="msg-atencao">Atenção (cliente sem visitar há 30+ dias)</Label>
+            <Textarea
+              id="msg-atencao"
+              maxLength={500}
+              rows={3}
+              value={messagesForm.atencao}
+              onChange={(e) => setMessagesForm({ ...messagesForm, atencao: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="msg-reengajamento">Reengajamento (cliente inativo há 60+ dias)</Label>
+            <Textarea
+              id="msg-reengajamento"
+              maxLength={500}
+              rows={3}
+              value={messagesForm.reengajamento}
+              onChange={(e) => setMessagesForm({ ...messagesForm, reengajamento: e.target.value })}
+            />
+          </div>
+          <Button disabled={saveMessages.isPending} onClick={() => saveMessages.mutate()}>
+            {saveMessages.isPending ? "Salvando..." : "Salvar mensagens"}
           </Button>
         </CardContent>
       </Card>
