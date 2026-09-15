@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { MessageSquareText, NotebookPen, Phone, Send, Users } from "lucide-react";
+import { NotebookPen, Phone, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,6 @@ import type { AppointmentStatus } from "@/lib/booking";
 import {
   DEFAULT_MESSAGE_ATENCAO,
   DEFAULT_MESSAGE_REENGAJAMENTO,
-  MESSAGE_PLACEHOLDERS,
   fillTemplate,
 } from "@/lib/message-templates";
 import { WhatsAppLink } from "@/components/whatsapp-link";
@@ -19,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,34 +42,29 @@ type View = "list" | "rank";
 /** Funil = pipeline de vendas (tela padrão). Diretório = todo mundo cadastrado (leads + clientes). */
 type Section = "funil" | "diretorio";
 type DirView = "leads" | "clientes";
-type Segment = "new" | "recurring" | "attention" | "inactive";
+/** Recência da última visita concluída — de "30dias" em diante sugere reengajar, "60dias" recuperar. */
+type Recency = "recentes" | "30dias" | "60dias";
+type RecencyFilter = Recency | "todos";
 
-/** Dias desde a última visita concluída: de ATTENTION em diante sugere reengajar; de INACTIVE em diante, recuperar. */
-const ATTENTION_AFTER_DAYS = 40;
-const INACTIVE_AFTER_DAYS = 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const SEGMENT_LABEL: Record<Segment, string> = {
-  new: "Novo",
-  recurring: "Recorrente",
-  attention: "Atenção",
-  inactive: "Inativo",
+const RECENCY_LABEL: Record<Recency, string> = {
+  recentes: "Recentes",
+  "30dias": "30 dias",
+  "60dias": "60 dias",
 };
 
-const SEGMENT_BADGE: Record<Segment, string> = {
-  new: "bg-primary/15 text-primary",
-  recurring: "bg-success/20 text-success",
-  attention: "bg-warning/20 text-warning-foreground",
-  inactive: "bg-muted text-muted-foreground",
+const RECENCY_BADGE: Record<Recency, string> = {
+  recentes: "bg-success/20 text-success",
+  "30dias": "bg-warning/20 text-warning-foreground",
+  "60dias": "bg-muted text-muted-foreground",
 };
 
-/** Novo: primeira visita, recente. Recorrente: 2+ visitas recentes. Atenção: começando a sumir. Inativo: sumiu de vez. */
-function segmentOf(visits: number, lastVisitAt: string | null): Segment {
-  if (visits === 0 || !lastVisitAt) return "new";
-  const daysSince = (Date.now() - new Date(lastVisitAt).getTime()) / DAY_MS;
-  if (daysSince > INACTIVE_AFTER_DAYS) return "inactive";
-  if (daysSince > ATTENTION_AFTER_DAYS) return "attention";
-  return visits >= 2 ? "recurring" : "new";
+function recencyOf(daysSinceLastVisit: number | null): Recency {
+  if (daysSinceLastVisit == null) return "recentes";
+  if (daysSinceLastVisit >= 60) return "60dias";
+  if (daysSinceLastVisit >= 30) return "30dias";
+  return "recentes";
 }
 
 function CustomersPage() {
@@ -83,9 +76,7 @@ function CustomersPage() {
   const [view, setView] = useState<View>("list");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
-  const [editingMessages, setEditingMessages] = useState(false);
-  const [atencaoDraft, setAtencaoDraft] = useState("");
-  const [reengajamentoDraft, setReengajamentoDraft] = useState("");
+  const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>("todos");
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers", establishment?.id],
@@ -117,25 +108,6 @@ function CustomersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const saveMessages = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("establishments")
-        .update({
-          whatsapp_message_atencao: atencaoDraft.trim() || null,
-          whatsapp_message_reengajamento: reengajamentoDraft.trim() || null,
-        })
-        .eq("id", establishment!.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Mensagens salvas");
-      setEditingMessages(false);
-      queryClient.invalidateQueries({ queryKey: ["my-establishment"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const withCounts = useMemo(
     () =>
       (customers ?? []).map((c) => {
@@ -155,7 +127,7 @@ function CustomersPage() {
           total: c.appointments.length,
           visits,
           daysSinceLastVisit,
-          segment: segmentOf(visits, lastVisitAt),
+          recency: recencyOf(daysSinceLastVisit),
         };
       }),
     [customers],
@@ -163,21 +135,30 @@ function CustomersPage() {
 
   // Cliente = concluiu pelo menos um serviço. Leads que nunca chegaram a um
   // atendimento concluído ficam no Funil/Diretório → Leads, não aqui.
-  const filtered = withCounts.filter((c) => {
+  const searched = withCounts.filter((c) => {
     const matchesTerm = `${c.name} ${c.phone} ${c.email ?? ""}`
       .toLowerCase()
       .includes(term.trim().toLowerCase());
     return c.visits > 0 && matchesTerm;
   });
 
+  const recencyCounts: Record<Recency, number> = {
+    recentes: searched.filter((c) => c.recency === "recentes").length,
+    "30dias": searched.filter((c) => c.recency === "30dias").length,
+    "60dias": searched.filter((c) => c.recency === "60dias").length,
+  };
+
+  const filtered =
+    recencyFilter === "todos" ? searched : searched.filter((c) => c.recency === recencyFilter);
+
   const ranked = useMemo(
     () => [...filtered].sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name)),
     [filtered],
   );
 
-  function reengagementMessage(segment: Segment, name: string) {
+  function reengagementMessage(recency: Recency, name: string) {
     const template =
-      segment === "inactive"
+      recency === "60dias"
         ? (establishment?.whatsapp_message_reengajamento ?? DEFAULT_MESSAGE_REENGAJAMENTO)
         : (establishment?.whatsapp_message_atencao ?? DEFAULT_MESSAGE_ATENCAO);
     return fillTemplate(template, {
@@ -225,23 +206,17 @@ function CustomersPage() {
           ) : (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setAtencaoDraft(
-                      establishment?.whatsapp_message_atencao ?? DEFAULT_MESSAGE_ATENCAO,
-                    );
-                    setReengajamentoDraft(
-                      establishment?.whatsapp_message_reengajamento ??
-                        DEFAULT_MESSAGE_REENGAJAMENTO,
-                    );
-                    setEditingMessages((v) => !v);
-                  }}
+                <Tabs
+                  value={recencyFilter}
+                  onValueChange={(v) => setRecencyFilter(v as RecencyFilter)}
                 >
-                  <MessageSquareText className="size-4" />
-                  Editar mensagens
-                </Button>
+                  <TabsList>
+                    <TabsTrigger value="recentes">Recentes ({recencyCounts.recentes})</TabsTrigger>
+                    <TabsTrigger value="30dias">30 dias ({recencyCounts["30dias"]})</TabsTrigger>
+                    <TabsTrigger value="60dias">60 dias ({recencyCounts["60dias"]})</TabsTrigger>
+                    <TabsTrigger value="todos">Todos</TabsTrigger>
+                  </TabsList>
+                </Tabs>
                 <Tabs value={view} onValueChange={(v) => setView(v as View)}>
                   <TabsList>
                     <TabsTrigger value="list">Lista</TabsTrigger>
@@ -249,54 +224,6 @@ function CustomersPage() {
                   </TabsList>
                 </Tabs>
               </div>
-
-              {editingMessages ? (
-                <Card className="shadow-soft">
-                  <CardContent className="grid gap-4 p-5">
-                    <p className="text-xs text-muted-foreground">
-                      Variáveis disponíveis:{" "}
-                      {MESSAGE_PLACEHOLDERS.filter((p) => p !== "{data}" && p !== "{hora}").join(
-                        " · ",
-                      )}
-                    </p>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="msg-atencao">
-                        Atenção (cliente sem visitar há {ATTENTION_AFTER_DAYS}+ dias)
-                      </Label>
-                      <Textarea
-                        id="msg-atencao"
-                        maxLength={500}
-                        rows={3}
-                        value={atencaoDraft}
-                        onChange={(e) => setAtencaoDraft(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="msg-reengajamento">
-                        Reengajamento (cliente inativo há {INACTIVE_AFTER_DAYS}+ dias)
-                      </Label>
-                      <Textarea
-                        id="msg-reengajamento"
-                        maxLength={500}
-                        rows={3}
-                        value={reengajamentoDraft}
-                        onChange={(e) => setReengajamentoDraft(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        disabled={saveMessages.isPending}
-                        onClick={() => saveMessages.mutate()}
-                      >
-                        Salvar mensagens
-                      </Button>
-                      <Button variant="ghost" onClick={() => setEditingMessages(false)}>
-                        Cancelar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : null}
 
               <Input
                 placeholder="Buscar por nome, telefone ou e-mail"
@@ -326,9 +253,9 @@ function CustomersPage() {
                               </p>
                               <Badge
                                 variant="outline"
-                                className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
+                                className={`border-0 ${RECENCY_BADGE[c.recency]}`}
                               >
-                                {SEGMENT_LABEL[c.segment]}
+                                {RECENCY_LABEL[c.recency]}
                               </Badge>
                             </div>
                             <WhatsAppLink
@@ -389,14 +316,14 @@ function CustomersPage() {
                             </div>
                           </div>
                         ) : null}
-                        {c.segment === "attention" || c.segment === "inactive" ? (
+                        {c.recency === "30dias" || c.recency === "60dias" ? (
                           <WhatsAppLink
                             phone={c.phone}
-                            message={reengagementMessage(c.segment, c.name)}
+                            message={reengagementMessage(c.recency, c.name)}
                             className="flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
                           >
                             <Send className="size-3 shrink-0" />
-                            {c.segment === "inactive" ? "Reengajar" : "Sugerir retorno"}
+                            {c.recency === "60dias" ? "Reengajar" : "Sugerir retorno"}
                           </WhatsAppLink>
                         ) : null}
                       </CardContent>
@@ -424,9 +351,9 @@ function CustomersPage() {
                             </p>
                             <Badge
                               variant="outline"
-                              className={`border-0 ${SEGMENT_BADGE[c.segment]}`}
+                              className={`border-0 ${RECENCY_BADGE[c.recency]}`}
                             >
-                              {SEGMENT_LABEL[c.segment]}
+                              {RECENCY_LABEL[c.recency]}
                             </Badge>
                           </div>
                           <WhatsAppLink
