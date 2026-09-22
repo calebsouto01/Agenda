@@ -94,6 +94,7 @@ function AdminLayout() {
             establishmentId={establishment.id}
             establishmentName={establishment.name}
             timezone={establishment.timezone}
+            message1Template={establishment.whatsapp_message_1}
             confirmationTemplate={establishment.whatsapp_message_confirmacao}
           />
         </header>
@@ -140,6 +141,7 @@ function NavContent({
           establishmentId={establishment.id}
           establishmentName={establishment.name}
           timezone={establishment.timezone}
+          message1Template={establishment.whatsapp_message_1}
           confirmationTemplate={establishment.whatsapp_message_confirmacao}
         />
       </div>

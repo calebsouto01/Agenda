@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { dateTimeInZone, isoDateInZone, timeInZone } from "@/lib/booking";
-import { DEFAULT_MESSAGE_CONFIRMACAO, fillTemplate } from "@/lib/message-templates";
+import {
+  DEFAULT_MESSAGE_1,
+  DEFAULT_MESSAGE_CONFIRMACAO,
+  fillTemplate,
+} from "@/lib/message-templates";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { WhatsAppLink } from "@/components/whatsapp-link";
@@ -13,7 +18,7 @@ type PendingAppointment = {
   id: string;
   starts_at: string;
   service_names: string | null;
-  customers: { name: string } | null;
+  customers: { name: string; phone: string } | null;
 };
 
 type LeadWithAppointment = {
@@ -27,14 +32,19 @@ export function NotificationBell({
   establishmentId,
   establishmentName,
   timezone,
+  message1Template,
   confirmationTemplate,
 }: {
   establishmentId: string;
   establishmentName: string;
   timezone: string;
+  message1Template: string | null;
   confirmationTemplate: string | null;
 }) {
   const queryClient = useQueryClient();
+  // Agendamento aceito nesta sessão: em vez de sumir do sino, o card no mesmo
+  // lugar vira um "enviar mensagem?" até o dono clicar (ou fechar o sino).
+  const [justAccepted, setJustAccepted] = useState<Record<string, PendingAppointment>>({});
 
   const { data: pending } = useQuery({
     queryKey: ["pending-appointments", establishmentId],
@@ -42,7 +52,7 @@ export function NotificationBell({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, starts_at, service_names, customers(name)")
+        .select("id, starts_at, service_names, customers(name, phone)")
         .eq("establishment_id", establishmentId)
         .eq("status", "pending")
         .order("starts_at", { ascending: true });
@@ -82,18 +92,37 @@ export function NotificationBell({
   }
 
   const accept = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (a: PendingAppointment) => {
       const { error } = await supabase
         .from("appointments")
         .update({ status: "confirmed" })
-        .eq("id", id);
+        .eq("id", a.id);
       if (error) throw new Error(error.message);
+      return a;
     },
-    onSuccess: () => {
+    onSuccess: (a) => {
       toast.success("Agendamento confirmado");
+      setJustAccepted((prev) => ({ ...prev, [a.id]: a }));
       invalidate();
     },
     onError: () => toast.error("Não foi possível confirmar"),
+  });
+
+  const markMsg1Sent = useMutation({
+    mutationFn: async (appointmentId: string) => {
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ whatsapp_msg1_sent_at: new Date().toISOString() })
+        .eq("appointment_id", appointmentId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, appointmentId) => {
+      setJustAccepted((prev) => {
+        const { [appointmentId]: _removed, ...rest } = prev;
+        return rest;
+      });
+      queryClient.invalidateQueries({ queryKey: ["today-confirmations"] });
+    },
   });
 
   const decline = useMutation({
@@ -123,7 +152,12 @@ export function NotificationBell({
     onError: () => toast.error("Não foi possível marcar como enviado"),
   });
 
-  const pendingCount = pending?.length ?? 0;
+  const combinedPending = [
+    ...(pending ?? []).filter((a) => !justAccepted[a.id]),
+    ...Object.values(justAccepted),
+  ].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+
+  const pendingCount = combinedPending.length;
   const confirmationCount = confirmations?.length ?? 0;
   const count = pendingCount + confirmationCount;
 
@@ -153,35 +187,60 @@ export function NotificationBell({
                 <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
                   Agendamentos pendentes
                 </p>
-                {pending!.map((a) => (
-                  <div key={a.id} className="rounded-lg border p-2.5">
-                    <p className="truncate text-sm font-semibold">
-                      {a.customers?.name ?? "Cliente"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {a.service_names ?? ""} · {dateTimeInZone(a.starts_at, timezone)}
-                    </p>
-                    <div className="mt-1.5 flex gap-1.5">
-                      <Button
-                        size="sm"
-                        className="h-7 flex-1 text-xs"
-                        disabled={accept.isPending}
-                        onClick={() => accept.mutate(a.id)}
-                      >
-                        <Check className="size-3" /> Aceitar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 flex-1 text-xs text-destructive"
-                        disabled={decline.isPending}
-                        onClick={() => decline.mutate(a.id)}
-                      >
-                        <X className="size-3" /> Recusar
-                      </Button>
+                {combinedPending.map((a) => {
+                  const accepted = Boolean(justAccepted[a.id]);
+                  return (
+                    <div key={a.id} className="rounded-lg border p-2.5">
+                      <p className="truncate text-sm font-semibold">
+                        {a.customers?.name ?? "Cliente"}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {a.service_names ?? ""} · {dateTimeInZone(a.starts_at, timezone)}
+                      </p>
+                      {accepted ? (
+                        a.customers?.phone ? (
+                          <WhatsAppLink
+                            phone={a.customers.phone}
+                            message={fillTemplate(message1Template ?? DEFAULT_MESSAGE_1, {
+                              nome: a.customers.name.split(" ")[0] || a.customers.name,
+                              data: dateTimeInZone(a.starts_at, timezone).split(" ")[0] ?? "",
+                              hora: timeInZone(a.starts_at, timezone),
+                              estabelecimento: establishmentName,
+                            })}
+                            onSend={() => markMsg1Sent.mutate(a.id)}
+                            className="mt-1.5 flex h-7 w-full items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                          >
+                            <MessageCircle className="size-3" /> Enviar mensagem
+                          </WhatsAppLink>
+                        ) : (
+                          <p className="mt-1.5 text-xs text-muted-foreground">
+                            Aceito. Cliente sem telefone cadastrado.
+                          </p>
+                        )
+                      ) : (
+                        <div className="mt-1.5 flex gap-1.5">
+                          <Button
+                            size="sm"
+                            className="h-7 flex-1 text-xs"
+                            disabled={accept.isPending}
+                            onClick={() => accept.mutate(a)}
+                          >
+                            <Check className="size-3" /> Aceitar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 flex-1 text-xs text-destructive"
+                            disabled={decline.isPending}
+                            onClick={() => decline.mutate(a.id)}
+                          >
+                            <X className="size-3" /> Recusar
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
 
