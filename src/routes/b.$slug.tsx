@@ -25,7 +25,10 @@ import {
   weekdayOf,
 } from "@/lib/booking";
 
+const searchSchema = z.object({ ref: z.string().trim().max(40).optional() });
+
 export const Route = createFileRoute("/b/$slug")({
+  validateSearch: searchSchema,
   loader: async ({ params }) => {
     const { data } = await supabase
       .from("establishments")
@@ -66,6 +69,7 @@ const customerSchema = z.object({
 
 function PublicBooking() {
   const { slug } = Route.useParams();
+  const { ref } = Route.useSearch();
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
@@ -156,6 +160,7 @@ function PublicBooking() {
         p_customer_email: parsed.data.email || null,
         p_notes: parsed.data.notes || null,
         p_service_ids: serviceIds,
+        p_marketing_link_code: ref || null,
       } as never);
       if (error) throw new Error(error.message);
       return data as unknown as { starts_at: string };
