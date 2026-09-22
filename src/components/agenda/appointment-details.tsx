@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import type { Row } from "./types";
 
 export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: string }) {
@@ -156,21 +157,20 @@ export function PaymentActions({
   const paidCents = a.payment_entries.reduce((sum, e) => sum + e.amount_cents, 0);
   const remainingCents = Math.max(0, totalCents - paidCents);
 
-  const [amounts, setAmounts] = useState<Record<PaymentMethod, string>>({
-    dinheiro: "",
-    cartao: "",
-    pix: "",
-    outro: "",
+  const [amounts, setAmounts] = useState<Record<PaymentMethod, number>>({
+    dinheiro: 0,
+    cartao: 0,
+    pix: 0,
+    outro: 0,
   });
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    setAmounts({ dinheiro: "", cartao: "", pix: "", outro: "" });
+    setAmounts({ dinheiro: 0, cartao: 0, pix: 0, outro: 0 });
     setNote("");
   }, [remainingCents]);
 
-  const amountCentsOf = (m: PaymentMethod) =>
-    Math.round(Number(amounts[m].replace(",", ".")) * 100) || 0;
+  const amountCentsOf = (m: PaymentMethod) => amounts[m];
   const hasAnyAmount = PAYMENT_METHODS.some((m) => amountCentsOf(m) > 0);
   const sumEnteredCents = PAYMENT_METHODS.reduce((sum, m) => sum + amountCentsOf(m), 0);
   const outroUsed = amountCentsOf("outro") > 0;
@@ -230,14 +230,10 @@ export function PaymentActions({
             {PAYMENT_METHODS.map((m) => (
               <Fragment key={m}>
                 <span className="text-xs font-semibold">{PAYMENT_METHOD_LABEL[m]}</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
+                <CurrencyInput
                   className="h-8 w-24 text-xs"
-                  value={amounts[m]}
-                  onChange={(e) => setAmounts({ ...amounts, [m]: e.target.value })}
+                  valueCents={amounts[m]}
+                  onValueChange={(cents) => setAmounts({ ...amounts, [m]: cents })}
                 />
               </Fragment>
             ))}

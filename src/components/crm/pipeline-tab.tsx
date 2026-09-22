@@ -14,6 +14,7 @@ import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -97,7 +98,7 @@ const REMINDER_LABEL: Record<"msg1" | "confirmacao", string> = {
   confirmacao: "Enviar confirmação",
 };
 
-const EMPTY_CONTACT_FORM = { name: "", phone: "", origem: "", valor: "", responsavelId: "" };
+const EMPTY_CONTACT_FORM = { name: "", phone: "", origem: "", valorCents: 0, responsavelId: "" };
 
 export function PipelineTab({
   establishmentId,
@@ -156,15 +157,12 @@ export function PipelineTab({
     mutationFn: async () => {
       const name = contactForm.name.trim();
       if (name.length < 2) throw new Error("Informe o nome");
-      const cents = contactForm.valor
-        ? Math.round(Number(contactForm.valor.replace(",", ".")) * 100)
-        : null;
       const { error } = await supabase.from("crm_leads").insert({
         establishment_id: establishmentId,
         name,
         phone: contactForm.phone.trim() || null,
         origem: contactForm.origem.trim() || "Outro",
-        valor_estimado_cents: cents,
+        valor_estimado_cents: contactForm.valorCents > 0 ? contactForm.valorCents : null,
         responsavel_id: contactForm.responsavelId || null,
       });
       if (error) throw new Error(error.message);
@@ -305,14 +303,11 @@ export function PipelineTab({
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="pipeline-contact-valor">Valor estimado (R$)</Label>
-                <Input
+                <Label htmlFor="pipeline-contact-valor">Valor estimado</Label>
+                <CurrencyInput
                   id="pipeline-contact-valor"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={contactForm.valor}
-                  onChange={(e) => setContactForm({ ...contactForm, valor: e.target.value })}
+                  valueCents={contactForm.valorCents}
+                  onValueChange={(cents) => setContactForm({ ...contactForm, valorCents: cents })}
                 />
               </div>
             </div>

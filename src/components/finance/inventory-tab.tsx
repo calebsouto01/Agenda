@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -37,7 +38,15 @@ const schema = z.object({
   sku: z.string().trim().max(60),
 });
 
-const EMPTY_FORM = { id: "", name: "", sku: "", price: "", cost: "", minStock: "0", active: true };
+const EMPTY_FORM = {
+  id: "",
+  name: "",
+  sku: "",
+  priceCents: 0,
+  costCents: 0,
+  minStock: "0",
+  active: true,
+};
 
 type MovementType = "entrada" | "venda" | "ajuste";
 
@@ -68,15 +77,13 @@ export function InventoryTab({ establishmentId }: { establishmentId: string }) {
     mutationFn: async () => {
       const parsed = schema.safeParse({ name: form.name, sku: form.sku });
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
-      const priceCents = Math.round(Number(form.price.replace(",", ".")) * 100) || 0;
-      const costCents = Math.round(Number(form.cost.replace(",", ".")) * 100) || 0;
       const minStock = Math.max(0, Math.round(Number(form.minStock)) || 0);
       const payload = {
         establishment_id: establishmentId,
         name: parsed.data.name,
         sku: parsed.data.sku || null,
-        price_cents: priceCents,
-        cost_cents: costCents,
+        price_cents: form.priceCents,
+        cost_cents: form.costCents,
         min_stock_qty: minStock,
         active: form.active,
       };
@@ -181,25 +188,19 @@ export function InventoryTab({ establishmentId }: { establishmentId: string }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="pr-price">Preço de venda (R$)</Label>
-                <Input
+                <Label htmlFor="pr-price">Preço de venda</Label>
+                <CurrencyInput
                   id="pr-price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  valueCents={form.priceCents}
+                  onValueChange={(cents) => setForm({ ...form, priceCents: cents })}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="pr-cost">Custo (R$)</Label>
-                <Input
+                <Label htmlFor="pr-cost">Custo</Label>
+                <CurrencyInput
                   id="pr-cost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.cost}
-                  onChange={(e) => setForm({ ...form, cost: e.target.value })}
+                  valueCents={form.costCents}
+                  onValueChange={(cents) => setForm({ ...form, costCents: cents })}
                 />
               </div>
             </div>
@@ -275,8 +276,8 @@ export function InventoryTab({ establishmentId }: { establishmentId: string }) {
                             id: p.id,
                             name: p.name,
                             sku: p.sku ?? "",
-                            price: (p.price_cents / 100).toString(),
-                            cost: (p.cost_cents / 100).toString(),
+                            priceCents: p.price_cents,
+                            costCents: p.cost_cents,
                             minStock: p.min_stock_qty.toString(),
                             active: p.active,
                           });

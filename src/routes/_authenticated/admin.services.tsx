@@ -12,6 +12,7 @@ import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -33,11 +34,11 @@ type Service = {
 const schema = z.object({
   name: z.string().trim().min(2, "Informe o nome do serviço").max(120),
   description: z.string().trim().max(400),
-  price: z.number().min(0, "Preço inválido").max(1000000),
+  priceCents: z.number().int().min(1, "Informe um preço válido").max(100_000_000),
   duration: z.number().int().min(5, "Duração mínima de 5 minutos").max(600),
 });
 
-const EMPTY = { id: "", name: "", description: "", price: "0", duration: "30", active: true };
+const EMPTY = { id: "", name: "", description: "", priceCents: 0, duration: "30", active: true };
 
 function ServicesPage() {
   const { data: establishment } = useEstablishment();
@@ -64,7 +65,7 @@ function ServicesPage() {
       const parsed = schema.safeParse({
         name: form.name,
         description: form.description,
-        price: Number(form.price.replace(",", ".")),
+        priceCents: form.priceCents,
         duration: Number(form.duration),
       });
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
@@ -72,7 +73,7 @@ function ServicesPage() {
         establishment_id: establishment!.id,
         name: parsed.data.name,
         description: parsed.data.description || null,
-        price_cents: Math.round(parsed.data.price * 100),
+        price_cents: parsed.data.priceCents,
         duration_minutes: parsed.data.duration,
         active: form.active,
       };
@@ -141,12 +142,11 @@ function ServicesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="s-price">Preço (R$)</Label>
-                <Input
+                <Label htmlFor="s-price">Preço</Label>
+                <CurrencyInput
                   id="s-price"
-                  inputMode="decimal"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  valueCents={form.priceCents}
+                  onValueChange={(cents) => setForm({ ...form, priceCents: cents })}
                 />
               </div>
               <div className="grid gap-1.5">
@@ -211,7 +211,7 @@ function ServicesPage() {
                         id: s.id,
                         name: s.name,
                         description: s.description ?? "",
-                        price: (s.price_cents / 100).toFixed(2),
+                        priceCents: s.price_cents,
                         duration: String(s.duration_minutes),
                         active: s.active,
                       });
