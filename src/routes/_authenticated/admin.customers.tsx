@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
-import type { AppointmentStatus } from "@/lib/booking";
+import { formatPhone, type AppointmentStatus } from "@/lib/booking";
 import {
   DEFAULT_MESSAGE_ATENCAO,
   DEFAULT_MESSAGE_REENGAJAMENTO,
@@ -263,7 +263,7 @@ function CustomersPage() {
                               className="inline-flex items-center gap-1 text-xs font-medium text-primary"
                             >
                               <Phone className="size-3" />
-                              {c.phone}
+                              {formatPhone(c.phone)}
                             </WhatsAppLink>
                             {c.email ? (
                               <p className="truncate text-xs text-muted-foreground">{c.email}</p>
@@ -361,7 +361,7 @@ function CustomersPage() {
                             className="inline-flex items-center gap-1 text-xs font-medium text-primary"
                           >
                             <Phone className="size-3" />
-                            {c.phone}
+                            {formatPhone(c.phone)}
                           </WhatsAppLink>
                         </div>
                         <span className="shrink-0 text-sm font-bold">

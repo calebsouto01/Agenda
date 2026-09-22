@@ -4,6 +4,7 @@ import { Phone, X } from "lucide-react";
 import {
   PAYMENT_METHOD_LABEL,
   STATUS_LABEL,
+  formatPhone,
   formatPrice,
   serviceLabel,
   timeInZone,
@@ -38,7 +39,7 @@ export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: 
           className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary"
         >
           <Phone className="size-3" />
-          {a.customers.phone}
+          {formatPhone(a.customers.phone)}
         </a>
       ) : null}
       {a.notes ? <p className="mt-1 text-xs italic text-muted-foreground">{a.notes}</p> : null}
