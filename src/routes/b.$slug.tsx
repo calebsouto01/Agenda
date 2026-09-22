@@ -232,6 +232,21 @@ export function PublicBooking({ slug, refCode }: { slug: string; refCode: string
               >
                 Fazer outro agendamento
               </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  // Fecha a aba (só funciona se ela foi aberta por um link/script,
+                  // caso comum ao abrir pelo WhatsApp). Se o navegador bloquear o
+                  // fechamento, volta pro WhatsApp como alternativa.
+                  window.close();
+                  setTimeout(() => {
+                    window.location.href = "https://wa.me/";
+                  }, 300);
+                }}
+              >
+                Finalizar
+              </Button>
             </CardContent>
           </Card>
         </Reveal>
