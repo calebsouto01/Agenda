@@ -22,6 +22,7 @@ import { Share } from "@capacitor/share";
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,12 +82,13 @@ function AdminLayout() {
           <Button variant="ghost" size="sm" onClick={() => setMobileNavOpen(true)}>
             <Menu className="size-5" />
           </Button>
-          <span className="flex min-w-0 items-center gap-2">
+          <span className="flex min-w-0 flex-1 items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <CalendarCheck className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
           </span>
+          <NotificationBell establishmentId={establishment.id} timezone={establishment.timezone} />
         </header>
 
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -126,7 +128,8 @@ function NavContent({
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow">
           <CalendarCheck className="size-4" />
         </span>
-        <span className="truncate text-sm font-bold">{establishment.name}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
+        <NotificationBell establishmentId={establishment.id} timezone={establishment.timezone} />
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
