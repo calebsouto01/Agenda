@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { CalendarCheck, Eye, EyeOff } from "lucide-react";
@@ -41,6 +41,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth" });
   const target = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/admin";
+  const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -111,6 +112,12 @@ function AuthPage() {
     navigate({ to: target, replace: true });
   }
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (tab === "signin") signIn();
+    else signUp();
+  }
+
   async function signInWithOAuth(provider: "google" | "facebook") {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -132,12 +139,12 @@ function AuthPage() {
         </Link>
         <Card className="shadow-soft">
           <CardContent className="p-6">
-            <Tabs defaultValue="signin">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "signup")}>
               <TabsList className="mb-4 grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Entrar</TabsTrigger>
                 <TabsTrigger value="signup">Criar conta</TabsTrigger>
               </TabsList>
-              <div className="grid gap-3">
+              <form onSubmit={handleSubmit} className="grid gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="email">Usuário ou e-mail</Label>
                   <Input
@@ -170,20 +177,19 @@ function AuthPage() {
                     </button>
                   </div>
                 </div>
-                <TabsContent value="signin" className="m-0 grid gap-2">
-                  <Button className="w-full" disabled={loading} onClick={signIn}>
+                <TabsContent value="signin" className="m-0">
+                  <Button type="submit" className="w-full" disabled={loading}>
                     Entrar
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Acesso padrão: usuário <strong>Admin</strong> · senha <strong>Admin</strong>
-                  </p>
                 </TabsContent>
 
                 <TabsContent value="signup" className="m-0">
-                  <Button className="w-full" disabled={loading} onClick={signUp}>
+                  <Button type="submit" className="w-full" disabled={loading}>
                     Criar conta
                   </Button>
                 </TabsContent>
+              </form>
+              <div className="mt-3 grid gap-3">
                 <div className="relative py-1 text-center text-xs text-muted-foreground">
                   <span className="bg-card px-2">ou</span>
                 </div>
