@@ -16,10 +16,12 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as BSlugRouteImport } from './routes/b.$slug'
+import { Route as LCodeRouteImport } from './routes/l.$code'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated/admin.customers'
 import { Route as AuthenticatedAdminFinanceRouteImport } from './routes/_authenticated/admin.finance'
 import { Route as AuthenticatedAdminHoursRouteImport } from './routes/_authenticated/admin.hours'
+import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
 import { Route as AuthenticatedAdminMessagesRouteImport } from './routes/_authenticated/admin.messages'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminProfessionalsRouteImport } from './routes/_authenticated/admin.professionals'
@@ -60,6 +62,11 @@ const BSlugRoute = BSlugRouteImport.update({
   path: '/b/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LCodeRoute = LCodeRouteImport.update({
+  id: '/l/$code',
+  path: '/l/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -82,6 +89,12 @@ const AuthenticatedAdminHoursRoute = AuthenticatedAdminHoursRouteImport.update({
   path: '/hours',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminMarketingRoute =
+  AuthenticatedAdminMarketingRouteImport.update({
+    id: '/marketing',
+    path: '/marketing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminMessagesRoute =
   AuthenticatedAdminMessagesRouteImport.update({
     id: '/messages',
@@ -119,9 +132,11 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/b/$slug': typeof BSlugRoute
+  '/l/$code': typeof LCodeRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceRoute
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
+  '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/messages': typeof AuthenticatedAdminMessagesRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
@@ -135,9 +150,11 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/b/$slug': typeof BSlugRoute
+  '/l/$code': typeof LCodeRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/finance': typeof AuthenticatedAdminFinanceRoute
   '/admin/hours': typeof AuthenticatedAdminHoursRoute
+  '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/messages': typeof AuthenticatedAdminMessagesRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
@@ -154,9 +171,11 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/b/$slug': typeof BSlugRoute
+  '/l/$code': typeof LCodeRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/finance': typeof AuthenticatedAdminFinanceRoute
   '/_authenticated/admin/hours': typeof AuthenticatedAdminHoursRoute
+  '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/_authenticated/admin/messages': typeof AuthenticatedAdminMessagesRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
   '/_authenticated/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
@@ -173,9 +192,11 @@ export interface FileRouteTypes {
     | '/termos'
     | '/admin'
     | '/b/$slug'
+    | '/l/$code'
     | '/admin/customers'
     | '/admin/finance'
     | '/admin/hours'
+    | '/admin/marketing'
     | '/admin/messages'
     | '/admin/new'
     | '/admin/professionals'
@@ -189,9 +210,11 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/b/$slug'
+    | '/l/$code'
     | '/admin/customers'
     | '/admin/finance'
     | '/admin/hours'
+    | '/admin/marketing'
     | '/admin/messages'
     | '/admin/new'
     | '/admin/professionals'
@@ -207,9 +230,11 @@ export interface FileRouteTypes {
     | '/termos'
     | '/_authenticated/admin'
     | '/b/$slug'
+    | '/l/$code'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/finance'
     | '/_authenticated/admin/hours'
+    | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/messages'
     | '/_authenticated/admin/new'
     | '/_authenticated/admin/professionals'
@@ -225,6 +250,7 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   BSlugRoute: typeof BSlugRoute
+  LCodeRoute: typeof LCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -278,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/l/$code': {
+      id: '/l/$code'
+      path: '/l/$code'
+      fullPath: '/l/$code'
+      preLoaderRoute: typeof LCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/'
@@ -304,6 +337,13 @@ declare module '@tanstack/react-router' {
       path: '/hours'
       fullPath: '/admin/hours'
       preLoaderRoute: typeof AuthenticatedAdminHoursRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/marketing': {
+      id: '/_authenticated/admin/marketing'
+      path: '/marketing'
+      fullPath: '/admin/marketing'
+      preLoaderRoute: typeof AuthenticatedAdminMarketingRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/messages': {
@@ -348,6 +388,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminFinanceRoute: typeof AuthenticatedAdminFinanceRoute
   AuthenticatedAdminHoursRoute: typeof AuthenticatedAdminHoursRoute
+  AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRoute
   AuthenticatedAdminMessagesRoute: typeof AuthenticatedAdminMessagesRoute
   AuthenticatedAdminNewRoute: typeof AuthenticatedAdminNewRoute
   AuthenticatedAdminProfessionalsRoute: typeof AuthenticatedAdminProfessionalsRoute
@@ -360,6 +401,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminFinanceRoute: AuthenticatedAdminFinanceRoute,
   AuthenticatedAdminHoursRoute: AuthenticatedAdminHoursRoute,
+  AuthenticatedAdminMarketingRoute: AuthenticatedAdminMarketingRoute,
   AuthenticatedAdminMessagesRoute: AuthenticatedAdminMessagesRoute,
   AuthenticatedAdminNewRoute: AuthenticatedAdminNewRoute,
   AuthenticatedAdminProfessionalsRoute: AuthenticatedAdminProfessionalsRoute,
@@ -389,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   BSlugRoute: BSlugRoute,
+  LCodeRoute: LCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
