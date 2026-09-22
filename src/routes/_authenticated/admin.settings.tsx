@@ -127,6 +127,7 @@ function SettingsPage() {
     mutationFn: async () => {
       const parsed = schema.safeParse(form);
       if (!parsed.success) throw new Error(parsed.error.issues[0]!.message);
+
       const { error } = await supabase
         .from("establishments")
         .update({
@@ -135,27 +136,52 @@ function SettingsPage() {
           description: parsed.data.description || null,
           phone: parsed.data.phone || null,
           address: parsed.data.address || null,
-          custom_domain: parsed.data.customDomain || null,
           timezone: form.timezone,
           sells_products: form.sellsProducts,
           whatsapp_business_api_connected: form.whatsappApiConnected,
         })
         .eq("id", establishment!.id);
       if (error) throw new Error(error.message);
+
+      // Domínio próprio só muda de fato na Vercel — só chama a função quando
+      // o valor mudou, senão toda edição de outro campo tentaria re-adicionar
+      // o mesmo domínio e a Vercel recusaria (já existe no projeto). Falha
+      // aqui não desfaz o resto — os outros campos já foram salvos acima.
+      const currentDomain = establishment!.custom_domain ?? "";
+      if (parsed.data.customDomain === currentDomain) {
+        return { domain: "unchanged" as const };
+      }
+
+      const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+        "vercel-domain-sync",
+        { body: { establishment_id: establishment!.id, domain: parsed.data.customDomain || null } },
+      );
+      if (syncError || syncResult?.error) {
+        const message =
+          syncError?.message ??
+          (syncResult.error === "not_pro"
+            ? "Domínio próprio é um recurso do plano Pro"
+            : (syncResult.message ?? "Não foi possível configurar o domínio"));
+        return { domain: "error" as const, message };
+      }
+      return { domain: "ok" as const, verified: Boolean(syncResult?.verified) };
     },
-    onSuccess: () => {
-      toast.success("Informações salvas");
+    onSuccess: (result) => {
       queryClient.invalidateQueries();
-    },
-    onError: (e: Error) => {
-      if (e.message.includes("custom_domain")) {
-        toast.error("Esse domínio já está em uso por outro estabelecimento");
-      } else if (e.message.includes("duplicate")) {
-        toast.error("Este link público já está em uso");
+      if (result.domain === "error") {
+        toast.error(`Dados salvos, mas o domínio não pôde ser configurado: ${result.message}`);
+      } else if (result.domain === "ok") {
+        toast.success(
+          result.verified
+            ? "Domínio conectado!"
+            : "Domínio salvo. Pode levar algumas horas até o DNS propagar.",
+        );
       } else {
-        toast.error(e.message);
+        toast.success("Informações salvas");
       }
     },
+    onError: (e: Error) =>
+      toast.error(e.message.includes("duplicate") ? "Este link público já está em uso" : e.message),
   });
 
   const { data: authUser } = useQuery({
@@ -313,9 +339,9 @@ function SettingsPage() {
                     CNAME.
                   </p>
                   <p className="mt-1.5">
-                    Depois de salvar aqui, nos avise (WhatsApp ou e-mail) o domínio escolhido —
-                    falta um passo do nosso lado pra liberar o certificado e o domínio começar a
-                    funcionar.
+                    Ao salvar, conectamos o domínio automaticamente. Pode levar algumas horas até o
+                    DNS propagar e o certificado ser emitido — nesse meio-tempo o link antigo (/b/
+                    {slugify(form.slug)}) continua funcionando normalmente.
                   </p>
                 </div>
               </>
