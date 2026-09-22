@@ -9,6 +9,7 @@ import { isNativeApp, pickAllDeviceContacts } from "@/lib/native-contacts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,7 +21,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { LeadCard, ORIGENS, type Lead, type Professional } from "./lead-shared";
 
-const EMPTY_FORM = { name: "", phone: "", origem: "", valor: "", responsavelId: "" };
+const EMPTY_FORM = { name: "", phone: "", origem: "", valorCents: 0, responsavelId: "" };
 
 export function ContactsTab({ establishmentId }: { establishmentId: string }) {
   const queryClient = useQueryClient();
@@ -68,13 +69,12 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
     mutationFn: async () => {
       const name = form.name.trim();
       if (name.length < 2) throw new Error("Informe o nome");
-      const cents = form.valor ? Math.round(Number(form.valor.replace(",", ".")) * 100) : null;
       const { error } = await supabase.from("crm_leads").insert({
         establishment_id: establishmentId,
         name,
         phone: form.phone.trim() || null,
         origem: form.origem.trim() || "Outro",
-        valor_estimado_cents: cents,
+        valor_estimado_cents: form.valorCents > 0 ? form.valorCents : null,
         responsavel_id: form.responsavelId || null,
       });
       if (error) throw new Error(error.message);
@@ -270,14 +270,11 @@ export function ContactsTab({ establishmentId }: { establishmentId: string }) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="contact-valor">Valor estimado (R$)</Label>
-                <Input
+                <Label htmlFor="contact-valor">Valor estimado</Label>
+                <CurrencyInput
                   id="contact-valor"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.valor}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                  valueCents={form.valorCents}
+                  onValueChange={(cents) => setForm({ ...form, valorCents: cents })}
                 />
               </div>
             </div>

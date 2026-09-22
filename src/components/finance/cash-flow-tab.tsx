@@ -8,6 +8,7 @@ import { dateTimeInZone, formatPrice, isoDateInZone } from "@/lib/booking";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -68,7 +69,7 @@ export function CashFlowTab({
     type: "saida" as "entrada" | "saida",
     category: EXPENSE_CATEGORIES[0]!,
     description: "",
-    amount: "",
+    amountCents: 0,
     occurredAt: isoDateInZone(new Date(), tz),
   });
 
@@ -118,21 +119,20 @@ export function CashFlowTab({
 
   const addMovement = useMutation({
     mutationFn: async () => {
-      const cents = Math.round(Number(form.amount.replace(",", ".")) * 100);
-      if (!cents || cents <= 0) throw new Error("Informe um valor válido");
+      if (form.amountCents <= 0) throw new Error("Informe um valor válido");
       const { error } = await supabase.from("cash_movements").insert({
         establishment_id: establishmentId,
         type: form.type,
         category: form.category,
         description: form.description.trim() || null,
-        amount_cents: cents,
+        amount_cents: form.amountCents,
         occurred_at: form.occurredAt,
       });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Lançamento registrado");
-      setForm({ ...form, description: "", amount: "" });
+      setForm({ ...form, description: "", amountCents: 0 });
       queryClient.invalidateQueries({ queryKey: ["cash-movements"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -276,14 +276,11 @@ export function CashFlowTab({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="cm-amount">Valor (R$)</Label>
-              <Input
+              <Label htmlFor="cm-amount">Valor</Label>
+              <CurrencyInput
                 id="cm-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                valueCents={form.amountCents}
+                onValueChange={(cents) => setForm({ ...form, amountCents: cents })}
               />
             </div>
             <div className="grid gap-1.5">
