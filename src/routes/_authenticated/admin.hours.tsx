@@ -92,27 +92,38 @@ function HoursPage() {
   useEffect(() => {
     if (!data || loadedOnceRef.current) return;
     loadedOnceRef.current = true;
-    setRows(
-      WEEKDAYS.map((_, weekday) => {
-        const found = data.find((h) => h.weekday === weekday);
-        return (
-          found ?? {
-            weekday,
-            opens_at: "09:00",
-            closes_at: "18:00",
-            closed: weekday === 0,
-            break_start: null,
-            break_end: null,
-          }
-        );
-      }).map((h) => ({
-        ...h,
-        opens_at: h.opens_at.slice(0, 5),
-        closes_at: h.closes_at.slice(0, 5),
-        break_start: h.break_start ? h.break_start.slice(0, 5) : null,
-        break_end: h.break_end ? h.break_end.slice(0, 5) : null,
-      })),
-    );
+    const loadedRows = WEEKDAYS.map((_, weekday) => {
+      const found = data.find((h) => h.weekday === weekday);
+      return (
+        found ?? {
+          weekday,
+          opens_at: "09:00",
+          closes_at: "18:00",
+          closed: weekday === 0,
+          break_start: null,
+          break_end: null,
+        }
+      );
+    }).map((h) => ({
+      ...h,
+      opens_at: h.opens_at.slice(0, 5),
+      closes_at: h.closes_at.slice(0, 5),
+      break_start: h.break_start ? h.break_start.slice(0, 5) : null,
+      break_end: h.break_end ? h.break_end.slice(0, 5) : null,
+    }));
+    setRows(loadedRows);
+
+    // Reflete o horário já cadastrado nos campos de "aplicar a todos os
+    // dias" em vez de sempre mostrar o padrão de fábrica (09:00–18:00) —
+    // usa o primeiro dia aberto como referência.
+    const reference = loadedRows.find((r) => !r.closed);
+    if (reference) {
+      setGlobalOpen(reference.opens_at);
+      setGlobalClose(reference.closes_at);
+      setGlobalHasBreak(Boolean(reference.break_start && reference.break_end));
+      if (reference.break_start) setGlobalBreakStart(reference.break_start);
+      if (reference.break_end) setGlobalBreakEnd(reference.break_end);
+    }
   }, [data]);
 
   function updateRow(index: number, patch: Partial<Hour>) {
@@ -353,6 +364,15 @@ function HoursPage() {
                       />
                     </div>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto"
+                    disabled={save.isPending}
+                    onClick={() => save.mutate([row])}
+                  >
+                    Salvar
+                  </Button>
                 </div>
 
                 {!row.closed ? (

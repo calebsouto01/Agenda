@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Check, MessageCircle, X } from "lucide-react";
+import { AlertTriangle, Bell, Check, MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,16 @@ type LeadWithAppointment = {
   phone: string | null;
   appointment: { starts_at: string; status: string; service_names: string | null } | null;
 };
+
+/** Tarja de aviso pras notificações que pedem envio de lembrete pro cliente. */
+function ReminderTag() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
+      <AlertTriangle className="size-2.5" />
+      Lembrete
+    </span>
+  );
+}
 
 export function NotificationBell({
   establishmentId,
@@ -191,9 +201,12 @@ export function NotificationBell({
                   const accepted = Boolean(justAccepted[a.id]);
                   return (
                     <div key={a.id} className="rounded-lg border p-2.5">
-                      <p className="truncate text-sm font-semibold">
-                        {a.customers?.name ?? "Cliente"}
-                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-semibold">
+                          {a.customers?.name ?? "Cliente"}
+                        </p>
+                        {accepted ? <ReminderTag /> : null}
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {a.service_names ?? ""} · {dateTimeInZone(a.starts_at, timezone)}
                       </p>
@@ -262,7 +275,10 @@ export function NotificationBell({
                   );
                   return (
                     <div key={lead.id} className="rounded-lg border p-2.5">
-                      <p className="truncate text-sm font-semibold">{lead.name}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-semibold">{lead.name}</p>
+                        <ReminderTag />
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {appt.service_names ?? ""} · hoje às {timeInZone(appt.starts_at, timezone)}
                       </p>
