@@ -47,8 +47,23 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: target, replace: true });
+    supabase.auth.getSession().then(async ({ data }) => {
+      const user = data.session?.user;
+      if (!user) return;
+      // Sessão de um cadastro anterior que não chegou a criar o estabelecimento
+      // (ex.: OAuth concluído em segundo plano, usuário voltou antes de terminar):
+      // não pula direto pro onboarding, volta ao início do ciclo de login.
+      const { data: establishment } = await supabase
+        .from("establishments")
+        .select("id")
+        .eq("owner_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (establishment) {
+        navigate({ to: target, replace: true });
+      } else {
+        await supabase.auth.signOut();
+      }
     });
   }, [navigate, target]);
 
