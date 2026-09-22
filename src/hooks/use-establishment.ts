@@ -12,6 +12,7 @@ export type Establishment = {
   description: string | null;
   phone: string | null;
   address: string | null;
+  custom_domain: string | null;
   timezone: string;
   slot_step_minutes: number;
   sells_products: boolean;
@@ -35,7 +36,7 @@ export function useEstablishment() {
       const { data, error } = await supabase
         .from("establishments")
         .select(
-          "id, owner_id, name, slug, description, phone, address, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at, whatsapp_message_1, whatsapp_message_confirmacao, whatsapp_message_atencao, whatsapp_message_reengajamento",
+          "id, owner_id, name, slug, description, phone, address, custom_domain, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at, whatsapp_message_1, whatsapp_message_confirmacao, whatsapp_message_atencao, whatsapp_message_reengajamento",
         )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })

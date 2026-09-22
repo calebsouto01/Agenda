@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, Check, CreditCard, KeyRound } from "lucide-react";
+import { Building2, Check, CreditCard, Globe, KeyRound, Lock } from "lucide-react";
 import { PageTitle } from "@/components/page-title";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -42,12 +42,38 @@ const TIMEZONES = [
   "UTC",
 ];
 
+// Aceita colar com https://, www. ou barra no final e limpa antes de validar.
+function normalizeDomain(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "");
+}
+
+const RESERVED_DOMAIN_SUFFIXES = ["agendazaka.com", "vercel.app"];
+
 const schema = z.object({
   name: z.string().trim().min(2, "Informe o nome").max(120),
   slug: z.string().trim().min(2, "Informe o link público").max(48),
   description: z.string().trim().max(400),
   phone: z.string().trim().max(30),
   address: z.string().trim().max(200),
+  customDomain: z
+    .string()
+    .transform(normalizeDomain)
+    .refine((v) => v.length === 0 || v.length <= 255, "Domínio muito longo")
+    .refine(
+      (v) =>
+        v.length === 0 ||
+        /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(v),
+      "Informe um domínio válido, ex.: agenda.seunegocio.com.br",
+    )
+    .refine(
+      (v) =>
+        v.length === 0 || !RESERVED_DOMAIN_SUFFIXES.some((s) => v === s || v.endsWith(`.${s}`)),
+      "Esse domínio não pode ser usado",
+    ),
 });
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -76,6 +102,7 @@ function SettingsPage() {
     description: "",
     phone: "",
     address: "",
+    customDomain: "",
     timezone: "America/Sao_Paulo",
     sellsProducts: false,
     whatsappApiConnected: false,
@@ -89,6 +116,7 @@ function SettingsPage() {
       description: establishment.description ?? "",
       phone: establishment.phone ?? "",
       address: establishment.address ?? "",
+      customDomain: establishment.custom_domain ?? "",
       timezone: establishment.timezone,
       sellsProducts: establishment.sells_products,
       whatsappApiConnected: establishment.whatsapp_business_api_connected,
@@ -107,6 +135,7 @@ function SettingsPage() {
           description: parsed.data.description || null,
           phone: parsed.data.phone || null,
           address: parsed.data.address || null,
+          custom_domain: parsed.data.customDomain || null,
           timezone: form.timezone,
           sells_products: form.sellsProducts,
           whatsapp_business_api_connected: form.whatsappApiConnected,
@@ -118,8 +147,15 @@ function SettingsPage() {
       toast.success("Informações salvas");
       queryClient.invalidateQueries();
     },
-    onError: (e: Error) =>
-      toast.error(e.message.includes("duplicate") ? "Este link público já está em uso" : e.message),
+    onError: (e: Error) => {
+      if (e.message.includes("custom_domain")) {
+        toast.error("Esse domínio já está em uso por outro estabelecimento");
+      } else if (e.message.includes("duplicate")) {
+        toast.error("Este link público já está em uso");
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
   const { data: authUser } = useQuery({
@@ -243,6 +279,54 @@ function SettingsPage() {
             />
             <p className="text-xs text-muted-foreground">/b/{slugify(form.slug)}</p>
           </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="e-domain" className="flex items-center gap-1.5">
+              <Globe className="size-3.5" />
+              Domínio próprio
+              {!isPro(establishment.plan) ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  <Lock className="size-2.5" />
+                  Pro
+                </span>
+              ) : null}
+            </Label>
+            {isPro(establishment.plan) ? (
+              <>
+                <Input
+                  id="e-domain"
+                  placeholder="agenda.seunegocio.com.br"
+                  maxLength={255}
+                  value={form.customDomain}
+                  onChange={(e) => setForm({ ...form, customDomain: e.target.value })}
+                />
+                <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <p className="font-semibold text-foreground">Como configurar</p>
+                  <p className="mt-1">
+                    No painel do seu provedor de domínio, crie um registro <strong>CNAME</strong>{" "}
+                    apontando esse endereço para{" "}
+                    <code className="rounded bg-background px-1 py-0.5">cname.vercel-dns.com</code>.
+                    Se for um domínio raiz (sem subdomínio, ex.:{" "}
+                    <code className="rounded bg-background px-1 py-0.5">seunegocio.com.br</code>),
+                    use um registro <strong>A</strong> apontando para{" "}
+                    <code className="rounded bg-background px-1 py-0.5">76.76.21.21</code> em vez de
+                    CNAME.
+                  </p>
+                  <p className="mt-1.5">
+                    Depois de salvar aqui, nos avise (WhatsApp ou e-mail) o domínio escolhido —
+                    falta um passo do nosso lado pra liberar o certificado e o domínio começar a
+                    funcionar.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                Use seu próprio domínio (ex.: agenda.seunegocio.com.br) em vez de agendazaka.com.
+                Disponível no plano Pro.
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-1.5">
             <Label htmlFor="e-desc">Descrição</Label>
             <Textarea

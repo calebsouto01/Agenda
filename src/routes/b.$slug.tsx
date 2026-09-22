@@ -52,8 +52,14 @@ export const Route = createFileRoute("/b/$slug")({
       ],
     };
   },
-  component: PublicBooking,
+  component: BSlugRouteComponent,
 });
+
+function BSlugRouteComponent() {
+  const { slug } = Route.useParams();
+  const { ref } = Route.useSearch();
+  return <PublicBooking slug={slug} refCode={ref} />;
+}
 
 const customerSchema = z.object({
   name: z.string().trim().min(2, "Informe seu nome").max(120, "Nome muito longo"),
@@ -67,9 +73,7 @@ const customerSchema = z.object({
   notes: z.string().trim().max(400, "Observação muito longa"),
 });
 
-function PublicBooking() {
-  const { slug } = Route.useParams();
-  const { ref } = Route.useSearch();
+export function PublicBooking({ slug, refCode }: { slug: string; refCode: string | undefined }) {
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
@@ -160,7 +164,7 @@ function PublicBooking() {
         p_customer_email: parsed.data.email || null,
         p_notes: parsed.data.notes || null,
         p_service_ids: serviceIds,
-        p_marketing_link_code: ref || null,
+        p_marketing_link_code: refCode || null,
       } as never);
       if (error) throw new Error(error.message);
       return data as unknown as { starts_at: string };
