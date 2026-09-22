@@ -4,7 +4,7 @@ import { ArrowRight, Eye, EyeOff, Send, Sparkles, Trophy, UserPlus, XCircle } fr
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice } from "@/lib/booking";
+import { formatPrice, normalizePhone } from "@/lib/booking";
 import {
   DEFAULT_MESSAGE_1,
   DEFAULT_MESSAGE_CONFIRMACAO,
@@ -209,7 +209,11 @@ export function PipelineTab({
         const { data, error } = await supabase
           .from("customers")
           .upsert(
-            { establishment_id: establishmentId, name: lead.name, phone: lead.phone },
+            {
+              establishment_id: establishmentId,
+              name: lead.name,
+              phone: normalizePhone(lead.phone),
+            },
             { onConflict: "establishment_id,phone" },
           )
           .select("id")
