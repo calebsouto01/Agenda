@@ -90,7 +90,12 @@ function AdminLayout() {
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
           </span>
-          <NotificationBell establishmentId={establishment.id} timezone={establishment.timezone} />
+          <NotificationBell
+            establishmentId={establishment.id}
+            establishmentName={establishment.name}
+            timezone={establishment.timezone}
+            confirmationTemplate={establishment.whatsapp_message_confirmacao}
+          />
         </header>
 
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -131,7 +136,12 @@ function NavContent({
           <CalendarCheck className="size-4" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
-        <NotificationBell establishmentId={establishment.id} timezone={establishment.timezone} />
+        <NotificationBell
+          establishmentId={establishment.id}
+          establishmentName={establishment.name}
+          timezone={establishment.timezone}
+          confirmationTemplate={establishment.whatsapp_message_confirmacao}
+        />
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
