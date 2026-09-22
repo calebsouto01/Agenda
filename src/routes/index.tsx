@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
@@ -30,8 +31,10 @@ const searchSchema = z.object({ ref: z.string().trim().max(40).optional() });
 // Domínio próprio de um estabelecimento (Dados da empresa > Domínio próprio):
 // requisição chega com o Host do cliente em vez de agendazaka.com, então a
 // home mostra a página de agendamento daquele estabelecimento em vez do site
-// da Zaka. Só roda no servidor (SSR), onde o Host do visitante é real.
-async function resolveCustomDomain() {
+// da Zaka. getRequest() só existe no servidor — precisa ficar dentro de um
+// createServerFn pra não vazar pro bundle do cliente (esse arquivo também é
+// empacotado pro navegador, já que roda em navegação client-side também).
+const resolveCustomDomain = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest();
   const hostname = (request?.headers.get("host") ?? "").split(":")[0]!.toLowerCase();
   const isPlatformHost =
@@ -48,7 +51,7 @@ async function resolveCustomDomain() {
     .eq("custom_domain", hostname)
     .maybeSingle();
   return data ?? null;
-}
+});
 
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
