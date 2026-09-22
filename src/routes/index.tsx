@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
 import {
   ArrowRight,
   CalendarCheck,
@@ -21,6 +23,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Reveal } from "@/components/reveal";
+import { PublicBooking } from "@/routes/b.$slug";
+
+const searchSchema = z.object({ ref: z.string().trim().max(40).optional() });
+
+// Domínio próprio de um estabelecimento (Dados da empresa > Domínio próprio):
+// requisição chega com o Host do cliente em vez de agendazaka.com, então a
+// home mostra a página de agendamento daquele estabelecimento em vez do site
+// da Zaka. Só roda no servidor (SSR), onde o Host do visitante é real.
+async function resolveCustomDomain() {
+  const request = getRequest();
+  const hostname = (request?.headers.get("host") ?? "").split(":")[0]!.toLowerCase();
+  const isPlatformHost =
+    !hostname ||
+    hostname === "agendazaka.com" ||
+    hostname === "www.agendazaka.com" ||
+    hostname === "localhost" ||
+    hostname.endsWith(".vercel.app");
+  if (isPlatformHost) return null;
+
+  const { data } = await supabase
+    .from("establishments")
+    .select("slug, name, description")
+    .eq("custom_domain", hostname)
+    .maybeSingle();
+  return data ?? null;
+}
 
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
@@ -49,28 +77,48 @@ const STRUCTURED_DATA = {
 };
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Zaka — Pare de perder agendamento no WhatsApp" },
-      {
-        name: "description",
-        content:
-          "O Zaka organiza sua agenda, seus clientes e seu caixa num só lugar, pra você parar de perder horário por mensagem que ninguém viu. Grátis para começar.",
-      },
-      { property: "og:title", content: "Zaka — Pare de perder agendamento no WhatsApp" },
-      {
-        property: "og:description",
-        content:
-          "Agenda online, CRM de clientes e fluxo de caixa automático para barbearias, salões, clínicas, oficinas e outros negócios de horário marcado.",
-      },
-    ],
-    scripts: [
-      {
-        attrs: { type: "application/ld+json" },
-        children: JSON.stringify(STRUCTURED_DATA),
-      },
-    ],
-  }),
+  ssr: true,
+  validateSearch: searchSchema,
+  loader: async () => ({ customDomain: await resolveCustomDomain() }),
+  head: ({ loaderData }) => {
+    if (loaderData?.customDomain) {
+      const { name, description } = loaderData.customDomain;
+      const title = `Agendar online — ${name}`;
+      const desc =
+        description ??
+        "Escolha o serviço, o profissional e um horário disponível para confirmar seu agendamento.";
+      return {
+        meta: [
+          { title },
+          { name: "description", content: desc },
+          { property: "og:title", content: title },
+          { property: "og:description", content: desc },
+        ],
+      };
+    }
+    return {
+      meta: [
+        { title: "Zaka — Pare de perder agendamento no WhatsApp" },
+        {
+          name: "description",
+          content:
+            "O Zaka organiza sua agenda, seus clientes e seu caixa num só lugar, pra você parar de perder horário por mensagem que ninguém viu. Grátis para começar.",
+        },
+        { property: "og:title", content: "Zaka — Pare de perder agendamento no WhatsApp" },
+        {
+          property: "og:description",
+          content:
+            "Agenda online, CRM de clientes e fluxo de caixa automático para barbearias, salões, clínicas, oficinas e outros negócios de horário marcado.",
+        },
+      ],
+      scripts: [
+        {
+          attrs: { type: "application/ld+json" },
+          children: JSON.stringify(STRUCTURED_DATA),
+        },
+      ],
+    };
+  },
   component: Home,
 });
 
@@ -162,6 +210,17 @@ function ChatChaosPreview() {
 }
 
 function Home() {
+  const { customDomain } = Route.useLoaderData();
+  const { ref } = Route.useSearch();
+
+  if (customDomain) {
+    return <PublicBooking slug={customDomain.slug} refCode={ref} />;
+  }
+
+  return <HomeLanding />;
+}
+
+function HomeLanding() {
   const { data: establishments, isLoading } = useQuery({
     queryKey: ["public-establishments"],
     queryFn: async () => {
