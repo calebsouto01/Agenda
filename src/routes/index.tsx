@@ -245,7 +245,7 @@ function HomeLanding() {
           Zaka
         </span>
         <Button asChild variant="outline" size="sm">
-          <Link to="/admin">Login</Link>
+          <Link to="/auth">Login</Link>
         </Button>
       </header>
 
