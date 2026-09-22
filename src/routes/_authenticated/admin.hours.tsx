@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +71,7 @@ function HoursPage() {
   } = useQuery({
     queryKey: ["business-hours", establishment?.id],
     enabled: Boolean(establishment?.id),
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("business_hours")
@@ -82,8 +83,15 @@ function HoursPage() {
     },
   });
 
+  // Só carrega do banco pro estado local uma vez: depois disso, quem manda
+  // nas linhas é a edição do usuário (e o retorno do próprio salvar), nunca
+  // um refetch em segundo plano — senão qualquer refetch (ex.: ao voltar o
+  // foco da aba, comum ao abrir o seletor de hora no celular) apagava a
+  // edição ainda não salva e voltava pro horário padrão.
+  const loadedOnceRef = useRef(false);
   useEffect(() => {
-    if (!data) return;
+    if (!data || loadedOnceRef.current) return;
+    loadedOnceRef.current = true;
     setRows(
       WEEKDAYS.map((_, weekday) => {
         const found = data.find((h) => h.weekday === weekday);
