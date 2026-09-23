@@ -114,7 +114,7 @@ export function AppointmentList({
                   {` · ${formatPrice(totalPriceCents(a))}`}
                 </p>
               </button>
-              <div className="flex shrink-0 flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 sm:shrink-0">
                 {a.status !== "completed" && a.status !== "cancelled" ? (
                   <Button size="sm" variant="outline" onClick={() => setPayingId(a.id)}>
                     Finalizar
