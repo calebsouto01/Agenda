@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
+  Bell,
   CalendarDays,
   CalendarCheck,
   ExternalLink,
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const NAV: { to: string; label: string; icon: typeof CalendarDays; exact?: boolean }[] = [
   { to: "/admin", label: "Agenda", icon: CalendarDays, exact: true },
+  { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
   { to: "/admin/services", label: "Serviços", icon: Scissors },
   { to: "/admin/professionals", label: "Profissionais", icon: UserRound },
   { to: "/admin/hours", label: "Funcionamento", icon: Clock },
