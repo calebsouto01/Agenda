@@ -24,6 +24,7 @@ import { Route as AuthenticatedAdminHoursRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
 import { Route as AuthenticatedAdminMessagesRouteImport } from './routes/_authenticated/admin.messages'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
+import { Route as AuthenticatedAdminNotificacoesRouteImport } from './routes/_authenticated/admin.notificacoes'
 import { Route as AuthenticatedAdminProfessionalsRouteImport } from './routes/_authenticated/admin.professionals'
 import { Route as AuthenticatedAdminServicesRouteImport } from './routes/_authenticated/admin.services'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -106,6 +107,12 @@ const AuthenticatedAdminNewRoute = AuthenticatedAdminNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminNotificacoesRoute =
+  AuthenticatedAdminNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminProfessionalsRoute =
   AuthenticatedAdminProfessionalsRouteImport.update({
     id: '/professionals',
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/messages': typeof AuthenticatedAdminMessagesRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -157,6 +165,7 @@ export interface FileRoutesByTo {
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/messages': typeof AuthenticatedAdminMessagesRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -178,6 +187,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/_authenticated/admin/messages': typeof AuthenticatedAdminMessagesRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
+  '/_authenticated/admin/notificacoes': typeof AuthenticatedAdminNotificacoesRoute
   '/_authenticated/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/_authenticated/admin/services': typeof AuthenticatedAdminServicesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/messages'
     | '/admin/new'
+    | '/admin/notificacoes'
     | '/admin/professionals'
     | '/admin/services'
     | '/admin/settings'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/messages'
     | '/admin/new'
+    | '/admin/notificacoes'
     | '/admin/professionals'
     | '/admin/services'
     | '/admin/settings'
@@ -237,6 +249,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/messages'
     | '/_authenticated/admin/new'
+    | '/_authenticated/admin/notificacoes'
     | '/_authenticated/admin/professionals'
     | '/_authenticated/admin/services'
     | '/_authenticated/admin/settings'
@@ -360,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminNewRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/notificacoes': {
+      id: '/_authenticated/admin/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/admin/notificacoes'
+      preLoaderRoute: typeof AuthenticatedAdminNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/professionals': {
       id: '/_authenticated/admin/professionals'
       path: '/professionals'
@@ -391,6 +411,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRoute
   AuthenticatedAdminMessagesRoute: typeof AuthenticatedAdminMessagesRoute
   AuthenticatedAdminNewRoute: typeof AuthenticatedAdminNewRoute
+  AuthenticatedAdminNotificacoesRoute: typeof AuthenticatedAdminNotificacoesRoute
   AuthenticatedAdminProfessionalsRoute: typeof AuthenticatedAdminProfessionalsRoute
   AuthenticatedAdminServicesRoute: typeof AuthenticatedAdminServicesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -404,6 +425,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminMarketingRoute: AuthenticatedAdminMarketingRoute,
   AuthenticatedAdminMessagesRoute: AuthenticatedAdminMessagesRoute,
   AuthenticatedAdminNewRoute: AuthenticatedAdminNewRoute,
+  AuthenticatedAdminNotificacoesRoute: AuthenticatedAdminNotificacoesRoute,
   AuthenticatedAdminProfessionalsRoute: AuthenticatedAdminProfessionalsRoute,
   AuthenticatedAdminServicesRoute: AuthenticatedAdminServicesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
