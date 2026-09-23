@@ -4,7 +4,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17";
+    PostgrestVersion: "14.5";
   };
   public: {
     Tables: {
@@ -15,6 +15,7 @@ export type Database = {
           ends_at: string;
           establishment_id: string;
           id: string;
+          marketing_link_id: string | null;
           notes: string | null;
           paid: boolean;
           paid_at: string | null;
@@ -25,6 +26,8 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"];
           total_price_cents: number | null;
           updated_at: string;
+          whatsapp_reminder_opt_in: boolean | null;
+          whatsapp_reminder_sent_at: string | null;
         };
         Insert: {
           created_at?: string;
@@ -32,6 +35,7 @@ export type Database = {
           ends_at: string;
           establishment_id: string;
           id?: string;
+          marketing_link_id?: string | null;
           notes?: string | null;
           paid?: boolean;
           paid_at?: string | null;
@@ -42,6 +46,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"];
           total_price_cents?: number | null;
           updated_at?: string;
+          whatsapp_reminder_opt_in?: boolean | null;
+          whatsapp_reminder_sent_at?: string | null;
         };
         Update: {
           created_at?: string;
@@ -49,6 +55,7 @@ export type Database = {
           ends_at?: string;
           establishment_id?: string;
           id?: string;
+          marketing_link_id?: string | null;
           notes?: string | null;
           paid?: boolean;
           paid_at?: string | null;
@@ -59,6 +66,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"];
           total_price_cents?: number | null;
           updated_at?: string;
+          whatsapp_reminder_opt_in?: boolean | null;
+          whatsapp_reminder_sent_at?: string | null;
         };
         Relationships: [
           {
@@ -73,6 +82,13 @@ export type Database = {
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "appointments_marketing_link_id_fkey";
+            columns: ["marketing_link_id"];
+            isOneToOne: false;
+            referencedRelation: "marketing_links";
             referencedColumns: ["id"];
           },
           {
@@ -132,37 +148,122 @@ export type Database = {
           },
         ];
       };
+      cash_movements: {
+        Row: {
+          amount_cents: number;
+          category: string;
+          created_at: string;
+          description: string | null;
+          establishment_id: string;
+          id: string;
+          occurred_at: string;
+          type: Database["public"]["Enums"]["cash_movement_type"];
+        };
+        Insert: {
+          amount_cents: number;
+          category: string;
+          created_at?: string;
+          description?: string | null;
+          establishment_id: string;
+          id?: string;
+          occurred_at?: string;
+          type: Database["public"]["Enums"]["cash_movement_type"];
+        };
+        Update: {
+          amount_cents?: number;
+          category?: string;
+          created_at?: string;
+          description?: string | null;
+          establishment_id?: string;
+          id?: string;
+          occurred_at?: string;
+          type?: Database["public"]["Enums"]["cash_movement_type"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: false;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       customers: {
         Row: {
           created_at: string;
+          current_appointment_id: string | null;
           email: string | null;
           establishment_id: string;
           id: string;
+          motivo_perda: string | null;
           name: string;
+          next_contact_at: string | null;
+          notes: string | null;
+          origem: string | null;
           phone: string;
+          responsavel_id: string | null;
+          stage: Database["public"]["Enums"]["crm_lead_stage"];
+          valor_estimado_cents: number | null;
+          whatsapp_confirmacao_sent_at: string | null;
+          whatsapp_msg1_sent_at: string | null;
         };
         Insert: {
           created_at?: string;
+          current_appointment_id?: string | null;
           email?: string | null;
           establishment_id: string;
           id?: string;
+          motivo_perda?: string | null;
           name: string;
+          next_contact_at?: string | null;
+          notes?: string | null;
+          origem?: string | null;
           phone: string;
+          responsavel_id?: string | null;
+          stage?: Database["public"]["Enums"]["crm_lead_stage"];
+          valor_estimado_cents?: number | null;
+          whatsapp_confirmacao_sent_at?: string | null;
+          whatsapp_msg1_sent_at?: string | null;
         };
         Update: {
           created_at?: string;
+          current_appointment_id?: string | null;
           email?: string | null;
           establishment_id?: string;
           id?: string;
+          motivo_perda?: string | null;
           name?: string;
+          next_contact_at?: string | null;
+          notes?: string | null;
+          origem?: string | null;
           phone?: string;
+          responsavel_id?: string | null;
+          stage?: Database["public"]["Enums"]["crm_lead_stage"];
+          valor_estimado_cents?: number | null;
+          whatsapp_confirmacao_sent_at?: string | null;
+          whatsapp_msg1_sent_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "customers_current_appointment_id_fkey";
+            columns: ["current_appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "appointments";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "customers_establishment_id_fkey";
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "customers_responsavel_id_fkey";
+            columns: ["responsavel_id"];
+            isOneToOne: false;
+            referencedRelation: "professionals";
             referencedColumns: ["id"];
           },
         ];
@@ -172,45 +273,139 @@ export type Database = {
           accent: string | null;
           address: string | null;
           created_at: string;
+          custom_domain: string | null;
           description: string | null;
           id: string;
           name: string;
           owner_id: string;
           phone: string | null;
+          plan: string;
+          plan_renews_at: string | null;
+          plan_status: string;
+          sells_products: boolean;
           slot_step_minutes: number;
           slug: string;
           timezone: string;
           updated_at: string;
+          whatsapp_business_api_connected: boolean;
+          whatsapp_message_1: string | null;
+          whatsapp_message_atencao: string | null;
+          whatsapp_message_confirmacao: string | null;
+          whatsapp_message_reengajamento: string | null;
         };
         Insert: {
           accent?: string | null;
           address?: string | null;
           created_at?: string;
+          custom_domain?: string | null;
           description?: string | null;
           id?: string;
           name: string;
           owner_id: string;
           phone?: string | null;
+          plan?: string;
+          plan_renews_at?: string | null;
+          plan_status?: string;
+          sells_products?: boolean;
           slot_step_minutes?: number;
           slug: string;
           timezone?: string;
           updated_at?: string;
+          whatsapp_business_api_connected?: boolean;
+          whatsapp_message_1?: string | null;
+          whatsapp_message_atencao?: string | null;
+          whatsapp_message_confirmacao?: string | null;
+          whatsapp_message_reengajamento?: string | null;
         };
         Update: {
           accent?: string | null;
           address?: string | null;
           created_at?: string;
+          custom_domain?: string | null;
           description?: string | null;
           id?: string;
           name?: string;
           owner_id?: string;
           phone?: string | null;
+          plan?: string;
+          plan_renews_at?: string | null;
+          plan_status?: string;
+          sells_products?: boolean;
           slot_step_minutes?: number;
           slug?: string;
           timezone?: string;
           updated_at?: string;
+          whatsapp_business_api_connected?: boolean;
+          whatsapp_message_1?: string | null;
+          whatsapp_message_atencao?: string | null;
+          whatsapp_message_confirmacao?: string | null;
+          whatsapp_message_reengajamento?: string | null;
         };
         Relationships: [];
+      };
+      marketing_link_clicks: {
+        Row: {
+          clicked_at: string;
+          id: string;
+          link_id: string;
+        };
+        Insert: {
+          clicked_at?: string;
+          id?: string;
+          link_id: string;
+        };
+        Update: {
+          clicked_at?: string;
+          id?: string;
+          link_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "marketing_link_clicks_link_id_fkey";
+            columns: ["link_id"];
+            isOneToOne: false;
+            referencedRelation: "marketing_links";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      marketing_links: {
+        Row: {
+          active: boolean;
+          channel: Database["public"]["Enums"]["marketing_channel"];
+          code: string;
+          created_at: string;
+          establishment_id: string;
+          id: string;
+          label: string;
+        };
+        Insert: {
+          active?: boolean;
+          channel?: Database["public"]["Enums"]["marketing_channel"];
+          code?: string;
+          created_at?: string;
+          establishment_id: string;
+          id?: string;
+          label: string;
+        };
+        Update: {
+          active?: boolean;
+          channel?: Database["public"]["Enums"]["marketing_channel"];
+          code?: string;
+          created_at?: string;
+          establishment_id?: string;
+          id?: string;
+          label?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "marketing_links_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: false;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       notification_queue: {
         Row: {
@@ -298,6 +493,101 @@ export type Database = {
           },
           {
             foreignKeyName: "payment_entries_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: false;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      product_movements: {
+        Row: {
+          created_at: string;
+          establishment_id: string;
+          id: string;
+          note: string | null;
+          product_id: string;
+          qty: number;
+          type: Database["public"]["Enums"]["product_movement_type"];
+          unit_price_cents: number;
+        };
+        Insert: {
+          created_at?: string;
+          establishment_id: string;
+          id?: string;
+          note?: string | null;
+          product_id: string;
+          qty: number;
+          type: Database["public"]["Enums"]["product_movement_type"];
+          unit_price_cents?: number;
+        };
+        Update: {
+          created_at?: string;
+          establishment_id?: string;
+          id?: string;
+          note?: string | null;
+          product_id?: string;
+          qty?: number;
+          type?: Database["public"]["Enums"]["product_movement_type"];
+          unit_price_cents?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_movements_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: false;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_movements_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      products: {
+        Row: {
+          active: boolean;
+          cost_cents: number;
+          created_at: string;
+          establishment_id: string;
+          id: string;
+          min_stock_qty: number;
+          name: string;
+          price_cents: number;
+          sku: string | null;
+          stock_qty: number;
+        };
+        Insert: {
+          active?: boolean;
+          cost_cents?: number;
+          created_at?: string;
+          establishment_id: string;
+          id?: string;
+          min_stock_qty?: number;
+          name: string;
+          price_cents?: number;
+          sku?: string | null;
+          stock_qty?: number;
+        };
+        Update: {
+          active?: boolean;
+          cost_cents?: number;
+          created_at?: string;
+          establishment_id?: string;
+          id?: string;
+          min_stock_qty?: number;
+          name?: string;
+          price_cents?: number;
+          sku?: string | null;
+          stock_qty?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "products_establishment_id_fkey";
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";
@@ -447,6 +737,7 @@ export type Database = {
           p_customer_name: string;
           p_customer_phone: string;
           p_establishment_id: string;
+          p_marketing_link_code?: string;
           p_notes?: string;
           p_professional_id: string;
           p_service_id: string;
@@ -455,13 +746,37 @@ export type Database = {
         };
         Returns: Json;
       };
+      marketing_link_stats: {
+        Args: { p_establishment_id: string };
+        Returns: {
+          agendamentos: number;
+          clicks: number;
+          comparecimentos: number;
+          faturamento_cents: number;
+          link_id: string;
+        }[];
+      };
       owns_establishment: {
         Args: { _establishment_id: string };
         Returns: boolean;
       };
+      resolve_marketing_link: { Args: { p_code: string }; Returns: Json };
     };
     Enums: {
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled";
+      cash_movement_type: "entrada" | "saida";
+      crm_activity_status: "pendente" | "concluida" | "cancelada";
+      crm_activity_type: "ligacao" | "whatsapp" | "visita" | "email" | "outro";
+      crm_lead_stage:
+        | "novo"
+        | "contato"
+        | "agendado"
+        | "convertido"
+        | "perdido"
+        | "mensagem_1"
+        | "confirmacao_dia";
+      marketing_channel: "instagram" | "facebook" | "whatsapp" | "anuncio" | "outro";
+      product_movement_type: "entrada" | "saida" | "venda" | "ajuste";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -584,6 +899,20 @@ export const Constants = {
   public: {
     Enums: {
       appointment_status: ["pending", "confirmed", "completed", "cancelled"],
+      cash_movement_type: ["entrada", "saida"],
+      crm_activity_status: ["pendente", "concluida", "cancelada"],
+      crm_activity_type: ["ligacao", "whatsapp", "visita", "email", "outro"],
+      crm_lead_stage: [
+        "novo",
+        "contato",
+        "agendado",
+        "convertido",
+        "perdido",
+        "mensagem_1",
+        "confirmacao_dia",
+      ],
+      marketing_channel: ["instagram", "facebook", "whatsapp", "anuncio", "outro"],
+      product_movement_type: ["entrada", "saida", "venda", "ajuste"],
     },
   },
 } as const;

@@ -152,9 +152,9 @@ function Agenda() {
   const markMsg1Sent = useMutation({
     mutationFn: async (appointmentId: string) => {
       const { error } = await supabase
-        .from("crm_leads")
+        .from("customers")
         .update({ whatsapp_msg1_sent_at: new Date().toISOString() })
-        .eq("appointment_id", appointmentId);
+        .eq("current_appointment_id", appointmentId);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {

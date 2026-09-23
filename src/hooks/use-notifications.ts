@@ -12,7 +12,7 @@ export type PendingAppointment = {
   customers: { name: string; phone: string } | null;
 };
 
-export type LeadWithAppointment = {
+export type CustomerWithAppointment = {
   id: string;
   name: string;
   phone: string | null;
@@ -59,24 +59,26 @@ export function useNotifications({
     },
   });
 
-  // Leads que já receberam a "Mensagem 1" (pós-agendamento) mas ainda não a
-  // confirmação do dia, e cujo agendamento é hoje — o dia certo de avisar o
-  // dono pra mandar o lembrete pro cliente, hoje um passo manual.
+  // Clientes que já receberam a "Mensagem 1" (pós-agendamento) mas ainda não
+  // a confirmação do dia, e cujo agendamento é hoje — o dia certo de avisar
+  // o dono pra mandar o lembrete pro cliente, hoje um passo manual.
   const { data: confirmations } = useQuery({
     queryKey: ["today-confirmations", establishmentId],
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("crm_leads")
-        .select("id, name, phone, appointment:appointments(starts_at, status, service_names)")
+        .from("customers")
+        .select(
+          "id, name, phone, appointment:appointments!current_appointment_id(starts_at, status, service_names)",
+        )
         .eq("establishment_id", establishmentId)
         .not("whatsapp_msg1_sent_at", "is", null)
         .is("whatsapp_confirmacao_sent_at", null)
-        .not("appointment_id", "is", null);
+        .not("current_appointment_id", "is", null);
       if (error) throw error;
 
       const todayIso = isoDateInZone(new Date(), timezone);
-      return ((data ?? []) as unknown as LeadWithAppointment[]).filter((lead) => {
+      return ((data ?? []) as unknown as CustomerWithAppointment[]).filter((lead) => {
         const appt = lead.appointment;
         if (!appt || appt.status !== "confirmed") return false;
         return isoDateInZone(new Date(appt.starts_at), timezone) === todayIso;
@@ -129,9 +131,9 @@ export function useNotifications({
   const markMsg1Sent = useMutation({
     mutationFn: async (appointmentId: string) => {
       const { error } = await supabase
-        .from("crm_leads")
+        .from("customers")
         .update({ whatsapp_msg1_sent_at: new Date().toISOString() })
-        .eq("appointment_id", appointmentId);
+        .eq("current_appointment_id", appointmentId);
       if (error) throw new Error(error.message);
     },
     onSuccess: (_data, appointmentId) => {
@@ -158,7 +160,7 @@ export function useNotifications({
   const markConfirmationSent = useMutation({
     mutationFn: async (leadId: string) => {
       const { error } = await supabase
-        .from("crm_leads")
+        .from("customers")
         .update({ whatsapp_confirmacao_sent_at: new Date().toISOString() })
         .eq("id", leadId);
       if (error) throw new Error(error.message);
