@@ -9,7 +9,9 @@ const config: CapacitorConfig = {
   appName: "Zaka",
   webDir: "www",
   server: {
-    url: "https://agendazaka.com/",
+    // Abre direto no painel do dono do estabelecimento (não na home de
+    // marketing) — /admin redireciona pro login quando não há sessão.
+    url: "https://agendazaka.com/admin",
     cleartext: false,
   },
 };
