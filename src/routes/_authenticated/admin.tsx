@@ -19,10 +19,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Share } from "@capacitor/share";
+import { Browser } from "@capacitor/browser";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
+import { isNativeAndroid } from "@/lib/whatsapp-intent";
 import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -181,7 +183,13 @@ function NavContent({
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-2"
-            onClick={onNavigate}
+            onClick={(e) => {
+              onNavigate?.();
+              if (isNativeAndroid()) {
+                e.preventDefault();
+                void Browser.open({ url: `${window.location.origin}/b/${establishment.slug}` });
+              }
+            }}
           >
             <ExternalLink className="size-4" />
             Página pública
