@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Send, Smartphone, UserPlus } from "lucide-react";
+import { Plus, Send, Smartphone, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -105,6 +105,24 @@ export function ContactsTab({
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
+
+  const removeContact = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) {
+        throw new Error(
+          error.code === "23503"
+            ? "Não é possível excluir um contato com agendamentos."
+            : error.message,
+        );
+      }
+    },
+    onSuccess: () => {
+      toast.success("Contato excluído");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const createContact = useMutation({
     mutationFn: async () => {
@@ -321,6 +339,14 @@ export function ContactsTab({
                   {lead.recency === "60dias" ? "Reengajar" : "Sugerir retorno"}
                 </WhatsAppLink>
               ) : null}
+              <button
+                type="button"
+                disabled={removeContact.isPending}
+                onClick={() => removeContact.mutate(lead.id)}
+                className="flex w-full items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-3 shrink-0" /> Excluir contato
+              </button>
             </LeadCard>
           ))}
         </div>
