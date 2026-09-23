@@ -39,13 +39,15 @@ export const STAGE_BADGE: Record<LeadStage, string> = {
   perdido: "bg-destructive/10 text-destructive",
 };
 
+/** Um "lead" é um cliente em qualquer etapa do funil — criado manualmente ou
+ * automaticamente ao agendar (link público ou admin). Não existe mais uma
+ * tabela separada de leads: `customers` é a única entrada por pessoa. */
 export type Lead = {
   id: string;
-  customer_id: string | null;
-  appointment_id?: string | null;
+  current_appointment_id?: string | null;
   name: string;
-  phone: string | null;
-  origem: string;
+  phone: string;
+  origem: string | null;
   stage: LeadStage;
   valor_estimado_cents: number | null;
   responsavel_id: string | null;
@@ -81,12 +83,12 @@ function LeadDetailsDialog({
   const saveNextContact = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
-        .from("crm_leads")
+        .from("customers")
         .update({ next_contact_at: nextContact || null })
         .eq("id", lead.id);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm-leads"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
   });
 
   return (
@@ -189,23 +191,21 @@ export function LeadCard({
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{lead.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{lead.phone ?? "Sem telefone"}</p>
+            <p className="truncate text-xs text-muted-foreground">{lead.phone}</p>
           </div>
-          {lead.phone ? (
-            <WhatsAppLink
-              phone={lead.phone}
-              message={`Oi ${lead.name.split(" ")[0]}! `}
-              ariaLabel="Conversar no WhatsApp"
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-success hover:bg-success/10"
-            >
-              <MessageCircle className="size-4" />
-            </WhatsAppLink>
-          ) : null}
+          <WhatsAppLink
+            phone={lead.phone}
+            message={`Oi ${lead.name.split(" ")[0]}! `}
+            ariaLabel="Conversar no WhatsApp"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-success hover:bg-success/10"
+          >
+            <MessageCircle className="size-4" />
+          </WhatsAppLink>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">
             <Target className="mr-1 size-2.5" />
-            {lead.origem}
+            {lead.origem ?? "Outro"}
           </Badge>
           {showStage ? (
             <Badge variant="outline" className={`border-0 text-[10px] ${STAGE_BADGE[lead.stage]}`}>
@@ -239,7 +239,7 @@ export function LeadCard({
           {showSchedule ? (
             <Link
               to="/admin/new"
-              search={{ leadId: lead.id, name: lead.name, phone: lead.phone ?? undefined }}
+              search={{ leadId: lead.id, name: lead.name, phone: lead.phone }}
               className="flex flex-1 items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
             >
               <CalendarPlus className="size-3 shrink-0" /> Agendar

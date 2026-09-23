@@ -50,7 +50,7 @@ function nextStage(stage: LeadStage): LeadStage | null {
 
 /** Próximo lembrete de WhatsApp pendente pra um lead com agendamento vinculado, independente da etapa do funil. */
 function nextReminderStep(lead: Lead): "msg1" | "confirmacao" | null {
-  if (!lead.appointment_id) return null;
+  if (!lead.current_appointment_id) return null;
   if (!lead.whatsapp_msg1_sent_at) return "msg1";
   if (!lead.whatsapp_confirmacao_sent_at) return "confirmacao";
   return null;
@@ -121,12 +121,12 @@ export function PipelineTab({
   const [contactForm, setContactForm] = useState({ ...EMPTY_CONTACT_FORM });
 
   const { data: leads, isLoading } = useQuery({
-    queryKey: ["crm-leads", establishmentId, "pipeline"],
+    queryKey: ["customers", establishmentId, "pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("crm_leads")
+        .from("customers")
         .select(
-          "id, customer_id, appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, whatsapp_msg1_sent_at, whatsapp_confirmacao_sent_at, next_contact_at, appointment:appointments(starts_at)",
+          "id, current_appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, whatsapp_msg1_sent_at, whatsapp_confirmacao_sent_at, next_contact_at, appointment:appointments!current_appointment_id(starts_at)",
         )
         .eq("establishment_id", establishmentId)
         .order("created_at", { ascending: false });
@@ -149,7 +149,6 @@ export function PipelineTab({
   });
 
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ["crm-leads"] });
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
 
@@ -157,15 +156,21 @@ export function PipelineTab({
     mutationFn: async () => {
       const name = contactForm.name.trim();
       if (name.length < 2) throw new Error("Informe o nome");
-      const { error } = await supabase.from("crm_leads").insert({
+      const phone = normalizePhone(contactForm.phone);
+      if (phone.length < 8) throw new Error("Informe um telefone válido");
+      const { error } = await supabase.from("customers").insert({
         establishment_id: establishmentId,
         name,
-        phone: contactForm.phone.trim() || null,
+        phone,
         origem: contactForm.origem.trim() || "Outro",
         valor_estimado_cents: contactForm.valorCents > 0 ? contactForm.valorCents : null,
         responsavel_id: contactForm.responsavelId || null,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        throw new Error(
+          error.code === "23505" ? "Este telefone já está cadastrado" : error.message,
+        );
+      }
     },
     onSuccess: () => {
       toast.success("Contato cadastrado no funil");
@@ -180,7 +185,7 @@ export function PipelineTab({
     mutationFn: async (lead: Lead) => {
       const next = nextStage(lead.stage);
       if (!next) return;
-      const { error } = await supabase.from("crm_leads").update({ stage: next }).eq("id", lead.id);
+      const { error } = await supabase.from("customers").update({ stage: next }).eq("id", lead.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: invalidate,
@@ -189,10 +194,13 @@ export function PipelineTab({
 
   const markReminderSent = useMutation({
     mutationFn: async ({ lead, step }: { lead: Lead; step: "msg1" | "confirmacao" }) => {
-      const field = step === "msg1" ? "whatsapp_msg1_sent_at" : "whatsapp_confirmacao_sent_at";
       const { error } = await supabase
-        .from("crm_leads")
-        .update({ [field]: new Date().toISOString() })
+        .from("customers")
+        .update(
+          step === "msg1"
+            ? { whatsapp_msg1_sent_at: new Date().toISOString() }
+            : { whatsapp_confirmacao_sent_at: new Date().toISOString() },
+        )
         .eq("id", lead.id);
       if (error) throw new Error(error.message);
     },
@@ -202,26 +210,9 @@ export function PipelineTab({
 
   const convert = useMutation({
     mutationFn: async (lead: Lead) => {
-      let customerId = lead.customer_id;
-      if (!customerId && lead.phone) {
-        const { data, error } = await supabase
-          .from("customers")
-          .upsert(
-            {
-              establishment_id: establishmentId,
-              name: lead.name,
-              phone: normalizePhone(lead.phone),
-            },
-            { onConflict: "establishment_id,phone" },
-          )
-          .select("id")
-          .single();
-        if (error) throw new Error(error.message);
-        customerId = data.id;
-      }
       const { error } = await supabase
-        .from("crm_leads")
-        .update({ stage: "convertido", customer_id: customerId })
+        .from("customers")
+        .update({ stage: "convertido" })
         .eq("id", lead.id);
       if (error) throw new Error(error.message);
     },
@@ -237,7 +228,7 @@ export function PipelineTab({
       if (!leadPerdido) return;
       if (!motivo.trim()) throw new Error("Informe o motivo");
       const { error } = await supabase
-        .from("crm_leads")
+        .from("customers")
         .update({ stage: "perdido", motivo_perda: motivo.trim() })
         .eq("id", leadPerdido.id);
       if (error) throw new Error(error.message);
