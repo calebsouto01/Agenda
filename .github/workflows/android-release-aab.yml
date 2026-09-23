@@ -30,7 +30,13 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      # packages explícito: o default da action ("tools platform-tools")
+      # inclui o pacote legado "tools", removido pelo Google — sem isso o
+      # setup falha com "Failed to find package 'tools'". O Gradle já baixa
+      # sozinho a platform/build-tools certas (licenças já aceitas aqui).
       - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
 
       - uses: oven-sh/setup-bun@v2
         with:
