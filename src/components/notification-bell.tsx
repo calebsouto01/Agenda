@@ -1,6 +1,16 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Bell, Check, MessageCircle, Send, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  Check,
+  CheckCheck,
+  MessageCircle,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +38,13 @@ type LeadWithAppointment = {
   appointment: { starts_at: string; status: string; service_names: string | null } | null;
 };
 
+type FinishableAppointment = {
+  id: string;
+  ends_at: string;
+  service_names: string | null;
+  customers: { name: string } | null;
+};
+
 /** Tarja do agendamento recém-aceito: falta enviar a mensagem 1 (pós-agendamento). */
 function ConfirmationTag() {
   return (
@@ -44,6 +61,16 @@ function TodayReminderTag() {
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
       <AlertTriangle className="size-2.5" />
       Lembrete do dia
+    </span>
+  );
+}
+
+/** Tarja do atendimento cujo horário já passou: falta finalizar (registrar pagamento). */
+function FinalizeTag() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-orange-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
+      <CheckCheck className="size-2.5" />
+      Finalizar
     </span>
   );
 }
@@ -115,9 +142,28 @@ export function NotificationBell({
     },
   });
 
+  // Confirmados cujo horário já passou e ainda não foram finalizados
+  // (pagamento registrado) — avisa o dono pra fechar o atendimento.
+  const { data: finishable } = useQuery({
+    queryKey: ["finishable-appointments", establishmentId],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, ends_at, service_names, customers(name)")
+        .eq("establishment_id", establishmentId)
+        .eq("status", "confirmed")
+        .lt("ends_at", new Date().toISOString())
+        .order("ends_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as FinishableAppointment[];
+    },
+  });
+
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["pending-appointments"] });
     queryClient.invalidateQueries({ queryKey: ["today-confirmations"] });
+    queryClient.invalidateQueries({ queryKey: ["finishable-appointments"] });
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
   }
 
@@ -189,7 +235,8 @@ export function NotificationBell({
 
   const pendingCount = combinedPending.length;
   const confirmationCount = confirmations?.length ?? 0;
-  const count = pendingCount + confirmationCount;
+  const finishableCount = finishable?.length ?? 0;
+  const count = pendingCount + confirmationCount + finishableCount;
 
   return (
     <Popover
@@ -304,6 +351,38 @@ export function NotificationBell({
                     </div>
                   );
                 })}
+              </div>
+            ) : null}
+
+            {finishableCount > 0 ? (
+              <div className="space-y-1.5">
+                <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                  Atendimentos para finalizar
+                </p>
+                {finishable!.map((a) => (
+                  <div key={a.id} className="rounded-lg border p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-semibold">
+                        {a.customers?.name ?? "Cliente"}
+                      </p>
+                      <FinalizeTag />
+                    </div>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {a.service_names ?? ""} · horário terminou às{" "}
+                      {timeInZone(a.ends_at, timezone)}
+                    </p>
+                    <Button
+                      asChild
+                      size="sm"
+                      className="mt-1.5 h-7 w-full text-xs"
+                      onClick={() => setOpen(false)}
+                    >
+                      <Link to="/admin">
+                        <CheckCheck className="size-3" /> Finalizar na agenda
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
               </div>
             ) : null}
 
