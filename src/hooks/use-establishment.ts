@@ -24,6 +24,9 @@ export type Establishment = {
   whatsapp_message_confirmacao: string | null;
   whatsapp_message_atencao: string | null;
   whatsapp_message_reengajamento: string | null;
+  notify_pending_enabled: boolean;
+  notify_finishable_enabled: boolean;
+  notify_reminders_enabled: boolean;
 };
 
 /** The establishment owned by the signed-in user (one per account in this version). */
@@ -36,7 +39,7 @@ export function useEstablishment() {
       const { data, error } = await supabase
         .from("establishments")
         .select(
-          "id, owner_id, name, slug, description, phone, address, custom_domain, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at, whatsapp_message_1, whatsapp_message_confirmacao, whatsapp_message_atencao, whatsapp_message_reengajamento",
+          "id, owner_id, name, slug, description, phone, address, custom_domain, timezone, slot_step_minutes, sells_products, whatsapp_business_api_connected, plan, plan_status, plan_renews_at, whatsapp_message_1, whatsapp_message_confirmacao, whatsapp_message_atencao, whatsapp_message_reengajamento, notify_pending_enabled, notify_finishable_enabled, notify_reminders_enabled",
         )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })

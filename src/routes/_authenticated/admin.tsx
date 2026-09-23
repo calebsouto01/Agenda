@@ -8,7 +8,6 @@ import {
   ExternalLink,
   LogOut,
   Megaphone,
-  MessageSquareText,
   Menu,
   Scissors,
   Settings,
@@ -39,17 +38,64 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
 });
 
-const NAV: { to: string; label: string; icon: typeof CalendarDays; exact?: boolean }[] = [
-  { to: "/admin", label: "Agenda", icon: CalendarDays, exact: true },
-  { to: "/admin/notificacoes", label: "Notificações", icon: Bell },
-  { to: "/admin/services", label: "Serviços", icon: Scissors },
-  { to: "/admin/professionals", label: "Profissionais", icon: UserRound },
-  { to: "/admin/hours", label: "Funcionamento", icon: Clock },
-  { to: "/admin/customers", label: "Clientes", icon: Users },
-  { to: "/admin/finance", label: "Financeiro", icon: Wallet },
-  { to: "/admin/marketing", label: "Marketing", icon: Megaphone },
-  { to: "/admin/messages", label: "Mensagens", icon: MessageSquareText },
-  { to: "/admin/settings", label: "Dados da empresa", icon: Settings },
+type NavLeaf = { to: string; label: string; tab: string };
+type NavEntry =
+  | { kind: "link"; to: string; label: string; icon: typeof CalendarDays; exact?: boolean }
+  | {
+      kind: "group";
+      label: string;
+      icon: typeof CalendarDays;
+      basePath: string;
+      leaves: NavLeaf[];
+    };
+
+/** Menu em cascata: cada categoria abaixo mostra suas telas como sub-itens sempre visíveis. */
+const NAV: NavEntry[] = [
+  { kind: "link", to: "/admin", label: "Agenda", icon: CalendarDays, exact: true },
+  {
+    kind: "group",
+    label: "Clientes",
+    icon: Users,
+    basePath: "/admin/customers",
+    leaves: [
+      { to: "/admin/customers", label: "Contatos", tab: "contatos" },
+      { to: "/admin/customers", label: "Funil", tab: "funil" },
+    ],
+  },
+  {
+    kind: "group",
+    label: "Serviços e produtos",
+    icon: Scissors,
+    basePath: "/admin/services",
+    leaves: [
+      { to: "/admin/services", label: "Serviços", tab: "servicos" },
+      { to: "/admin/services", label: "Produtos", tab: "produtos" },
+    ],
+  },
+  { kind: "link", to: "/admin/professionals", label: "Profissionais", icon: UserRound },
+  { kind: "link", to: "/admin/hours", label: "Funcionamento", icon: Clock },
+  { kind: "link", to: "/admin/finance", label: "Financeiro", icon: Wallet },
+  {
+    kind: "group",
+    label: "Marketing",
+    icon: Megaphone,
+    basePath: "/admin/marketing",
+    leaves: [
+      { to: "/admin/marketing", label: "Links personalizados", tab: "links" },
+      { to: "/admin/marketing", label: "Mensagem", tab: "mensagem" },
+    ],
+  },
+  {
+    kind: "group",
+    label: "Notificações",
+    icon: Bell,
+    basePath: "/admin/notificacoes",
+    leaves: [
+      { to: "/admin/notificacoes", label: "Console", tab: "console" },
+      { to: "/admin/notificacoes", label: "Central", tab: "central" },
+    ],
+  },
+  { kind: "link", to: "/admin/settings", label: "Dados da empresa", icon: Settings },
 ];
 
 function AdminLayout() {
@@ -57,6 +103,7 @@ function AdminLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const search = useRouterState({ select: (s) => s.location.search as { tab?: string } });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   async function signOut() {
@@ -79,8 +126,13 @@ function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-background md:flex">
-      <aside className="hidden shrink-0 flex-col border-r bg-card md:sticky md:top-0 md:flex md:h-screen md:w-56">
-        <NavContent establishment={establishment} pathname={pathname} onSignOut={signOut} />
+      <aside className="hidden shrink-0 flex-col border-r bg-card md:sticky md:top-0 md:flex md:h-screen md:w-60">
+        <NavContent
+          establishment={establishment}
+          pathname={pathname}
+          search={search}
+          onSignOut={signOut}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -94,13 +146,7 @@ function AdminLayout() {
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
           </span>
-          <NotificationBell
-            establishmentId={establishment.id}
-            establishmentName={establishment.name}
-            timezone={establishment.timezone}
-            message1Template={establishment.whatsapp_message_1}
-            confirmationTemplate={establishment.whatsapp_message_confirmacao}
-          />
+          <NotificationBell establishment={establishment} />
         </header>
 
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -109,6 +155,7 @@ function AdminLayout() {
             <NavContent
               establishment={establishment}
               pathname={pathname}
+              search={search}
               onSignOut={signOut}
               onNavigate={() => setMobileNavOpen(false)}
               showNotifications={false}
@@ -127,12 +174,14 @@ function AdminLayout() {
 function NavContent({
   establishment,
   pathname,
+  search,
   onSignOut,
   onNavigate,
   showNotifications = true,
 }: {
   establishment: Establishment;
   pathname: string;
+  search: { tab?: string };
   onSignOut: () => void;
   onNavigate?: () => void;
   showNotifications?: boolean;
@@ -148,33 +197,60 @@ function NavContent({
           <CalendarCheck className="size-4" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
-        {showNotifications ? (
-          <NotificationBell
-            establishmentId={establishment.id}
-            establishmentName={establishment.name}
-            timezone={establishment.timezone}
-            message1Template={establishment.whatsapp_message_1}
-            confirmationTemplate={establishment.whatsapp_message_confirmacao}
-          />
-        ) : null}
+        {showNotifications ? <NotificationBell establishment={establishment} /> : null}
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
-          const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+          if (item.kind === "link") {
+            const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={onNavigate}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <item.icon className="size-4" />
+                {item.label}
+              </Link>
+            );
+          }
+
+          const groupActive = pathname.startsWith(item.basePath);
+          const defaultTab = item.leaves[0]!.tab;
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
-                active
-                  ? "bg-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <item.icon className="size-4" />
-              {item.label}
-            </Link>
+            <div key={item.label} className="space-y-0.5">
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
+                  groupActive ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <item.icon className="size-3.5" />
+                {item.label}
+              </div>
+              {item.leaves.map((leaf) => {
+                const active = pathname === leaf.to && (search.tab ?? defaultTab) === leaf.tab;
+                return (
+                  <Link
+                    key={`${leaf.to}-${leaf.tab}`}
+                    to={leaf.to}
+                    search={{ tab: leaf.tab }}
+                    onClick={onNavigate}
+                    className={`ml-2 flex items-center gap-2 rounded-lg border-l-2 py-1.5 pl-3 text-sm font-medium transition-all ${
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {leaf.label}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
