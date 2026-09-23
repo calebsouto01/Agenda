@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarDays,
   CalendarCheck,
+  ChevronDown,
   ExternalLink,
   LogOut,
   Megaphone,
@@ -186,6 +187,10 @@ function NavContent({
   onNavigate?: () => void;
   showNotifications?: boolean;
 }) {
+  // Retraído por padrão só quando o usuário fecha na mão; a categoria da
+  // página atual sempre fica aberta, mesmo se tiver sido retraída antes.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
   return (
     <>
       <div
@@ -222,34 +227,44 @@ function NavContent({
 
           const groupActive = pathname.startsWith(item.basePath);
           const defaultTab = item.leaves[0]!.tab;
+          const open = groupActive || !collapsed[item.label];
           return (
             <div key={item.label} className="space-y-0.5">
-              <div
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
+              <button
+                type="button"
+                onClick={() =>
+                  setCollapsed((prev) => ({ ...prev, [item.label]: !prev[item.label] }))
+                }
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors hover:bg-muted ${
                   groupActive ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
-                <item.icon className="size-3.5" />
-                {item.label}
-              </div>
-              {item.leaves.map((leaf) => {
-                const active = pathname === leaf.to && (search.tab ?? defaultTab) === leaf.tab;
-                return (
-                  <Link
-                    key={`${leaf.to}-${leaf.tab}`}
-                    to={leaf.to}
-                    search={{ tab: leaf.tab }}
-                    onClick={onNavigate}
-                    className={`ml-2 flex items-center gap-2 rounded-lg border-l-2 py-1.5 pl-3 text-sm font-medium transition-all ${
-                      active
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
-                    {leaf.label}
-                  </Link>
-                );
-              })}
+                <item.icon className="size-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+                <ChevronDown
+                  className={`size-3.5 shrink-0 transition-transform ${open ? "" : "-rotate-90"}`}
+                />
+              </button>
+              {open
+                ? item.leaves.map((leaf) => {
+                    const active = pathname === leaf.to && (search.tab ?? defaultTab) === leaf.tab;
+                    return (
+                      <Link
+                        key={`${leaf.to}-${leaf.tab}`}
+                        to={leaf.to}
+                        search={{ tab: leaf.tab }}
+                        onClick={onNavigate}
+                        className={`ml-2 flex items-center gap-2 rounded-lg border-l-2 py-1.5 pl-3 text-sm font-medium transition-all ${
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {leaf.label}
+                      </Link>
+                    );
+                  })
+                : null}
             </div>
           );
         })}
