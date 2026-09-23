@@ -31,14 +31,6 @@ export const STAGE_LABEL: Record<LeadStage, string> = {
   perdido: "Perdido",
 };
 
-export const STAGE_BADGE: Record<LeadStage, string> = {
-  novo: "bg-muted text-muted-foreground",
-  contato: "bg-primary/10 text-primary",
-  agendado: "bg-warning/20 text-warning-foreground",
-  convertido: "bg-success/20 text-success",
-  perdido: "bg-destructive/10 text-destructive",
-};
-
 /** Um "lead" é um cliente em qualquer etapa do funil — criado manualmente ou
  * automaticamente ao agendar (link público ou admin). Não existe mais uma
  * tabela separada de leads: `customers` é a única entrada por pessoa. */
@@ -169,13 +161,11 @@ function LeadDetailsDialog({
 export function LeadCard({
   lead,
   responsavelNome,
-  showStage = false,
   showSchedule = false,
   children,
 }: {
   lead: Lead;
   responsavelNome: string | null;
-  showStage?: boolean;
   showSchedule?: boolean;
   children?: React.ReactNode;
 }) {
@@ -207,11 +197,6 @@ export function LeadCard({
             <Target className="mr-1 size-2.5" />
             {lead.origem ?? "Outro"}
           </Badge>
-          {showStage ? (
-            <Badge variant="outline" className={`border-0 text-[10px] ${STAGE_BADGE[lead.stage]}`}>
-              {STAGE_LABEL[lead.stage]}
-            </Badge>
-          ) : null}
           {overdue ? (
             <Badge
               variant="outline"

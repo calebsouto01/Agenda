@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, CheckCheck, MessageCircle, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +19,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { ConfirmationTag, FinalizeTag, TodayReminderTag } from "@/components/notification-tags";
 
@@ -336,7 +335,6 @@ function CentralTab() {
 }
 
 function NotificationsPage() {
-  const navigate = useNavigate();
   const { tab } = useSearch({ from: "/_authenticated/admin/notificacoes" });
   const section = tab ?? "central";
 
@@ -344,28 +342,7 @@ function NotificationsPage() {
     <div className="space-y-4">
       <PageTitle icon={Bell}>Notificações</PageTitle>
 
-      <Tabs
-        value={section}
-        onValueChange={(v) =>
-          navigate({
-            to: "/admin/notificacoes",
-            search: { tab: v as "console" | "central" },
-            replace: true,
-          })
-        }
-      >
-        <TabsList>
-          <TabsTrigger value="central">Central</TabsTrigger>
-          <TabsTrigger value="console">Console</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="central" className="pt-4">
-          <CentralTab />
-        </TabsContent>
-        <TabsContent value="console" className="pt-4">
-          <ConsoleTab />
-        </TabsContent>
-      </Tabs>
+      {section === "console" ? <ConsoleTab /> : <CentralTab />}
     </div>
   );
 }
