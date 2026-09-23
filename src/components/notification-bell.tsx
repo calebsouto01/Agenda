@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Bell, Check, MessageCircle, Trash2, X } from "lucide-react";
+import { AlertTriangle, Bell, Check, MessageCircle, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -28,12 +28,22 @@ type LeadWithAppointment = {
   appointment: { starts_at: string; status: string; service_names: string | null } | null;
 };
 
-/** Tarja de aviso pras notificações que pedem envio de lembrete pro cliente. */
-function ReminderTag() {
+/** Tarja do agendamento recém-aceito: falta enviar a mensagem 1 (pós-agendamento). */
+function ConfirmationTag() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
+      <Send className="size-2.5" />
+      Confirmação
+    </span>
+  );
+}
+
+/** Tarja do lembrete do dia: agendamento é hoje, falta confirmar com o cliente. */
+function TodayReminderTag() {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
       <AlertTriangle className="size-2.5" />
-      Lembrete
+      Lembrete do dia
     </span>
   );
 }
@@ -221,7 +231,7 @@ export function NotificationBell({
                         <p className="truncate text-sm font-semibold">
                           {a.customers?.name ?? "Cliente"}
                         </p>
-                        {accepted ? <ReminderTag /> : null}
+                        {accepted ? <ConfirmationTag /> : null}
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {a.service_names ?? ""} · {dateTimeInZone(a.starts_at, timezone)}
@@ -317,7 +327,7 @@ export function NotificationBell({
                     <div key={lead.id} className="rounded-lg border p-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-semibold">{lead.name}</p>
-                        <ReminderTag />
+                        <TodayReminderTag />
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {appt.service_names ?? ""} · hoje às {timeInZone(appt.starts_at, timezone)}
