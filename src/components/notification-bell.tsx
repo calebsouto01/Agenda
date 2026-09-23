@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Bell, Check, MessageCircle, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -55,6 +55,17 @@ export function NotificationBell({
   // Agendamento aceito nesta sessão: em vez de sumir do sino, o card no mesmo
   // lugar vira um "enviar mensagem?" até o dono clicar (ou fechar o sino).
   const [justAccepted, setJustAccepted] = useState<Record<string, PendingAppointment>>({});
+  // Controla o popover na mão: ao aceitar, o botão que estava com foco some
+  // do DOM (vira o card de enviar mensagem) e, por um bug conhecido do
+  // Radix, isso pode disparar um fechamento automático do popover mesmo já
+  // tratando o foco indo pro <body>. Suprime qualquer fechamento não
+  // solicitado pelo usuário logo após aceitar, pra garantir que o card de
+  // enviar mensagem realmente apareça.
+  const [open, setOpen] = useState(false);
+  const suppressCloseUntilRef = useRef(0);
+  function suppressCloseBriefly() {
+    suppressCloseUntilRef.current = Date.now() + 400;
+  }
 
   const { data: pending } = useQuery({
     queryKey: ["pending-appointments", establishmentId],
@@ -113,6 +124,7 @@ export function NotificationBell({
     onSuccess: (a) => {
       toast.success("Agendamento confirmado");
       setJustAccepted((prev) => ({ ...prev, [a.id]: a }));
+      suppressCloseBriefly();
       invalidate();
     },
     onError: () => toast.error("Não foi possível confirmar"),
@@ -172,7 +184,13 @@ export function NotificationBell({
   const count = pendingCount + confirmationCount;
 
   return (
-    <Popover>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && Date.now() < suppressCloseUntilRef.current) return;
+        setOpen(next);
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"
