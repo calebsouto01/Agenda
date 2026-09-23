@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RotateCcw, Send, Smartphone, UserPlus } from "lucide-react";
+import { Plus, Send, Smartphone, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -17,19 +17,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LeadCard, ORIGENS, type Lead, type Professional } from "./lead-shared";
+import { LeadCard, ORIGENS, type Lead } from "./lead-shared";
 
-const EMPTY_FORM = { name: "", phone: "", origem: "", valorCents: 0, responsavelId: "" };
+const EMPTY_FORM = { name: "", phone: "", origem: "" };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -54,10 +46,7 @@ export function ContactsTab({
   const queryClient = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
-  const [leadToHide, setLeadToHide] = useState<Lead | null>(null);
-  const [motivo, setMotivo] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"ativos" | "perdidos">("ativos");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["customers", establishmentId, "contatos"],
@@ -113,19 +102,6 @@ export function ContactsTab({
     });
   }
 
-  const { data: professionals } = useQuery({
-    queryKey: ["professionals-select", establishmentId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professionals")
-        .select("id, name")
-        .eq("establishment_id", establishmentId)
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as Professional[];
-    },
-  });
-
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
@@ -141,8 +117,6 @@ export function ContactsTab({
         name,
         phone,
         origem: form.origem.trim() || "Outro",
-        valor_estimado_cents: form.valorCents > 0 ? form.valorCents : null,
-        responsavel_id: form.responsavelId || null,
       });
       if (error) {
         throw new Error(
@@ -151,43 +125,9 @@ export function ContactsTab({
       }
     },
     onSuccess: () => {
-      toast.success("Contato criado e já está no Funil");
+      toast.success("Contato criado");
       setForm({ ...EMPTY_FORM });
       setOpenNew(false);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const hideContact = useMutation({
-    mutationFn: async () => {
-      if (!leadToHide) return;
-      if (!motivo.trim()) throw new Error("Informe o motivo");
-      const { error } = await supabase
-        .from("customers")
-        .update({ stage: "perdido", motivo_perda: motivo.trim() })
-        .eq("id", leadToHide.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Marcado como perdido");
-      setLeadToHide(null);
-      setMotivo("");
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const reactivate = useMutation({
-    mutationFn: async (lead: Lead) => {
-      const { error } = await supabase
-        .from("customers")
-        .update({ stage: "novo", motivo_perda: null })
-        .eq("id", lead.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Contato reativado no Funil");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -232,31 +172,20 @@ export function ContactsTab({
     },
     onSuccess: (count) => {
       toast.success(
-        count > 0
-          ? `${count} novo(s) contato(s) importado(s) pro Funil`
-          : "Nenhum contato novo encontrado",
+        count > 0 ? `${count} novo(s) contato(s) importado(s)` : "Nenhum contato novo encontrado",
       );
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const responsavelNome = (id: string | null) =>
-    professionals?.find((p) => p.id === id)?.name ?? null;
-
-  const activeLeads = leads.filter((l) => l.stage !== "perdido");
-  const lostLeads = leads.filter((l) => l.stage === "perdido");
-  const baseList = filter === "ativos" ? activeLeads : lostLeads;
-  const filteredLeads = baseList.filter((c) =>
+  const filteredLeads = leads.filter((c) =>
     `${c.name} ${c.phone}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Todos os seus contatos, de leads a clientes. Cadastre ou importe pra alimentar o Funil.
-        </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {isNativeApp() ? (
             <Button
@@ -285,31 +214,7 @@ export function ContactsTab({
         </div>
       </div>
 
-      <div className="sticky top-14 z-10 space-y-2 bg-background py-2 md:top-0">
-        <div className="inline-flex rounded-lg border p-0.5">
-          <button
-            type="button"
-            onClick={() => setFilter("ativos")}
-            className={`rounded-md px-3 py-1 text-xs font-medium ${
-              filter === "ativos"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Ativos ({activeLeads.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("perdidos")}
-            className={`rounded-md px-3 py-1 text-xs font-medium ${
-              filter === "perdidos"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Perdidos ({lostLeads.length})
-          </button>
-        </div>
+      <div className="sticky top-14 z-10 bg-background py-2 md:top-0">
         <Input
           placeholder="Buscar por nome ou telefone"
           maxLength={80}
@@ -330,59 +235,29 @@ export function ContactsTab({
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="contact-phone">Telefone</Label>
-                <Input
-                  id="contact-phone"
-                  maxLength={30}
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="contact-valor">Valor estimado</Label>
-                <CurrencyInput
-                  id="contact-valor"
-                  valueCents={form.valorCents}
-                  onValueChange={(cents) => setForm({ ...form, valorCents: cents })}
-                />
-              </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="contact-phone">Telefone</Label>
+              <Input
+                id="contact-phone"
+                maxLength={30}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="contact-origem">Origem</Label>
-                <Input
-                  id="contact-origem"
-                  list="contact-origens"
-                  maxLength={60}
-                  value={form.origem}
-                  onChange={(e) => setForm({ ...form, origem: e.target.value })}
-                />
-                <datalist id="contact-origens">
-                  {ORIGENS.map((o) => (
-                    <option key={o} value={o} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Responsável</Label>
-                <Select
-                  value={form.responsavelId}
-                  onValueChange={(v) => setForm({ ...form, responsavelId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nenhum" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {professionals?.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="contact-origem">Origem</Label>
+              <Input
+                id="contact-origem"
+                list="contact-origens"
+                maxLength={60}
+                value={form.origem}
+                onChange={(e) => setForm({ ...form, origem: e.target.value })}
+              />
+              <datalist id="contact-origens">
+                {ORIGENS.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
             </div>
             <div className="flex gap-2">
               <Button disabled={createContact.isPending} onClick={() => createContact.mutate()}>
@@ -396,60 +271,19 @@ export function ContactsTab({
         </Card>
       ) : null}
 
-      {leadToHide ? (
-        <Card className="border-destructive/30 shadow-soft">
-          <CardContent className="grid gap-3 p-5">
-            <p className="text-sm font-semibold">Marcar "{leadToHide.name}" como perdido</p>
-            <div className="grid gap-1.5">
-              <Label htmlFor="contact-motivo">Motivo</Label>
-              <Input
-                id="contact-motivo"
-                maxLength={200}
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                disabled={hideContact.isPending}
-                onClick={() => hideContact.mutate()}
-              >
-                Marcar como perdido
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setLeadToHide(null);
-                  setMotivo("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : baseList.length === 0 ? (
+      ) : leads.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <div className="rounded-full bg-primary/10 p-3 text-primary">
               <UserPlus className="size-5" />
             </div>
             <div>
-              {filter === "ativos" ? (
-                <>
-                  <p className="text-sm font-medium">Nenhum contato cadastrado</p>
-                  <p className="text-sm text-muted-foreground">
-                    Importe do celular ou cadastre um contato pra começar.
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm font-medium">Nenhum contato perdido</p>
-              )}
+              <p className="text-sm font-medium">Nenhum contato cadastrado</p>
+              <p className="text-sm text-muted-foreground">
+                Importe do celular ou cadastre um contato pra começar.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -462,12 +296,7 @@ export function ContactsTab({
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {filteredLeads.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              responsavelNome={responsavelNome(lead.responsavel_id)}
-              showStage
-            >
+            <LeadCard key={lead.id} lead={lead} responsavelNome={null}>
               {lead.visits > 0 ? (
                 <p className="text-xs text-muted-foreground">
                   {lead.visits} atendimento{lead.visits === 1 ? "" : "s"} concluído
@@ -482,43 +311,16 @@ export function ContactsTab({
                   ) : null}
                 </p>
               ) : null}
-              {filter === "perdidos" ? (
-                <div className="space-y-1.5">
-                  {lead.motivo_perda ? (
-                    <p className="truncate text-xs text-muted-foreground">{lead.motivo_perda}</p>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => reactivate.mutate(lead)}
-                    className="flex w-full items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
-                  >
-                    <RotateCcw className="size-3 shrink-0" /> Reativar
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {lead.recency ? (
-                    <WhatsAppLink
-                      phone={lead.phone}
-                      message={reengagementMessage(lead.recency, lead.name)}
-                      className="flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
-                    >
-                      <Send className="size-3 shrink-0" />
-                      {lead.recency === "60dias" ? "Reengajar" : "Sugerir retorno"}
-                    </WhatsAppLink>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLeadToHide(lead);
-                      setMotivo("");
-                    }}
-                    className="w-full rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    Marcar perdido
-                  </button>
-                </div>
-              )}
+              {lead.recency ? (
+                <WhatsAppLink
+                  phone={lead.phone}
+                  message={reengagementMessage(lead.recency, lead.name)}
+                  className="flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+                >
+                  <Send className="size-3 shrink-0" />
+                  {lead.recency === "60dias" ? "Reengajar" : "Sugerir retorno"}
+                </WhatsAppLink>
+              ) : null}
             </LeadCard>
           ))}
         </div>

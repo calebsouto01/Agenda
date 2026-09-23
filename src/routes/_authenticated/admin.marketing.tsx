@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Check, Copy, Lock, Megaphone, MousePointerClick, Wallet } from "lucide-react";
@@ -23,7 +23,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -425,7 +424,6 @@ function MensagemTab({
 
 function MarketingPage() {
   const { data: establishment, isLoading } = useEstablishment();
-  const navigate = useNavigate();
   const { tab } = useSearch({ from: "/_authenticated/admin/marketing" });
   const section = tab ?? "links";
 
@@ -435,28 +433,11 @@ function MarketingPage() {
     <div className="space-y-4">
       <PageTitle icon={Megaphone}>Marketing</PageTitle>
 
-      <Tabs
-        value={section}
-        onValueChange={(v) =>
-          navigate({
-            to: "/admin/marketing",
-            search: { tab: v as "links" | "mensagem" },
-            replace: true,
-          })
-        }
-      >
-        <TabsList>
-          <TabsTrigger value="links">Links personalizados</TabsTrigger>
-          <TabsTrigger value="mensagem">Mensagem</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="links" className="pt-4">
-          <LinksTab establishmentId={establishment.id} isProPlan={isPro(establishment.plan)} />
-        </TabsContent>
-        <TabsContent value="mensagem" className="pt-4">
-          <MensagemTab establishment={establishment} />
-        </TabsContent>
-      </Tabs>
+      {section === "mensagem" ? (
+        <MensagemTab establishment={establishment} />
+      ) : (
+        <LinksTab establishmentId={establishment.id} isProPlan={isPro(establishment.plan)} />
+      )}
     </div>
   );
 }

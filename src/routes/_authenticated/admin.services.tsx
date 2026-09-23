@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Lock, Package, Pencil, Plus, Scissors, Settings, Trash2 } from "lucide-react";
@@ -18,7 +18,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InventoryTab } from "@/components/finance/inventory-tab";
 
 const searchSchema = z.object({
@@ -305,7 +304,6 @@ function ProdutosTab({ establishmentId }: { establishmentId: string }) {
 
 function ServicesAndProductsPage() {
   const { data: establishment } = useEstablishment();
-  const navigate = useNavigate();
   const { tab } = useSearch({ from: "/_authenticated/admin/services" });
   const section = tab ?? "servicos";
 
@@ -313,28 +311,13 @@ function ServicesAndProductsPage() {
     <div className="space-y-4">
       <PageTitle icon={Scissors}>Serviços e produtos</PageTitle>
 
-      <Tabs
-        value={section}
-        onValueChange={(v) =>
-          navigate({
-            to: "/admin/services",
-            search: { tab: v as "servicos" | "produtos" },
-            replace: true,
-          })
-        }
-      >
-        <TabsList>
-          <TabsTrigger value="servicos">Serviços</TabsTrigger>
-          <TabsTrigger value="produtos">Produtos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="servicos" className="pt-4">
-          <ServicosTab />
-        </TabsContent>
-        <TabsContent value="produtos" className="pt-4">
-          {establishment ? <ProdutosTab establishmentId={establishment.id} /> : null}
-        </TabsContent>
-      </Tabs>
+      {section === "produtos" ? (
+        establishment ? (
+          <ProdutosTab establishmentId={establishment.id} />
+        ) : null
+      ) : (
+        <ServicosTab />
+      )}
     </div>
   );
 }

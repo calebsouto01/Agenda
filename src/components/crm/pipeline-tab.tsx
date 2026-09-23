@@ -1,569 +1,147 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Eye, EyeOff, Send, Sparkles, Trophy, UserPlus, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Send, UserPlus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice, normalizePhone } from "@/lib/booking";
+import type { Establishment } from "@/hooks/use-establishment";
 import {
-  DEFAULT_MESSAGE_1,
-  DEFAULT_MESSAGE_CONFIRMACAO,
+  DEFAULT_MESSAGE_ATENCAO,
+  DEFAULT_MESSAGE_REENGAJAMENTO,
   fillTemplate,
 } from "@/lib/message-templates";
 import { WhatsAppLink } from "@/components/whatsapp-link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { CurrencyInput } from "@/components/ui/currency-input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  LeadCard,
-  ORIGENS,
-  STAGE_LABEL,
-  type Lead,
-  type LeadStage,
-  type Professional,
-} from "./lead-shared";
+import { LeadCard, type Lead } from "./lead-shared";
 
-type FunnelLead = Lead & { appointment: { starts_at: string } | null };
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-const ACTIVE_STAGES: LeadStage[] = ["novo", "contato", "agendado"];
+/** Funil de agendamento: só mostra quem precisa de alguma ação — cliente
+ * novo pra receber boas-vindas, ou cliente parado há um tempo pra reativar.
+ * Quem visitou recentemente não aparece aqui (isso é normal, não é lista). */
+type Bucket = "novos" | "reativar30" | "reativar60";
 
-function nextStage(stage: LeadStage): LeadStage | null {
-  switch (stage) {
-    case "novo":
-      return "contato";
-    case "contato":
-      return "agendado";
-    default:
-      return null;
-  }
-}
-
-/** Próximo lembrete de WhatsApp pendente pra um lead com agendamento vinculado, independente da etapa do funil. */
-function nextReminderStep(lead: Lead): "msg1" | "confirmacao" | null {
-  if (!lead.current_appointment_id) return null;
-  if (!lead.whatsapp_msg1_sent_at) return "msg1";
-  if (!lead.whatsapp_confirmacao_sent_at) return "confirmacao";
-  return null;
-}
-
-function formatDateTime(iso: string, timezone: string) {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("pt-BR", {
-    timeZone: timezone,
-    day: "2-digit",
-    month: "2-digit",
-  });
-  const time = d.toLocaleTimeString("pt-BR", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return { date, time };
-}
-
-function buildMessage(
-  step: "msg1" | "confirmacao",
-  lead: FunnelLead,
-  establishmentName: string,
-  timezone: string,
-  templates: { message1: string | null; messageConfirmacao: string | null },
-) {
-  const firstName = lead.name.split(" ")[0] || lead.name;
-  const when = lead.appointment ? formatDateTime(lead.appointment.starts_at, timezone) : null;
-  const template =
-    step === "msg1"
-      ? (templates.message1 ?? DEFAULT_MESSAGE_1)
-      : (templates.messageConfirmacao ?? DEFAULT_MESSAGE_CONFIRMACAO);
-
-  return fillTemplate(template, {
-    nome: firstName,
-    data: when?.date ?? "",
-    hora: when?.time ?? "",
-    estabelecimento: establishmentName,
-  });
-}
-
-const REMINDER_LABEL: Record<"msg1" | "confirmacao", string> = {
-  msg1: "Enviar mensagem",
-  confirmacao: "Enviar confirmação",
+const BUCKET_LABEL: Record<Bucket, string> = {
+  novos: "Novos (30 dias)",
+  reativar30: "Reativar · 30 dias",
+  reativar60: "Reativar · 60 dias",
 };
 
-const EMPTY_CONTACT_FORM = { name: "", phone: "", origem: "", valorCents: 0, responsavelId: "" };
+type PipelineRow = Lead & {
+  created_at: string;
+  appointments: { status: string; starts_at: string }[];
+};
 
-export function PipelineTab({
-  establishmentId,
-  establishmentName,
-  timezone,
-  message1Template,
-  messageConfirmacaoTemplate,
-}: {
-  establishmentId: string;
-  establishmentName: string;
-  timezone: string;
-  message1Template: string | null;
-  messageConfirmacaoTemplate: string | null;
-}) {
-  const queryClient = useQueryClient();
-  const [leadPerdido, setLeadPerdido] = useState<Lead | null>(null);
-  const [motivo, setMotivo] = useState("");
-  const [showClosed, setShowClosed] = useState(false);
-  const [openNewContact, setOpenNewContact] = useState(false);
-  const [contactForm, setContactForm] = useState({ ...EMPTY_CONTACT_FORM });
-
-  const { data: leads, isLoading } = useQuery({
-    queryKey: ["customers", establishmentId, "pipeline"],
+export function PipelineTab({ establishment }: { establishment: Establishment }) {
+  const { data: rows, isLoading } = useQuery({
+    queryKey: ["customers", establishment.id, "pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
         .select(
-          "id, current_appointment_id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, whatsapp_msg1_sent_at, whatsapp_confirmacao_sent_at, next_contact_at, appointment:appointments!current_appointment_id(starts_at)",
+          "id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, next_contact_at, created_at, appointments!appointments_customer_id_fkey(status, starts_at)",
         )
-        .eq("establishment_id", establishmentId)
+        .eq("establishment_id", establishment.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as FunnelLead[];
+      return (data ?? []) as unknown as PipelineRow[];
     },
   });
 
-  const { data: professionals } = useQuery({
-    queryKey: ["professionals-select", establishmentId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professionals")
-        .select("id, name")
-        .eq("establishment_id", establishmentId)
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as Professional[];
-    },
-  });
+  const buckets = useMemo(() => {
+    const result: Record<Bucket, PipelineRow[]> = { novos: [], reativar30: [], reativar60: [] };
+    for (const row of rows ?? []) {
+      const daysSinceCreated = (Date.now() - new Date(row.created_at).getTime()) / DAY_MS;
+      if (daysSinceCreated <= 30) {
+        result.novos.push(row);
+        continue;
+      }
+      const completed = row.appointments.filter((a) => a.status === "completed");
+      const lastVisitAt = completed.length
+        ? completed.reduce(
+            (max, a) => (a.starts_at > max ? a.starts_at : max),
+            completed[0]!.starts_at,
+          )
+        : null;
+      if (!lastVisitAt) continue;
+      const daysSinceVisit = (Date.now() - new Date(lastVisitAt).getTime()) / DAY_MS;
+      if (daysSinceVisit >= 60) result.reativar60.push(row);
+      else if (daysSinceVisit >= 30) result.reativar30.push(row);
+    }
+    return result;
+  }, [rows]);
 
-  function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ["customers"] });
+  function reengagementMessage(bucket: "reativar30" | "reativar60", name: string) {
+    const template =
+      bucket === "reativar60"
+        ? (establishment.whatsapp_message_reengajamento ?? DEFAULT_MESSAGE_REENGAJAMENTO)
+        : (establishment.whatsapp_message_atencao ?? DEFAULT_MESSAGE_ATENCAO);
+    return fillTemplate(template, {
+      nome: name.split(" ")[0] || name,
+      data: "",
+      hora: "",
+      estabelecimento: establishment.name,
+    });
   }
 
-  const createContact = useMutation({
-    mutationFn: async () => {
-      const name = contactForm.name.trim();
-      if (name.length < 2) throw new Error("Informe o nome");
-      const phone = normalizePhone(contactForm.phone);
-      if (phone.length < 8) throw new Error("Informe um telefone válido");
-      const { error } = await supabase.from("customers").insert({
-        establishment_id: establishmentId,
-        name,
-        phone,
-        origem: contactForm.origem.trim() || "Outro",
-        valor_estimado_cents: contactForm.valorCents > 0 ? contactForm.valorCents : null,
-        responsavel_id: contactForm.responsavelId || null,
-      });
-      if (error) {
-        throw new Error(
-          error.code === "23505" ? "Este telefone já está cadastrado" : error.message,
-        );
-      }
-    },
-    onSuccess: () => {
-      toast.success("Contato cadastrado no funil");
-      setContactForm({ ...EMPTY_CONTACT_FORM });
-      setOpenNewContact(false);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
 
-  const advance = useMutation({
-    mutationFn: async (lead: Lead) => {
-      const next = nextStage(lead.stage);
-      if (!next) return;
-      const { error } = await supabase.from("customers").update({ stage: next }).eq("id", lead.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const total = buckets.novos.length + buckets.reativar30.length + buckets.reativar60.length;
 
-  const markReminderSent = useMutation({
-    mutationFn: async ({ lead, step }: { lead: Lead; step: "msg1" | "confirmacao" }) => {
-      const { error } = await supabase
-        .from("customers")
-        .update(
-          step === "msg1"
-            ? { whatsapp_msg1_sent_at: new Date().toISOString() }
-            : { whatsapp_confirmacao_sent_at: new Date().toISOString() },
-        )
-        .eq("id", lead.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const convert = useMutation({
-    mutationFn: async (lead: Lead) => {
-      const { error } = await supabase
-        .from("customers")
-        .update({ stage: "convertido" })
-        .eq("id", lead.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Lead convertido em cliente");
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const markLost = useMutation({
-    mutationFn: async () => {
-      if (!leadPerdido) return;
-      if (!motivo.trim()) throw new Error("Informe o motivo");
-      const { error } = await supabase
-        .from("customers")
-        .update({ stage: "perdido", motivo_perda: motivo.trim() })
-        .eq("id", leadPerdido.id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Lead marcado como perdido");
-      setLeadPerdido(null);
-      setMotivo("");
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const responsavelNome = (id: string | null) =>
-    professionals?.find((p) => p.id === id)?.name ?? null;
-
-  const active = (leads ?? []).filter((l) => l.stage !== "convertido" && l.stage !== "perdido");
-  const converted = (leads ?? []).filter((l) => l.stage === "convertido");
-  const lost = (leads ?? []).filter((l) => l.stage === "perdido");
-  const closedTotal = converted.length + lost.length;
-  const pipelineValue = active.reduce((sum, l) => sum + (l.valor_estimado_cents ?? 0), 0);
-  const conversionRate = closedTotal > 0 ? (converted.length / closedTotal) * 100 : null;
+  if (total === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          <div className="rounded-full bg-primary/10 p-3 text-primary">
+            <UserPlus className="size-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Nada pra ver aqui agora</p>
+            <p className="text-sm text-muted-foreground">
+              Quando chegar um cliente novo ou alguém sem visitar há um tempo, aparece aqui.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          size="sm"
-          onClick={() => {
-            setContactForm({ ...EMPTY_CONTACT_FORM });
-            setOpenNewContact((v) => !v);
-          }}
-        >
-          <UserPlus className="size-4" />
-          Cadastrar contato
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowClosed((v) => !v)}>
-          {showClosed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          {showClosed ? "Ocultar fechados" : `Mostrar fechados (${closedTotal})`}
-        </Button>
-      </div>
+    <div className="flex gap-3 overflow-x-auto pb-2">
+      {(["novos", "reativar30", "reativar60"] as Bucket[]).map((bucket) => (
+        <div key={bucket} className="flex w-64 shrink-0 flex-col gap-2">
+          <div className="rounded-lg bg-muted px-2.5 py-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {BUCKET_LABEL[bucket]}
+              </h2>
+              <span className="text-xs font-medium text-muted-foreground">
+                {buckets[bucket].length}
+              </span>
+            </div>
+          </div>
 
-      {openNewContact ? (
-        <Card className="shadow-soft">
-          <CardContent className="grid gap-3 p-5">
-            <div className="grid gap-1.5">
-              <Label htmlFor="pipeline-contact-name">Nome</Label>
-              <Input
-                id="pipeline-contact-name"
-                maxLength={120}
-                value={contactForm.name}
-                onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="pipeline-contact-phone">Telefone</Label>
-                <Input
-                  id="pipeline-contact-phone"
-                  maxLength={30}
-                  value={contactForm.phone}
-                  onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="pipeline-contact-valor">Valor estimado</Label>
-                <CurrencyInput
-                  id="pipeline-contact-valor"
-                  valueCents={contactForm.valorCents}
-                  onValueChange={(cents) => setContactForm({ ...contactForm, valorCents: cents })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="pipeline-contact-origem">Origem</Label>
-                <Input
-                  id="pipeline-contact-origem"
-                  list="pipeline-contact-origens"
-                  maxLength={60}
-                  value={contactForm.origem}
-                  onChange={(e) => setContactForm({ ...contactForm, origem: e.target.value })}
-                />
-                <datalist id="pipeline-contact-origens">
-                  {ORIGENS.map((o) => (
-                    <option key={o} value={o} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Responsável</Label>
-                <Select
-                  value={contactForm.responsavelId}
-                  onValueChange={(v) => setContactForm({ ...contactForm, responsavelId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nenhum" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {professionals?.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button disabled={createContact.isPending} onClick={() => createContact.mutate()}>
-                Cadastrar
-              </Button>
-              <Button variant="ghost" onClick={() => setOpenNewContact(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Funil ativo</p>
-            <p className="text-lg font-bold">{formatPrice(pipelineValue)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Leads ativos</p>
-            <p className="text-lg font-bold">{active.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Taxa de conversão</p>
-            <p className="text-lg font-bold">
-              {conversionRate != null ? `${conversionRate.toFixed(0)}%` : "—"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {leadPerdido ? (
-        <Card className="border-destructive/30 shadow-soft">
-          <CardContent className="grid gap-3 p-5">
-            <p className="text-sm font-semibold">Marcar "{leadPerdido.name}" como perdido</p>
-            <div className="grid gap-1.5">
-              <Label htmlFor="lead-motivo">Motivo</Label>
-              <Input
-                id="lead-motivo"
-                maxLength={200}
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                disabled={markLost.isPending}
-                onClick={() => markLost.mutate()}
-              >
-                Marcar como perdido
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setLeadPerdido(null);
-                  setMotivo("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {isLoading ? (
-        <Skeleton className="h-40 w-full" />
-      ) : (leads?.length ?? 0) === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <div className="rounded-full bg-primary/10 p-3 text-primary">
-              <UserPlus className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Nenhum lead no funil ainda</p>
-              <p className="text-sm text-muted-foreground">
-                Clique em "Cadastrar contato" pra começar.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {ACTIVE_STAGES.map((stage) => {
-            const stageLeads = active.filter((l) => l.stage === stage);
-            return (
-              <div key={stage} className="flex w-64 shrink-0 flex-col gap-2">
-                <div className="rounded-lg bg-muted px-2.5 py-2">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {STAGE_LABEL[stage]}
-                    </h2>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {stageLeads.length}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {stageLeads.map((lead) => {
-                    const reminderStep = nextReminderStep(lead);
-                    return (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        responsavelNome={responsavelNome(lead.responsavel_id)}
-                        showSchedule
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5">
-                            {stage === "agendado" ? (
-                              <button
-                                type="button"
-                                onClick={() => convert.mutate(lead)}
-                                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-success px-2 py-1.5 text-xs font-medium text-success-foreground hover:opacity-90"
-                              >
-                                <Sparkles className="size-3 shrink-0" /> Converter
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => advance.mutate(lead)}
-                                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background hover:opacity-90"
-                              >
-                                Avançar <ArrowRight className="size-3 shrink-0" />
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLeadPerdido(lead);
-                                setMotivo("");
-                              }}
-                              className="shrink-0 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              Perdido
-                            </button>
-                          </div>
-                          {reminderStep && lead.phone ? (
-                            <WhatsAppLink
-                              phone={lead.phone}
-                              message={buildMessage(
-                                reminderStep,
-                                lead,
-                                establishmentName,
-                                timezone,
-                                {
-                                  message1: message1Template,
-                                  messageConfirmacao: messageConfirmacaoTemplate,
-                                },
-                              )}
-                              onSend={() => markReminderSent.mutate({ lead, step: reminderStep })}
-                              className="flex w-full items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-accent"
-                            >
-                              <Send className="size-3 shrink-0" />
-                              {REMINDER_LABEL[reminderStep]}
-                            </WhatsAppLink>
-                          ) : null}
-                        </div>
-                      </LeadCard>
-                    );
-                  })}
-                  {stageLeads.length === 0 ? (
-                    <p className="px-1 text-xs text-muted-foreground">Nenhum lead aqui.</p>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-
-          {showClosed ? (
-            <>
-              <div className="flex w-64 shrink-0 flex-col gap-2">
-                <div className="flex items-center gap-1.5 rounded-lg bg-success/15 px-2.5 py-2">
-                  <Trophy className="size-3.5 text-success" />
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-success">
-                    {STAGE_LABEL.convertido}
-                  </h2>
-                  <span className="text-xs text-success">{converted.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {converted.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      responsavelNome={responsavelNome(lead.responsavel_id)}
-                    />
-                  ))}
-                  {converted.length === 0 ? (
-                    <p className="px-1 text-xs text-muted-foreground">Nenhum ainda.</p>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex w-64 shrink-0 flex-col gap-2">
-                <div className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-2">
-                  <XCircle className="size-3.5 text-muted-foreground" />
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {STAGE_LABEL.perdido}
-                  </h2>
-                  <span className="text-xs text-muted-foreground">{lost.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {lost.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      responsavelNome={responsavelNome(lead.responsavel_id)}
-                    >
-                      {lead.motivo_perda ? (
-                        <p className="truncate text-xs text-destructive">{lead.motivo_perda}</p>
-                      ) : null}
-                    </LeadCard>
-                  ))}
-                  {lost.length === 0 ? (
-                    <p className="px-1 text-xs text-muted-foreground">Nenhum ainda.</p>
-                  ) : null}
-                </div>
-              </div>
-            </>
-          ) : null}
+          <div className="space-y-2">
+            {buckets[bucket].map((lead) => (
+              <LeadCard key={lead.id} lead={lead} responsavelNome={null} showSchedule>
+                {bucket !== "novos" ? (
+                  <WhatsAppLink
+                    phone={lead.phone}
+                    message={reengagementMessage(bucket, lead.name)}
+                    className="flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+                  >
+                    <Send className="size-3 shrink-0" />
+                    {bucket === "reativar60" ? "Reengajar" : "Sugerir retorno"}
+                  </WhatsAppLink>
+                ) : null}
+              </LeadCard>
+            ))}
+            {buckets[bucket].length === 0 ? (
+              <p className="px-1 text-xs text-muted-foreground">Nenhum aqui.</p>
+            ) : null}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
