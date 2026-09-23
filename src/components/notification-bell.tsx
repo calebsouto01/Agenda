@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Bell, Check, MessageCircle, X } from "lucide-react";
+import { AlertTriangle, Bell, Check, MessageCircle, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -212,23 +212,47 @@ export function NotificationBell({
                       </p>
                       {accepted ? (
                         a.customers?.phone ? (
-                          <WhatsAppLink
-                            phone={a.customers.phone}
-                            message={fillTemplate(message1Template ?? DEFAULT_MESSAGE_1, {
-                              nome: a.customers.name.split(" ")[0] || a.customers.name,
-                              data: dateTimeInZone(a.starts_at, timezone).split(" ")[0] ?? "",
-                              hora: timeInZone(a.starts_at, timezone),
-                              estabelecimento: establishmentName,
-                            })}
-                            onSend={() => markMsg1Sent.mutate(a.id)}
-                            className="mt-1.5 flex h-7 w-full items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                          >
-                            <MessageCircle className="size-3" /> Enviar mensagem
-                          </WhatsAppLink>
+                          <div className="mt-1.5 flex gap-1.5">
+                            <WhatsAppLink
+                              phone={a.customers.phone}
+                              message={fillTemplate(message1Template ?? DEFAULT_MESSAGE_1, {
+                                nome: a.customers.name.split(" ")[0] || a.customers.name,
+                                data: dateTimeInZone(a.starts_at, timezone).split(" ")[0] ?? "",
+                                hora: timeInZone(a.starts_at, timezone),
+                                estabelecimento: establishmentName,
+                              })}
+                              onSend={() => markMsg1Sent.mutate(a.id)}
+                              className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                            >
+                              <MessageCircle className="size-3" /> Enviar mensagem
+                            </WhatsAppLink>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                              disabled={markMsg1Sent.isPending}
+                              title="Excluir notificação"
+                              onClick={() => markMsg1Sent.mutate(a.id)}
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          </div>
                         ) : (
-                          <p className="mt-1.5 text-xs text-muted-foreground">
-                            Aceito. Cliente sem telefone cadastrado.
-                          </p>
+                          <div className="mt-1.5 flex items-center justify-between gap-2">
+                            <p className="text-xs text-muted-foreground">
+                              Aceito. Cliente sem telefone cadastrado.
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                              disabled={markMsg1Sent.isPending}
+                              title="Excluir notificação"
+                              onClick={() => markMsg1Sent.mutate(a.id)}
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          </div>
                         )
                       ) : (
                         <div className="mt-1.5 flex gap-1.5">
@@ -283,18 +307,42 @@ export function NotificationBell({
                         {appt.service_names ?? ""} · hoje às {timeInZone(appt.starts_at, timezone)}
                       </p>
                       {lead.phone ? (
-                        <WhatsAppLink
-                          phone={lead.phone}
-                          message={message}
-                          onSend={() => markConfirmationSent.mutate(lead.id)}
-                          className="mt-1.5 flex h-7 w-full items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                        >
-                          <MessageCircle className="size-3" /> Enviar mensagem
-                        </WhatsAppLink>
+                        <div className="mt-1.5 flex gap-1.5">
+                          <WhatsAppLink
+                            phone={lead.phone}
+                            message={message}
+                            onSend={() => markConfirmationSent.mutate(lead.id)}
+                            className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                          >
+                            <MessageCircle className="size-3" /> Enviar mensagem
+                          </WhatsAppLink>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                            disabled={markConfirmationSent.isPending}
+                            title="Excluir notificação"
+                            onClick={() => markConfirmationSent.mutate(lead.id)}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
                       ) : (
-                        <p className="mt-1.5 text-xs text-muted-foreground">
-                          Cliente sem telefone cadastrado
-                        </p>
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            Cliente sem telefone cadastrado
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                            disabled={markConfirmationSent.isPending}
+                            title="Excluir notificação"
+                            onClick={() => markConfirmationSent.mutate(lead.id)}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   );

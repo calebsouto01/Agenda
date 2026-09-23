@@ -107,6 +107,7 @@ function AdminLayout() {
               pathname={pathname}
               onSignOut={signOut}
               onNavigate={() => setMobileNavOpen(false)}
+              showNotifications={false}
             />
           </SheetContent>
         </Sheet>
@@ -124,26 +125,34 @@ function NavContent({
   pathname,
   onSignOut,
   onNavigate,
+  showNotifications = true,
 }: {
   establishment: Establishment;
   pathname: string;
   onSignOut: () => void;
   onNavigate?: () => void;
+  showNotifications?: boolean;
 }) {
   return (
     <>
-      <div className="flex items-center gap-2.5 border-b px-4 py-3.5">
+      <div
+        className={`flex items-center gap-2.5 border-b px-4 py-3.5 ${
+          showNotifications ? "" : "pr-11"
+        }`}
+      >
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow">
           <CalendarCheck className="size-4" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
-        <NotificationBell
-          establishmentId={establishment.id}
-          establishmentName={establishment.name}
-          timezone={establishment.timezone}
-          message1Template={establishment.whatsapp_message_1}
-          confirmationTemplate={establishment.whatsapp_message_confirmacao}
-        />
+        {showNotifications ? (
+          <NotificationBell
+            establishmentId={establishment.id}
+            establishmentName={establishment.name}
+            timezone={establishment.timezone}
+            message1Template={establishment.whatsapp_message_1}
+            confirmationTemplate={establishment.whatsapp_message_confirmacao}
+          />
+        ) : null}
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
