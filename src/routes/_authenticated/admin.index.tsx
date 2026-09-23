@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,9 +12,11 @@ import {
   dateTimeInZone,
   hourInZone,
   isoDateInZone,
+  timeInZone,
   type AppointmentStatus,
   type PaymentMethod,
 } from "@/lib/booking";
+import { DEFAULT_MESSAGE_1, fillTemplate } from "@/lib/message-templates";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +26,7 @@ import { MonthGrid } from "@/components/agenda/month-grid";
 import { AppointmentList } from "@/components/agenda/appointment-list";
 import { AppointmentInfo, PendingConfirmation } from "@/components/agenda/appointment-details";
 import { rangeBounds, monthGrid } from "@/components/agenda/utils";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 import type { BusinessHour, Range, Row } from "@/components/agenda/types";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -38,6 +41,9 @@ function Agenda() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
   const [selected, setSelected] = useState<Row | null>(null);
+  // Id do agendamento aceito nesta sessão: enquanto isso, o dialog mostra a
+  // opção de avisar o cliente em vez de fechar direto.
+  const [justConfirmedId, setJustConfirmedId] = useState<string | null>(null);
 
   const today = useMemo(() => isoDateInZone(new Date(), tz), [tz]);
   const bounds = useMemo(() => rangeBounds(anchor, range), [anchor, range]);
@@ -128,16 +134,27 @@ function Agenda() {
       const { error } = await supabase.from("appointments").update(update).eq("id", appointment.id);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
+    onSuccess: (_data, { appointment }) => {
       toast.success("Agendamento confirmado");
       invalidateAppointmentQueries();
-      setSelected(null);
+      setSelected((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
+      setJustConfirmedId(appointment.id);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const confirmWithInterval = (appointment: Row, intervalMinutes: number) =>
     confirmAppointment.mutate({ appointment, intervalMinutes });
+
+  const markMsg1Sent = useMutation({
+    mutationFn: async (appointmentId: string) => {
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ whatsapp_msg1_sent_at: new Date().toISOString() })
+        .eq("appointment_id", appointmentId);
+      if (error) throw new Error(error.message);
+    },
+  });
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
@@ -369,7 +386,15 @@ function Agenda() {
         </p>
       ) : null}
 
-      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
+      <Dialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelected(null);
+            setJustConfirmedId(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-sm">
           {selected ? (
             <>
@@ -388,6 +413,45 @@ function Agenda() {
                     onRefuse={(id) => deleteAppointment.mutate(id)}
                     onConfirm={confirmWithInterval}
                   />
+                ) : justConfirmedId === selected.id ? (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
+                      Agendamento confirmado. Deseja avisar o cliente?
+                    </div>
+                    {selected.customers?.phone ? (
+                      <WhatsAppLink
+                        phone={selected.customers.phone}
+                        message={fillTemplate(
+                          establishment?.whatsapp_message_1 ?? DEFAULT_MESSAGE_1,
+                          {
+                            nome: selected.customers.name.split(" ")[0] || selected.customers.name,
+                            data: dateTimeInZone(selected.starts_at, tz).split(" ")[0] ?? "",
+                            hora: timeInZone(selected.starts_at, tz),
+                            estabelecimento: establishment?.name ?? "",
+                          },
+                        )}
+                        onSend={() => {
+                          markMsg1Sent.mutate(selected.id);
+                          setJustConfirmedId(null);
+                        }}
+                        className="flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                      >
+                        <MessageCircle className="size-4" /> Enviar mensagem
+                      </WhatsAppLink>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Cliente sem telefone cadastrado.
+                      </p>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setJustConfirmedId(null)}
+                    >
+                      Agora não
+                    </Button>
+                  </div>
                 ) : null}
               </div>
             </>
