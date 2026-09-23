@@ -1,4 +1,5 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { useEstablishment } from "@/hooks/use-establishment";
 import { whatsappLink } from "@/lib/booking";
@@ -23,7 +24,7 @@ export function WhatsAppLink({
   className?: string;
   ariaLabel?: string;
   children: ReactNode;
-  /** Chamado assim que o usuário clica pra enviar, antes de saber se a mensagem foi de fato enviada no WhatsApp. */
+  /** Chamado só depois que o app do WhatsApp foi de fato aberto (ou o link universal disparado) — nunca em caso de falha. */
   onSend?: () => void;
 }) {
   const { data: establishment } = useEstablishment();
@@ -31,23 +32,39 @@ export function WhatsAppLink({
   const apiConnected = establishment?.whatsapp_business_api_connected ?? false;
   const url = whatsappLink(phone, message);
 
+  // No app nativo, o intent explícito pro pacote do WhatsApp pode rejeitar
+  // (ACTIVITY_NOT_FOUND) sem lançar nada visível — por isso só marcamos como
+  // enviado depois que a abertura realmente aconteceu, e avisamos se falhar.
+  async function openWhatsApp(app: WhatsAppApp | null) {
+    try {
+      if (app) {
+        await openInWhatsAppApp(url, app);
+      } else {
+        window.open(url, "_blank");
+      }
+      onSend?.();
+    } catch {
+      toast.error("Não foi possível abrir o WhatsApp");
+    }
+  }
+
   async function handleClick(e: MouseEvent) {
-    onSend?.();
-    if (apiConnected || !isNativeAndroid()) return;
+    if (apiConnected || !isNativeAndroid()) {
+      onSend?.();
+      return;
+    }
     e.preventDefault();
     const apps = await detectWhatsAppApps();
     if (apps.whatsapp && apps.business) {
       setOpen(true);
-    } else if (apps.whatsapp || apps.business) {
-      void openInWhatsAppApp(url, apps.business ? "business" : "whatsapp");
-    } else {
-      window.open(url, "_blank");
+      return;
     }
+    await openWhatsApp(apps.whatsapp ? "whatsapp" : apps.business ? "business" : null);
   }
 
   function choose(app: WhatsAppApp) {
     setOpen(false);
-    void openInWhatsAppApp(url, app);
+    void openWhatsApp(app);
   }
 
   return (
