@@ -98,6 +98,7 @@ function Agenda() {
     queryClient.invalidateQueries({ queryKey: ["finance-previous"] });
     queryClient.invalidateQueries({ queryKey: ["pending-appointments"] });
     queryClient.invalidateQueries({ queryKey: ["today-confirmations"] });
+    queryClient.invalidateQueries({ queryKey: ["finishable-appointments"] });
   };
 
   const updateStatus = useMutation({
