@@ -65,7 +65,7 @@ export function ContactsTab({
       const { data, error } = await supabase
         .from("customers")
         .select(
-          "id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, next_contact_at, appointments(status, starts_at)",
+          "id, name, phone, origem, stage, valor_estimado_cents, responsavel_id, notes, motivo_perda, next_contact_at, appointments!appointments_customer_id_fkey(status, starts_at)",
         )
         .eq("establishment_id", establishmentId)
         .order("name", { ascending: true });

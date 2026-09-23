@@ -61,7 +61,7 @@ function Agenda() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, ends_at, status, notes, paid, service_id, professional_id, service_names, total_price_cents, services(name, price_cents, duration_minutes), professionals(name), customers(id, name, phone, email), payment_entries(id, method, amount_cents, note)",
+          "id, starts_at, ends_at, status, notes, paid, service_id, professional_id, service_names, total_price_cents, services(name, price_cents, duration_minutes), professionals(name), customers!appointments_customer_id_fkey(id, name, phone, email), payment_entries(id, method, amount_cents, note)",
         )
         .eq("establishment_id", establishment!.id)
         .gte("starts_at", `${fetchBounds.from}T00:00:00`)
