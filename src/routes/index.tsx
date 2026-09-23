@@ -9,10 +9,12 @@ import {
   Check,
   CheckCheck,
   Clock,
+  Download,
   ListChecks,
   MapPin,
   Send,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   UsersRound,
   Wallet,
@@ -27,6 +29,11 @@ import { Reveal } from "@/components/reveal";
 import { PublicBooking } from "@/routes/b.$slug";
 
 const searchSchema = z.object({ ref: z.string().trim().max(40).optional() });
+
+// Release fixa (tag "debug-latest") gerada automaticamente pelo CI a cada
+// mudança no app nativo — sempre aponta pro build mais recente.
+const ANDROID_APK_URL =
+  "https://github.com/calebsouto01/Agenda/releases/download/debug-latest/app-debug.apk";
 
 // Domínio próprio de um estabelecimento (Dados da empresa > Domínio próprio):
 // requisição chega com o Host do cliente em vez de agendazaka.com, então a
@@ -521,6 +528,30 @@ function HomeLanding() {
               </Link>
             </Button>
           </div>
+        </Reveal>
+      </section>
+
+      <section className="border-t px-4 py-14 text-center sm:py-20">
+        <Reveal className="mx-auto max-w-md">
+          <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+            <Smartphone className="size-3.5 text-primary" />
+            Versão de testes
+          </span>
+          <h2 className="mt-4 text-xl font-extrabold sm:text-2xl">
+            Gerencie sua agenda direto do celular
+          </h2>
+          <p className="mt-3 text-sm text-muted-foreground">
+            App Android do Zaka pra donos de estabelecimento. Ainda em fase de testes, fora da Play
+            Store — baixe o instalador (.apk) direto.
+          </p>
+          <Button asChild size="lg" className="mt-6">
+            <a href={ANDROID_APK_URL} target="_blank" rel="noreferrer">
+              <Download className="size-4" /> Baixar app Android (.apk)
+            </a>
+          </Button>
+          <p className="mt-3 text-xs text-muted-foreground">
+            O Android vai avisar que é de "fonte desconhecida" — é esperado, autorize a instalação.
+          </p>
         </Reveal>
       </section>
 
