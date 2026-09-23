@@ -125,7 +125,11 @@ function ManualBooking() {
     },
     onSuccess: async () => {
       toast.success("Agendamento criado");
-      await queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["pending-appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["today-confirmations"] }),
+      ]);
       navigate({ to: "/admin" });
     },
     onError: (error: Error) => toast.error(error.message),

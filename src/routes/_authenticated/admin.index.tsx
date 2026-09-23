@@ -91,11 +91,13 @@ function Agenda() {
     return map;
   }, [businessHours]);
 
-  /** Agendamentos são consultados sob chaves diferentes na Agenda e no Financeiro. */
+  /** Agendamentos são consultados sob chaves diferentes na Agenda, no Financeiro e no sino de notificações. */
   const invalidateAppointmentQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
     queryClient.invalidateQueries({ queryKey: ["finance-appointments"] });
     queryClient.invalidateQueries({ queryKey: ["finance-previous"] });
+    queryClient.invalidateQueries({ queryKey: ["pending-appointments"] });
+    queryClient.invalidateQueries({ queryKey: ["today-confirmations"] });
   };
 
   const updateStatus = useMutation({
@@ -153,6 +155,9 @@ function Agenda() {
         .update({ whatsapp_msg1_sent_at: new Date().toISOString() })
         .eq("appointment_id", appointmentId);
       if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["today-confirmations"] });
     },
   });
 
