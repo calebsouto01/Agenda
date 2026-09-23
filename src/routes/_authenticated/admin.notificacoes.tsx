@@ -1,8 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, CheckCheck, MessageCircle, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
+import { z } from "zod";
 
 import { useEstablishment } from "@/hooks/use-establishment";
 import { useNotifications } from "@/hooks/use-notifications";
+import { supabase } from "@/integrations/supabase/client";
 import { dateTimeInZone, timeInZone } from "@/lib/booking";
 import {
   DEFAULT_MESSAGE_1,
@@ -12,15 +16,94 @@ import {
 import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { ConfirmationTag, FinalizeTag, TodayReminderTag } from "@/components/notification-tags";
 
+const searchSchema = z.object({
+  tab: z.enum(["console", "central"]).optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/admin/notificacoes")({
+  validateSearch: searchSchema,
   component: NotificationsPage,
 });
 
-function NotificationsPage() {
+type PrefKey = "notify_pending_enabled" | "notify_finishable_enabled" | "notify_reminders_enabled";
+
+function ConsoleTab() {
+  const { data: establishment } = useEstablishment();
+  const queryClient = useQueryClient();
+
+  const togglePref = useMutation({
+    mutationFn: async ({ key, value }: { key: PrefKey; value: boolean }) => {
+      const patch =
+        key === "notify_pending_enabled"
+          ? { notify_pending_enabled: value }
+          : key === "notify_finishable_enabled"
+            ? { notify_finishable_enabled: value }
+            : { notify_reminders_enabled: value };
+      const { error } = await supabase
+        .from("establishments")
+        .update(patch)
+        .eq("id", establishment!.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-establishment"] }),
+    onError: () => toast.error("Não foi possível salvar"),
+  });
+
+  if (!establishment) return <Skeleton className="h-48 w-full" />;
+
+  const prefs: { key: PrefKey; label: string; description: string; checked: boolean }[] = [
+    {
+      key: "notify_pending_enabled",
+      label: "Agendamentos pendentes",
+      description: "Alguém marcou horário e está esperando você aceitar ou recusar.",
+      checked: establishment.notify_pending_enabled,
+    },
+    {
+      key: "notify_finishable_enabled",
+      label: "Atendimentos para finalizar",
+      description: "O horário do atendimento terminou e falta registrar o pagamento.",
+      checked: establishment.notify_finishable_enabled,
+    },
+    {
+      key: "notify_reminders_enabled",
+      label: "Lembretes do dia",
+      description: "Cliente confirmado pra hoje, faltando enviar o lembrete de confirmação.",
+      checked: establishment.notify_reminders_enabled,
+    },
+  ];
+
+  return (
+    <Card className="shadow-soft">
+      <CardContent className="divide-y p-0">
+        {prefs.map((pref) => (
+          <div key={pref.key} className="flex items-center justify-between gap-4 p-4">
+            <div className="min-w-0">
+              <Label htmlFor={pref.key} className="text-sm font-semibold">
+                {pref.label}
+              </Label>
+              <p className="text-xs text-muted-foreground">{pref.description}</p>
+            </div>
+            <Switch
+              id={pref.key}
+              checked={pref.checked}
+              disabled={togglePref.isPending}
+              onCheckedChange={(v) => togglePref.mutate({ key: pref.key, value: v })}
+            />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CentralTab() {
   const { data: establishment, isLoading } = useEstablishment();
   const timezone = establishment?.timezone ?? "America/Sao_Paulo";
   const {
@@ -36,14 +119,18 @@ function NotificationsPage() {
     decline,
     markMsg1Sent,
     markConfirmationSent,
-  } = useNotifications({ establishmentId: establishment?.id ?? "", timezone });
+  } = useNotifications({
+    establishmentId: establishment?.id ?? "",
+    timezone,
+    notifyPendingEnabled: establishment?.notify_pending_enabled ?? true,
+    notifyFinishableEnabled: establishment?.notify_finishable_enabled ?? true,
+    notifyRemindersEnabled: establishment?.notify_reminders_enabled ?? true,
+  });
 
   if (isLoading || !establishment) return <Skeleton className="h-64 w-full" />;
 
   return (
-    <div className="space-y-4">
-      <PageTitle icon={Bell}>Central de notificações</PageTitle>
-
+    <>
       {count === 0 ? (
         <Card className="shadow-soft">
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
@@ -244,6 +331,41 @@ function NotificationsPage() {
           ) : null}
         </div>
       )}
+    </>
+  );
+}
+
+function NotificationsPage() {
+  const navigate = useNavigate();
+  const { tab } = useSearch({ from: "/_authenticated/admin/notificacoes" });
+  const section = tab ?? "central";
+
+  return (
+    <div className="space-y-4">
+      <PageTitle icon={Bell}>Notificações</PageTitle>
+
+      <Tabs
+        value={section}
+        onValueChange={(v) =>
+          navigate({
+            to: "/admin/notificacoes",
+            search: { tab: v as "console" | "central" },
+            replace: true,
+          })
+        }
+      >
+        <TabsList>
+          <TabsTrigger value="central">Central</TabsTrigger>
+          <TabsTrigger value="console">Console</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="central" className="pt-4">
+          <CentralTab />
+        </TabsContent>
+        <TabsContent value="console" className="pt-4">
+          <ConsoleTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

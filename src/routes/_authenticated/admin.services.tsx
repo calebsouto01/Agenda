@@ -1,12 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Plus, Scissors, Trash2 } from "lucide-react";
+import { Lock, Package, Pencil, Plus, Scissors, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { isPro } from "@/lib/plans";
 import { formatDuration, formatPrice } from "@/lib/booking";
 import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InventoryTab } from "@/components/finance/inventory-tab";
+
+const searchSchema = z.object({
+  tab: z.enum(["servicos", "produtos"]).optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/admin/services")({
-  component: ServicesPage,
+  validateSearch: searchSchema,
+  component: ServicesAndProductsPage,
 });
 
 type Service = {
@@ -40,7 +48,7 @@ const schema = z.object({
 
 const EMPTY = { id: "", name: "", description: "", priceCents: 0, duration: "30", active: true };
 
-function ServicesPage() {
+function ServicosTab() {
   const { data: establishment } = useEstablishment();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ ...EMPTY });
@@ -106,8 +114,7 @@ function ServicesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <PageTitle icon={Scissors}>Serviços</PageTitle>
+      <div className="flex items-center justify-end">
         <Button
           size="sm"
           onClick={() => {
@@ -240,6 +247,94 @@ function ServicesPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function ProdutosTab({ establishmentId }: { establishmentId: string }) {
+  const { data: establishment } = useEstablishment();
+
+  if (establishment && !isPro(establishment.plan)) {
+    return (
+      <Card className="shadow-soft">
+        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="rounded-full bg-primary/10 p-3 text-primary">
+            <Lock className="size-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Produtos é um recurso do plano Pro</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              Controle de estoque, preço de custo e venda, tudo automático. Assine o Pro para
+              liberar.
+            </p>
+          </div>
+          <Button asChild className="mt-2">
+            <Link to="/admin/settings">Assinar Pro — R$ 19,90/mês</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!establishment?.sells_products) {
+    return (
+      <Card className="shadow-soft">
+        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="rounded-full bg-primary/10 p-3 text-primary">
+            <Package className="size-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Você ainda não vende produtos</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              Ative "Vendo produtos" em Dados da empresa pra cadastrar seu estoque e acompanhar o
+              valor e o lucro dele no Financeiro.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="mt-2">
+            <Link to="/admin/settings">
+              <Settings className="size-4" /> Ir para Dados da empresa
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <InventoryTab establishmentId={establishmentId} />;
+}
+
+function ServicesAndProductsPage() {
+  const { data: establishment } = useEstablishment();
+  const navigate = useNavigate();
+  const { tab } = useSearch({ from: "/_authenticated/admin/services" });
+  const section = tab ?? "servicos";
+
+  return (
+    <div className="space-y-4">
+      <PageTitle icon={Scissors}>Serviços e produtos</PageTitle>
+
+      <Tabs
+        value={section}
+        onValueChange={(v) =>
+          navigate({
+            to: "/admin/services",
+            search: { tab: v as "servicos" | "produtos" },
+            replace: true,
+          })
+        }
+      >
+        <TabsList>
+          <TabsTrigger value="servicos">Serviços</TabsTrigger>
+          <TabsTrigger value="produtos">Produtos</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="servicos" className="pt-4">
+          <ServicosTab />
+        </TabsContent>
+        <TabsContent value="produtos" className="pt-4">
+          {establishment ? <ProdutosTab establishmentId={establishment.id} /> : null}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

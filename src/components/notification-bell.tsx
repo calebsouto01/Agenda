@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, Check, CheckCheck, MessageCircle, Trash2, X } from "lucide-react";
 
+import type { Establishment } from "@/hooks/use-establishment";
 import { useNotifications } from "@/hooks/use-notifications";
 import { dateTimeInZone, timeInZone } from "@/lib/booking";
 import {
@@ -14,19 +15,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { ConfirmationTag, FinalizeTag, TodayReminderTag } from "@/components/notification-tags";
 
-export function NotificationBell({
-  establishmentId,
-  establishmentName,
-  timezone,
-  message1Template,
-  confirmationTemplate,
-}: {
-  establishmentId: string;
-  establishmentName: string;
-  timezone: string;
-  message1Template: string | null;
-  confirmationTemplate: string | null;
-}) {
+export function NotificationBell({ establishment }: { establishment: Establishment }) {
+  const { id: establishmentId, name: establishmentName, timezone } = establishment;
+  const message1Template = establishment.whatsapp_message_1;
+  const confirmationTemplate = establishment.whatsapp_message_confirmacao;
   const {
     combinedPending,
     pendingCount,
@@ -40,7 +32,13 @@ export function NotificationBell({
     decline,
     markMsg1Sent,
     markConfirmationSent,
-  } = useNotifications({ establishmentId, timezone });
+  } = useNotifications({
+    establishmentId,
+    timezone,
+    notifyPendingEnabled: establishment.notify_pending_enabled,
+    notifyFinishableEnabled: establishment.notify_finishable_enabled,
+    notifyRemindersEnabled: establishment.notify_reminders_enabled,
+  });
 
   // Controla o popover na mão: ao aceitar, o botão que estava com foco some
   // do DOM (vira o card de enviar mensagem) e, por um bug conhecido do

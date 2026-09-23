@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { Users } from "lucide-react";
+import { z } from "zod";
 
 import { useEstablishment } from "@/hooks/use-establishment";
 import { PageTitle } from "@/components/page-title";
@@ -8,22 +8,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactsTab } from "@/components/crm/contacts-tab";
 import { PipelineTab } from "@/components/crm/pipeline-tab";
 
+const searchSchema = z.object({
+  tab: z.enum(["contatos", "funil"]).optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/admin/customers")({
+  validateSearch: searchSchema,
   component: CustomersPage,
 });
 
-/** Contatos = todo mundo cadastrado (lead ou cliente, mesma entrada). Funil = movimento entre etapas. */
-type Section = "contatos" | "funil";
-
 function CustomersPage() {
   const { data: establishment } = useEstablishment();
-  const [section, setSection] = useState<Section>("contatos");
+  const navigate = useNavigate();
+  const { tab } = useSearch({ from: "/_authenticated/admin/customers" });
+  const section = tab ?? "contatos";
 
   return (
     <div className="space-y-4">
       <PageTitle icon={Users}>Clientes</PageTitle>
 
-      <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+      <Tabs
+        value={section}
+        onValueChange={(v) =>
+          navigate({
+            to: "/admin/customers",
+            search: { tab: v as "contatos" | "funil" },
+            replace: true,
+          })
+        }
+      >
         <TabsList>
           <TabsTrigger value="contatos">Contatos</TabsTrigger>
           <TabsTrigger value="funil">Funil</TabsTrigger>

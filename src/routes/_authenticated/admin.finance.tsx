@@ -36,7 +36,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer } from "@/components/ui/chart";
 import { CashFlowTab } from "@/components/finance/cash-flow-tab";
 import { ForecastTab } from "@/components/finance/forecast-tab";
-import { InventoryTab } from "@/components/finance/inventory-tab";
 
 export const Route = createFileRoute("/_authenticated/admin/finance")({
   component: FinancePage,
@@ -132,7 +131,7 @@ function FinancePage() {
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
   const [range, setRange] = useState<Range>("month");
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
-  const [section, setSection] = useState<"resumo" | "caixa" | "previsao" | "estoque">("resumo");
+  const [section, setSection] = useState<"resumo" | "caixa" | "previsao">("resumo");
 
   const bounds = useMemo(() => rangeBounds(anchor, range), [anchor, range]);
   const prevBounds = useMemo(() => previousBounds(bounds), [bounds]);
@@ -295,8 +294,7 @@ function FinancePage() {
             <div>
               <p className="text-sm font-medium">Financeiro é um recurso do plano Pro</p>
               <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                Fluxo de caixa, previsão de receita e controle de estoque, tudo automático. Assine o
-                Pro para liberar.
+                Fluxo de caixa e previsão de receita, tudo automático. Assine o Pro para liberar.
               </p>
             </div>
             <Button asChild className="mt-2">
@@ -326,9 +324,6 @@ function FinancePage() {
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="caixa">Fluxo de caixa</TabsTrigger>
           <TabsTrigger value="previsao">Previsão</TabsTrigger>
-          {establishment?.sells_products ? (
-            <TabsTrigger value="estoque">Estoque</TabsTrigger>
-          ) : null}
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-4 pt-4">
@@ -526,12 +521,6 @@ function FinancePage() {
             />
           ) : null}
         </TabsContent>
-
-        {establishment?.sells_products ? (
-          <TabsContent value="estoque" className="space-y-4 pt-4">
-            <InventoryTab establishmentId={establishment.id} />
-          </TabsContent>
-        ) : null}
       </Tabs>
     </div>
   );

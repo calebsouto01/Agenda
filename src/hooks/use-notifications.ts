@@ -35,9 +35,15 @@ export type FinishableAppointment = {
 export function useNotifications({
   establishmentId,
   timezone,
+  notifyPendingEnabled = true,
+  notifyFinishableEnabled = true,
+  notifyRemindersEnabled = true,
 }: {
   establishmentId: string;
   timezone: string;
+  notifyPendingEnabled?: boolean;
+  notifyFinishableEnabled?: boolean;
+  notifyRemindersEnabled?: boolean;
 }) {
   const queryClient = useQueryClient();
   // Agendamento aceito nesta sessão: em vez de sumir da lista, o card no
@@ -46,6 +52,7 @@ export function useNotifications({
 
   const { data: pending } = useQuery({
     queryKey: ["pending-appointments", establishmentId],
+    enabled: notifyPendingEnabled,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,6 +71,7 @@ export function useNotifications({
   // o dono pra mandar o lembrete pro cliente, hoje um passo manual.
   const { data: confirmations } = useQuery({
     queryKey: ["today-confirmations", establishmentId],
+    enabled: notifyRemindersEnabled,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -90,6 +98,7 @@ export function useNotifications({
   // (pagamento registrado) — avisa o dono pra fechar o atendimento.
   const { data: finishable } = useQuery({
     queryKey: ["finishable-appointments", establishmentId],
+    enabled: notifyFinishableEnabled,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
