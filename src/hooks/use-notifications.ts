@@ -57,7 +57,9 @@ export function useNotifications({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, starts_at, service_names, customers(name, phone)")
+        .select(
+          "id, starts_at, service_names, customers!appointments_customer_id_fkey(name, phone)",
+        )
         .eq("establishment_id", establishmentId)
         .eq("status", "pending")
         .order("starts_at", { ascending: true });
@@ -103,7 +105,7 @@ export function useNotifications({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, ends_at, service_names, customers(name)")
+        .select("id, ends_at, service_names, customers!appointments_customer_id_fkey(name)")
         .eq("establishment_id", establishmentId)
         .eq("status", "confirmed")
         .lt("ends_at", new Date().toISOString())

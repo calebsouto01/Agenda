@@ -93,7 +93,9 @@ export function CashFlowTab({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_entries")
-        .select("id, amount_cents, created_at, appointments(customers(name))")
+        .select(
+          "id, amount_cents, created_at, appointments(customers!appointments_customer_id_fkey(name))",
+        )
         .eq("establishment_id", establishmentId)
         .gte("created_at", `${bounds.from}T00:00:00`)
         .lt("created_at", `${bounds.to}T00:00:00`);

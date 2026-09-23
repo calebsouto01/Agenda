@@ -143,7 +143,7 @@ function FinancePage() {
       const { data, error } = await supabase
         .from("appointments")
         .select(
-          "id, starts_at, paid, service_names, total_price_cents, services(name, price_cents), professionals(name), customers(name)",
+          "id, starts_at, paid, service_names, total_price_cents, services(name, price_cents), professionals(name), customers!appointments_customer_id_fkey(name)",
         )
         .eq("establishment_id", establishment!.id)
         .eq("status", "completed")
@@ -183,7 +183,9 @@ function FinancePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_entries")
-        .select("id, method, amount_cents, note, appointments(starts_at, customers(name))")
+        .select(
+          "id, method, amount_cents, note, appointments(starts_at, customers!appointments_customer_id_fkey(name))",
+        )
         .in("appointment_id", appointmentIds);
       if (error) throw error;
       return (data ?? []) as unknown as PaymentEntryRow[];
