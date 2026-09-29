@@ -138,23 +138,24 @@ Construa uma aplicação funcional, e não apenas uma demonstração visual.
 
 Ao finalizar, teste o fluxo completo de criação e gerenciamento de um agendamento.
 
-This project was built with [Lovable](https://lovable.dev).
+## Stack
 
-## Build with Lovable
+TanStack Start (React 19 + TanStack Router) sobre Vite, Tailwind CSS v4, Supabase
+como backend/banco de dados, e deploy via Nitro no preset da Vercel.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/cdb54d12-8c87-40f4-b277-96cdcc4731c8).
+## Desenvolvimento
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requer [Bun](https://bun.sh).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+git clone <url-deste-repositório>
+cd agenda
+bun install
+bun dev
+```
+
+```sh
+bun run build    # build de produção (nitro, preset vercel)
+bun run preview  # serve o build gerado localmente
+bun run lint      # eslint
 ```
