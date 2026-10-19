@@ -8,7 +8,6 @@ import {
   Check,
   ChevronDown,
   Copy,
-  ExternalLink,
   LogOut,
   Megaphone,
   Menu,
@@ -22,12 +21,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Share } from "@capacitor/share";
-import { Browser } from "@capacitor/browser";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
-import { isNativeAndroid } from "@/lib/whatsapp-intent";
 import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -293,24 +290,6 @@ function NavContent({
             {linkCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           </Button>
         </div>
-        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-          <a
-            href={`/b/${establishment.slug}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2"
-            onClick={(e) => {
-              onNavigate?.();
-              if (isNativeAndroid()) {
-                e.preventDefault();
-                void Browser.open({ url: `${window.location.origin}/b/${establishment.slug}` });
-              }
-            }}
-          >
-            <ExternalLink className="size-4" />
-            Página pública
-          </a>
-        </Button>
         <Button
           variant="ghost"
           size="sm"
