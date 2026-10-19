@@ -5,7 +5,9 @@ import {
   Bell,
   CalendarDays,
   CalendarCheck,
+  Check,
   ChevronDown,
+  Copy,
   ExternalLink,
   LogOut,
   Megaphone,
@@ -190,6 +192,15 @@ function NavContent({
   // Retraído por padrão só quando o usuário fecha na mão; a categoria da
   // página atual sempre fica aberta, mesmo se tiver sido retraída antes.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [linkCopied, setLinkCopied] = useState(false);
+  const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/b/${establishment.slug}`;
+
+  async function copyPublicLink() {
+    await navigator.clipboard.writeText(publicUrl);
+    setLinkCopied(true);
+    toast.success("Link copiado");
+    setTimeout(() => setLinkCopied(false), 1500);
+  }
 
   return (
     <>
@@ -252,7 +263,7 @@ function NavContent({
                       <Link
                         key={`${leaf.to}-${leaf.tab}`}
                         to={leaf.to}
-                        search={{ tab: leaf.tab }}
+                        search={{ tab: leaf.tab } as never}
                         onClick={onNavigate}
                         className={`ml-2 flex items-center gap-2 rounded-lg border-l-2 py-1.5 pl-3 text-sm font-medium transition-all ${
                           active
@@ -270,6 +281,18 @@ function NavContent({
         })}
       </nav>
       <div className="space-y-1 border-t p-3">
+        <div className="mb-1 flex items-center gap-1.5">
+          <Input readOnly value={publicUrl} className="h-8 truncate text-xs" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 px-2"
+            onClick={copyPublicLink}
+            title="Copiar link público"
+          >
+            {linkCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          </Button>
+        </div>
         <Button asChild variant="ghost" size="sm" className="w-full justify-start">
           <a
             href={`/b/${establishment.slug}`}

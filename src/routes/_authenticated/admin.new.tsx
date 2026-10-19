@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Users } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -49,6 +50,30 @@ function ManualBooking() {
     email: "",
     notes: "",
   });
+  const [showCustomerList, setShowCustomerList] = useState(false);
+
+  const { data: customers } = useQuery({
+    queryKey: ["admin-new-customers", establishment?.id],
+    enabled: Boolean(establishment?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, phone")
+        .eq("establishment_id", establishment!.id)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const matchingCustomers = (customers ?? []).filter((c) =>
+    `${c.name} ${c.phone}`.toLowerCase().includes(form.name.trim().toLowerCase()),
+  );
+
+  function pickCustomer(c: { name: string; phone: string }) {
+    setForm((prev) => ({ ...prev, name: c.name, phone: c.phone }));
+    setShowCustomerList(false);
+  }
 
   const { data: services } = useQuery({
     queryKey: ["admin-services", establishment?.id],
@@ -256,13 +281,33 @@ function ManualBooking() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
+            <div className="relative grid gap-1.5">
               <Label htmlFor="cname">Cliente</Label>
               <Input
                 id="cname"
+                autoComplete="off"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onFocus={() => setShowCustomerList(true)}
+                onBlur={() => setTimeout(() => setShowCustomerList(false), 150)}
               />
+              {showCustomerList && matchingCustomers.length > 0 ? (
+                <div className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border bg-card shadow-soft">
+                  {matchingCustomers.slice(0, 20).map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickCustomer(c)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      <Users className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{c.phone}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="cphone">Telefone</Label>
