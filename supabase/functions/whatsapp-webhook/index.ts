@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { handleIncomingText } from "./agent.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
@@ -78,19 +79,45 @@ Deno.serve(async (req) => {
     if (!valid) return new Response("Invalid signature", { status: 401 });
 
     const payload = JSON.parse(rawBody);
-    const changes = payload?.entry?.[0]?.changes ?? [];
-    for (const change of changes) {
-      const messages = change?.value?.messages ?? [];
-      for (const msg of messages) {
-        const from = msg.from as string | undefined;
-        let buttonPayload: string | null = null;
-        if (msg.type === "button" && msg.button?.payload) buttonPayload = msg.button.payload;
-        if (msg.type === "interactive" && msg.interactive?.button_reply?.id) {
-          buttonPayload = msg.interactive.button_reply.id;
+
+    // Responde 200 já: a Meta reenvia se demorar. O agente roda em segundo plano.
+    const work = (async () => {
+      const changes = (payload?.entry ?? []).flatMap(
+        (e: { changes?: unknown[] }) => e?.changes ?? [],
+      );
+      // deno-lint-ignore no-explicit-any
+      for (const change of changes as Array<{ value?: any }>) {
+        const value = change?.value;
+        const phoneNumberId = value?.metadata?.phone_number_id as string | undefined;
+        const contacts = (value?.contacts ?? []) as Array<{ wa_id?: string; profile?: { name?: string } }>;
+        for (const msg of value?.messages ?? []) {
+          try {
+            const from = msg.from as string | undefined;
+            let buttonPayload: string | null = null;
+            if (msg.type === "button" && msg.button?.payload) buttonPayload = msg.button.payload;
+            if (msg.type === "interactive" && msg.interactive?.button_reply?.id) {
+              buttonPayload = msg.interactive.button_reply.id;
+            }
+            if (from && buttonPayload) {
+              await handleButtonReply(from, buttonPayload);
+            } else if (from && phoneNumberId && msg.type === "text" && msg.text?.body) {
+              await handleIncomingText({
+                phoneNumberId,
+                from,
+                name: contacts.find((c) => c.wa_id === from)?.profile?.name ?? null,
+                text: String(msg.text.body).trim(),
+                waMessageId: String(msg.id),
+              });
+            }
+          } catch (e) {
+            console.error("webhook message error", e);
+          }
         }
-        if (from && buttonPayload) await handleButtonReply(from, buttonPayload);
       }
-    }
+    })();
+    // @ts-ignore EdgeRuntime existe no runtime das Edge Functions
+    if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(work);
+    else await work;
     return new Response("EVENT_RECEIVED", { status: 200 });
   }
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { embeddedSignupConfigured, runEmbeddedSignup } from "@/lib/meta-embedded-signup";
 import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/admin/whatsapp-ia")({
   component: WhatsappAiPage,
 });
 
-type ConnectionStatus = "disconnected" | "connecting" | "connected";
+type ConnectionStatus = "disconnected" | "connected";
 
 type AgentRow = {
   id: string;
@@ -28,13 +29,7 @@ type AgentRow = {
   instructions: string | null;
   connection_status: ConnectionStatus;
   connected_phone: string | null;
-};
-
-type ConnectResponse = {
-  ok?: boolean;
-  status?: ConnectionStatus;
-  qr?: string | null;
-  message?: string;
+  verified_name: string | null;
 };
 
 // As tabelas do agente ainda não estão em types.ts (gerado); usa client sem tipagem de tabela.
@@ -47,17 +42,17 @@ function WhatsappAiPage() {
   const { data: establishment, isLoading } = useEstablishment();
   const queryClient = useQueryClient();
   const establishmentId = establishment?.id;
-  const [qr, setQr] = useState<string | null>(null);
   const [form, setForm] = useState({ agent_name: "Assistente", instructions: "" });
 
   const { data: agent } = useQuery({
     queryKey: ["whatsapp-agent", establishmentId],
     enabled: !!establishmentId,
-    refetchInterval: (q) => (q.state.data?.connection_status === "connecting" ? 4000 : false),
     queryFn: async () => {
       const { data, error } = await db
         .from("whatsapp_agents")
-        .select("id, enabled, agent_name, instructions, connection_status, connected_phone")
+        .select(
+          "id, enabled, agent_name, instructions, connection_status, connected_phone, verified_name",
+        )
         .eq("establishment_id", establishmentId)
         .maybeSingle();
       if (error) throw error;
@@ -85,58 +80,42 @@ function WhatsappAiPage() {
     if (agent) setForm({ agent_name: agent.agent_name, instructions: agent.instructions ?? "" });
   }, [agent?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function callConnect(action: "connect" | "status" | "disconnect") {
+  async function callConnect(body: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke("whatsapp-agent-connect", {
-      body: { action, establishment_id: establishmentId },
+      body: { establishment_id: establishmentId, ...body },
     });
     if (error) throw error;
-    return data as ConnectResponse;
+    return data as { ok?: boolean; message?: string };
   }
 
   const connect = useMutation({
-    mutationFn: () => callConnect("connect"),
-    onSuccess: (res) => {
-      setQr(res.qr ?? null);
-      queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
+    mutationFn: async () => {
+      const r = await runEmbeddedSignup();
+      return callConnect({
+        action: "exchange",
+        code: r.code,
+        waba_id: r.wabaId,
+        phone_number_id: r.phoneNumberId,
+      });
     },
-    onError: () => toast.error("Não foi possível gerar o QR code. Tente novamente."),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
+      toast.success("WhatsApp conectado!");
+    },
+    onError: (e) => {
+      if (e instanceof Error && e.message === "cancelled") return;
+      toast.error("Não foi possível conectar o WhatsApp. Tente novamente.");
+    },
   });
 
   const disconnect = useMutation({
-    mutationFn: () => callConnect("disconnect"),
+    mutationFn: () => callConnect({ action: "disconnect" }),
     onSuccess: () => {
-      setQr(null);
       queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
       toast.success("WhatsApp desconectado");
     },
     onError: () => toast.error("Não foi possível desconectar."),
   });
-
-  // Enquanto aguarda a leitura, consulta o estado e renova o QR (expira em ~30s).
-  const connecting = agent?.connection_status === "connecting";
-  useEffect(() => {
-    if (!connecting || !establishmentId) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await callConnect("status");
-        if (cancelled) return;
-        if (res.qr) setQr(res.qr);
-        if (res.status === "connected") {
-          setQr(null);
-          queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
-          toast.success("WhatsApp conectado!");
-        }
-      } catch {
-        /* tenta de novo no próximo ciclo */
-      }
-    };
-    const id = setInterval(tick, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [connecting, establishmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useMutation({
     mutationFn: async (
@@ -178,7 +157,8 @@ function WhatsappAiPage() {
           {status === "connected" ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm">
-                ✅ Conectado{agent?.connected_phone ? ` (+${agent.connected_phone})` : ""}
+                ✅ Conectado{agent?.connected_phone ? ` · ${agent.connected_phone}` : ""}
+                {agent?.verified_name ? ` (${agent.verified_name})` : ""}
               </p>
               <Button
                 variant="outline"
@@ -191,23 +171,21 @@ function WhatsappAiPage() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                No celular: WhatsApp → Configurações → Aparelhos conectados → Conectar um aparelho,
-                e aponte a câmera para o QR code.
+                Conecte o número de WhatsApp Business do seu negócio pela Meta (API oficial). Uma
+                janela do Facebook vai abrir para você escolher ou criar a conta e verificar o
+                número.
               </p>
-              {qr ? (
-                <img
-                  src={qr}
-                  alt="QR code do WhatsApp"
-                  className="h-64 w-64 rounded-md border bg-white p-2"
-                />
-              ) : connecting ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Gerando QR code…
-                </div>
-              ) : null}
-              <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
+              {!embeddedSignupConfigured && (
+                <p className="text-sm text-destructive">
+                  Integração com a Meta não configurada (VITE_META_APP_ID / VITE_META_CONFIG_ID).
+                </p>
+              )}
+              <Button
+                onClick={() => connect.mutate()}
+                disabled={connect.isPending || !embeddedSignupConfigured}
+              >
                 {connect.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {connecting ? "Gerar novo QR code" : "Conectar WhatsApp"}
+                Conectar com Facebook
               </Button>
             </div>
           )}
