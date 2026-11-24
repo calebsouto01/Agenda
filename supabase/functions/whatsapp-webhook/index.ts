@@ -3,6 +3,7 @@ import { handleIncomingText, sendText, tokenForPhoneNumberId } from "./agent.ts"
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
+const EVOLUTION_WEBHOOK_SECRET = Deno.env.get("EVOLUTION_WEBHOOK_SECRET") ?? "";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -31,6 +32,68 @@ async function verifySignature(rawBody: string, signatureHeader: string | null) 
   let diff = 0;
   for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ expected.charCodeAt(i);
   return diff === 0;
+}
+
+function safeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// deno-lint-ignore no-explicit-any
+function extractEvolutionText(message: any): string {
+  return String(message?.conversation ?? message?.extendedTextMessage?.text ?? "").trim();
+}
+
+/** Eventos da Evolution API (conexão rápida por QR): mensagens e estado da conexão. */
+// deno-lint-ignore no-explicit-any
+async function handleEvolutionEvent(payload: any) {
+  const instance: string | undefined = payload?.instance;
+  const event = String(payload?.event ?? "").toLowerCase().replace(/_/g, ".");
+  if (!instance) return;
+
+  if (event === "connection.update") {
+    const state = payload?.data?.state;
+    if (state === "open") {
+      const owner = String(payload?.data?.wuid ?? payload?.sender ?? "").replace(/@.*/, "") || null;
+      await supabase
+        .from("whatsapp_agents")
+        .update({ connection_status: "connected", connected_phone: owner })
+        .eq("instance_name", instance);
+    } else if (state === "close") {
+      // Só marca como desconectado se estava conectado (ao recriar o QR a Evolution também emite "close").
+      await supabase
+        .from("whatsapp_agents")
+        .update({ connection_status: "disconnected", connected_phone: null })
+        .eq("instance_name", instance)
+        .eq("connection_status", "connected");
+    }
+    return;
+  }
+
+  if (event === "messages.upsert") {
+    const items = Array.isArray(payload.data) ? payload.data : [payload.data];
+    for (const item of items) {
+      const key = item?.key;
+      if (!key || key.fromMe) continue;
+      const jid: string = key.remoteJid ?? "";
+      if (!jid.endsWith("@s.whatsapp.net")) continue; // só conversas individuais
+      const text = extractEvolutionText(item.message);
+      if (!text) continue;
+      try {
+        await handleIncomingText({
+          instanceName: instance,
+          from: jid.replace(/@.*/, ""),
+          name: item.pushName ?? null,
+          text,
+          waMessageId: String(key.id ?? crypto.randomUUID()),
+        });
+      } catch (e) {
+        console.error("evolution message error", e);
+      }
+    }
+  }
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -101,6 +164,28 @@ Deno.serve(async (req) => {
   }
 
   if (req.method === "POST") {
+    // Evolution API (QR code): autenticada por segredo na URL, sem assinatura da Meta.
+    const evolutionSecret = url.searchParams.get("secret");
+    if (evolutionSecret !== null) {
+      if (!EVOLUTION_WEBHOOK_SECRET || !safeEqual(evolutionSecret, EVOLUTION_WEBHOOK_SECRET)) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      // deno-lint-ignore no-explicit-any
+      let evolutionPayload: any;
+      try {
+        evolutionPayload = await req.json();
+      } catch {
+        return new Response("Bad request", { status: 400 });
+      }
+      const evolutionWork = handleEvolutionEvent(evolutionPayload).catch((e) =>
+        console.error("evolution webhook error", e)
+      );
+      // @ts-ignore EdgeRuntime existe no runtime das Edge Functions
+      if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(evolutionWork);
+      else await evolutionWork;
+      return new Response("ok");
+    }
+
     const rawBody = await req.text();
     const signature = req.headers.get("x-hub-signature-256");
     const valid = await verifySignature(rawBody, signature);

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, MessageCircle, Smartphone } from "lucide-react";
+import { Bot, Loader2, MessageCircle, QrCode, ShieldCheck, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
-import { isPremium } from "@/lib/plans";
+import { isPremium, isPro } from "@/lib/plans";
 import { embeddedSignupConfigured, runEmbeddedSignup } from "@/lib/meta-embedded-signup";
 import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
@@ -18,20 +18,24 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/admin/whatsapp-ia")({
-  component: WhatsappAiPage,
+  component: WhatsappPage,
 });
 
-type ConnectionStatus = "disconnected" | "connected";
+type ConnectionStatus = "disconnected" | "connecting" | "connected";
+type Provider = "official" | "qr";
 
 type AgentRow = {
   id: string;
   enabled: boolean;
   agent_name: string;
   instructions: string | null;
+  provider: Provider;
   connection_status: ConnectionStatus;
   connected_phone: string | null;
   verified_name: string | null;
 };
+
+type ConnectResponse = { ok?: boolean; status?: ConnectionStatus; qr?: string | null };
 
 // As tabelas do agente ainda não estão em types.ts (gerado); usa client sem tipagem de tabela.
 const db = supabase as unknown as {
@@ -39,10 +43,11 @@ const db = supabase as unknown as {
   from: (t: string) => any;
 };
 
-function WhatsappAiPage() {
+function WhatsappPage() {
   const { data: establishment, isLoading } = useEstablishment();
   const queryClient = useQueryClient();
   const establishmentId = establishment?.id;
+  const [qr, setQr] = useState<string | null>(null);
   const [form, setForm] = useState({ agent_name: "Assistente", instructions: "" });
 
   const { data: agent } = useQuery({
@@ -52,7 +57,7 @@ function WhatsappAiPage() {
       const { data, error } = await db
         .from("whatsapp_agents")
         .select(
-          "id, enabled, agent_name, instructions, connection_status, connected_phone, verified_name",
+          "id, enabled, agent_name, instructions, provider, connection_status, connected_phone, verified_name",
         )
         .eq("establishment_id", establishmentId)
         .maybeSingle();
@@ -86,10 +91,15 @@ function WhatsappAiPage() {
       body: { establishment_id: establishmentId, ...body },
     });
     if (error) throw error;
-    return data as { ok?: boolean; message?: string };
+    return data as ConnectResponse;
   }
 
-  const connect = useMutation({
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
+  }
+
+  // ---- Conexão oficial (Facebook / Meta)
+  const connectOfficial = useMutation({
     mutationFn: async () => {
       const r = await runEmbeddedSignup();
       return callConnect({
@@ -100,7 +110,8 @@ function WhatsappAiPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
+      setQr(null);
+      refresh();
       toast.success("WhatsApp conectado!");
     },
     onError: (e) => {
@@ -109,14 +120,52 @@ function WhatsappAiPage() {
     },
   });
 
+  // ---- Conexão rápida (QR code)
+  const connectQr = useMutation({
+    mutationFn: () => callConnect({ action: "qr_connect" }),
+    onSuccess: (res) => {
+      setQr(res.qr ?? null);
+      refresh();
+    },
+    onError: () => toast.error("Não foi possível gerar o QR code. Tente novamente."),
+  });
+
   const disconnect = useMutation({
     mutationFn: () => callConnect({ action: "disconnect" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] });
+      setQr(null);
+      refresh();
       toast.success("WhatsApp desconectado");
     },
     onError: () => toast.error("Não foi possível desconectar."),
   });
+
+  // Enquanto o QR espera a leitura, consulta o estado e renova a imagem (expira em ~30s).
+  const waitingQr = agent?.provider === "qr" && agent.connection_status === "connecting";
+  useEffect(() => {
+    if (!waitingQr || !establishmentId) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await callConnect({ action: "qr_status" });
+        if (cancelled) return;
+        if (res.qr) setQr(res.qr);
+        if (res.status === "connected") {
+          setQr(null);
+          refresh();
+          toast.success("WhatsApp conectado!");
+        }
+      } catch {
+        /* tenta de novo no próximo ciclo */
+      }
+    };
+    void tick();
+    const id = setInterval(tick, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [waitingQr, establishmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useMutation({
     mutationFn: async (
@@ -125,7 +174,7 @@ function WhatsappAiPage() {
       const { error } = await db.from("whatsapp_agents").update(patch).eq("id", agent!.id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp-agent"] }),
+    onSuccess: refresh,
     onError: () => toast.error("Não foi possível salvar."),
   });
 
@@ -142,16 +191,16 @@ function WhatsappAiPage() {
 
   if (isLoading || !establishment) return <Skeleton className="h-64 w-full" />;
 
-  if (!isPremium(establishment.plan)) {
+  if (!isPro(establishment.plan)) {
     return (
       <div className="space-y-4">
-        <PageTitle icon={Bot}>Atendente de IA no WhatsApp</PageTitle>
+        <PageTitle icon={Smartphone}>WhatsApp automático</PageTitle>
         <Card>
           <CardContent className="space-y-2 p-4">
-            <p className="font-semibold">Disponível no plano Premium</p>
+            <p className="font-semibold">Disponível nos planos Pro e Premium</p>
             <p className="text-sm text-muted-foreground">
-              O atendente de IA responde seus clientes no WhatsApp, mostra horários livres e cria
-              agendamentos sozinho. Faça upgrade para o plano Premium para ativar.
+              Conecte o WhatsApp do seu negócio para enviar avisos e lembretes automáticos aos seus
+              clientes. No Premium, um atendente de IA também responde e agenda por você.
             </p>
           </CardContent>
         </Card>
@@ -160,10 +209,11 @@ function WhatsappAiPage() {
   }
 
   const status = agent?.connection_status ?? "disconnected";
+  const busy = connectOfficial.isPending || connectQr.isPending;
 
   return (
     <div className="space-y-4">
-      <PageTitle icon={Bot}>Atendente de IA no WhatsApp</PageTitle>
+      <PageTitle icon={Smartphone}>WhatsApp automático</PageTitle>
 
       <Card>
         <CardContent className="space-y-4 p-4">
@@ -177,6 +227,9 @@ function WhatsappAiPage() {
               <p className="text-sm">
                 ✅ Conectado{agent?.connected_phone ? ` · ${agent.connected_phone}` : ""}
                 {agent?.verified_name ? ` (${agent.verified_name})` : ""}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {agent?.provider === "qr" ? "Conexão rápida" : "Conexão oficial"}
+                </span>
               </p>
               <Button
                 variant="outline"
@@ -186,37 +239,100 @@ function WhatsappAiPage() {
                 Desconectar
               </Button>
             </div>
-          ) : (
+          ) : waitingQr ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Conecte o número de WhatsApp Business do seu negócio pela Meta (API oficial). Uma
-                janela do Facebook vai abrir para você escolher ou criar a conta e verificar o
-                número.
+                No celular: WhatsApp → Configurações → Aparelhos conectados → Conectar um aparelho,
+                e aponte a câmera para o QR code.
               </p>
-              {!embeddedSignupConfigured && (
-                <p className="text-sm text-destructive">
-                  Integração com a Meta não configurada (VITE_META_APP_ID / VITE_META_CONFIG_ID).
-                </p>
+              {qr ? (
+                <img
+                  src={qr}
+                  alt="QR code do WhatsApp"
+                  className="h-64 w-64 rounded-md border bg-white p-2"
+                />
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Gerando QR code…
+                </div>
               )}
-              <Button
-                onClick={() => connect.mutate()}
-                disabled={connect.isPending || !embeddedSignupConfigured}
-              >
-                {connect.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Conectar com Facebook
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => connectQr.mutate()} disabled={busy} variant="outline">
+                  Gerar novo QR code
+                </Button>
+                <Button
+                  onClick={() => disconnect.mutate()}
+                  disabled={disconnect.isPending}
+                  variant="ghost"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center gap-2 font-medium">
+                  <QrCode className="h-4 w-4" /> Conexão rápida
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Leia um QR code com o celular e pronto, em menos de um minuto.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Não é a conexão oficial do WhatsApp: se o número mandar muitas mensagens para quem
+                  não conversa com ele, o WhatsApp pode bloquear.
+                </p>
+                <Button onClick={() => connectQr.mutate()} disabled={busy}>
+                  {connectQr.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Conectar com QR code
+                </Button>
+              </div>
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center gap-2 font-medium">
+                  <ShieldCheck className="h-4 w-4" /> Conexão oficial
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Mais segura para o seu número. Você entra com o Facebook e confirma o número.
+                </p>
+                {!embeddedSignupConfigured && (
+                  <p className="text-xs text-destructive">Indisponível no momento.</p>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => connectOfficial.mutate()}
+                  disabled={busy || !embeddedSignupConfigured}
+                >
+                  {connectOfficial.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Conectar com Facebook
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {agent && (
+      {agent && status === "connected" && !isPremium(establishment.plan) && (
+        <Card>
+          <CardContent className="space-y-1 p-4">
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              <h2 className="font-semibold">Atendente de IA</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Disponível no plano Premium: responde seus clientes, mostra horários livres e agenda
+              sozinho.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {agent && isPremium(establishment.plan) && (
         <Card>
           <CardContent className="space-y-4 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Bot className="h-5 w-5" />
-                <h2 className="font-semibold">Agente</h2>
+                <h2 className="font-semibold">Atendente de IA</h2>
               </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor="agent-enabled">Responder automaticamente</Label>
