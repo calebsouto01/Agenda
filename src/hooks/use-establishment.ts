@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type Plan = "free" | "pro";
+export type Plan = "free" | "pro" | "premium";
 export type PlanStatus = "active" | "trialing" | "past_due" | "canceled";
 
 export type Establishment = {

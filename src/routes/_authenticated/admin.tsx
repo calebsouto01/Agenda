@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
 import { NotificationBell } from "@/components/notification-bell";
+import { AppointmentAlerts } from "@/components/appointment-alerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -166,6 +167,7 @@ function AdminLayout() {
         </Sheet>
 
         <main className="mx-auto w-full max-w-5xl px-4 py-6">
+          <AppointmentAlerts establishment={establishment} />
           <Outlet />
         </main>
       </div>

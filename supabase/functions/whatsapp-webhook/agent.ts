@@ -28,7 +28,7 @@ function localPhone(num: string): string {
   return full.startsWith("55") && full.length === 13 ? full.slice(2) : full;
 }
 
-async function sendText(phoneNumberId: string, accessToken: string, to: string, text: string) {
+export async function sendText(phoneNumberId: string, accessToken: string, to: string, text: string) {
   // Tenta com o 9 e, se a Meta disser que o destinatário não está na lista (131030), o formato original.
   const candidates = [...new Set([brMobileWith9(to), to])];
   for (const target of candidates) {
@@ -44,6 +44,21 @@ async function sendText(phoneNumberId: string, accessToken: string, to: string, 
   }
 }
 
+const ENV_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
+const ENV_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
+
+/** Token do número que recebeu a mensagem: o do estabelecimento conectado ou, nos testes, o da plataforma. */
+export async function tokenForPhoneNumberId(phoneNumberId: string): Promise<string | null> {
+  const { data: agent } = await supabase
+    .from("whatsapp_agents").select("id").eq("phone_number_id", phoneNumberId).maybeSingle();
+  if (agent) {
+    const { data: cred } = await supabase
+      .from("whatsapp_credentials").select("access_token").eq("agent_id", agent.id).maybeSingle();
+    if (cred) return cred.access_token;
+  }
+  return phoneNumberId === ENV_PHONE_NUMBER_ID && ENV_TOKEN ? ENV_TOKEN : null;
+}
+
 type Establishment = {
   id: string;
   name: string;
@@ -51,6 +66,7 @@ type Establishment = {
   phone: string | null;
   address: string | null;
   timezone: string;
+  plan: string;
 };
 
 type Agent = {
@@ -294,10 +310,11 @@ export async function handleIncomingText(opts: {
 
   const { data: est } = await supabase
     .from("establishments")
-    .select("id, name, description, phone, address, timezone")
+    .select("id, name, description, phone, address, timezone, plan")
     .eq("id", agent.establishment_id)
     .single<Establishment>();
   if (!est) return;
+  if (est.plan !== "premium") return; // o agente de IA é do plano Premium
 
   const { data: conv } = await supabase
     .from("whatsapp_conversations")

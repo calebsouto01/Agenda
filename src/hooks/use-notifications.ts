@@ -38,12 +38,15 @@ export function useNotifications({
   notifyPendingEnabled = true,
   notifyFinishableEnabled = true,
   notifyRemindersEnabled = true,
+  manualWhatsappEnabled = true,
 }: {
   establishmentId: string;
   timezone: string;
   notifyPendingEnabled?: boolean;
   notifyFinishableEnabled?: boolean;
   notifyRemindersEnabled?: boolean;
+  /** Plano Grátis: o dono manda as mensagens do funil por wa.me. Nos pagos, o sistema avisa sozinho. */
+  manualWhatsappEnabled?: boolean;
 }) {
   const queryClient = useQueryClient();
   // Agendamento aceito nesta sessão: em vez de sumir da lista, o card no
@@ -73,7 +76,7 @@ export function useNotifications({
   // o dono pra mandar o lembrete pro cliente, hoje um passo manual.
   const { data: confirmations } = useQuery({
     queryKey: ["today-confirmations", establishmentId],
-    enabled: notifyRemindersEnabled,
+    enabled: notifyRemindersEnabled && manualWhatsappEnabled,
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -133,7 +136,7 @@ export function useNotifications({
     },
     onSuccess: (a) => {
       toast.success("Agendamento confirmado");
-      setJustAccepted((prev) => ({ ...prev, [a.id]: a }));
+      if (manualWhatsappEnabled) setJustAccepted((prev) => ({ ...prev, [a.id]: a }));
       invalidate();
     },
     onError: () => toast.error("Não foi possível confirmar"),

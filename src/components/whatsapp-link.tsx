@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { useEstablishment } from "@/hooks/use-establishment";
 import { whatsappLink } from "@/lib/booking";
+import { hasManualWhatsApp } from "@/lib/plans";
 import {
   detectWhatsAppApps,
   isNativeAndroid,
@@ -66,6 +67,9 @@ export function WhatsAppLink({
     setOpen(false);
     void openWhatsApp(app);
   }
+
+  // Pro e Premium não usam o funil manual por wa.me: os avisos saem pela API oficial.
+  if (establishment && !hasManualWhatsApp(establishment.plan)) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

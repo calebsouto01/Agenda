@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { useEstablishment } from "@/hooks/use-establishment";
 import { useNotifications } from "@/hooks/use-notifications";
+import { hasManualWhatsApp } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { dateTimeInZone, timeInZone } from "@/lib/booking";
 import {
@@ -124,6 +125,7 @@ function CentralTab() {
     notifyPendingEnabled: establishment?.notify_pending_enabled ?? true,
     notifyFinishableEnabled: establishment?.notify_finishable_enabled ?? true,
     notifyRemindersEnabled: establishment?.notify_reminders_enabled ?? true,
+    manualWhatsappEnabled: establishment ? hasManualWhatsApp(establishment.plan) : true,
   });
 
   if (isLoading || !establishment) return <Skeleton className="h-64 w-full" />;

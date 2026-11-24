@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment } from "@/hooks/use-establishment";
+import { isPremium } from "@/lib/plans";
 import { embeddedSignupConfigured, runEmbeddedSignup } from "@/lib/meta-embedded-signup";
 import { PageTitle } from "@/components/page-title";
 import { Button } from "@/components/ui/button";
@@ -140,6 +141,23 @@ function WhatsappAiPage() {
   });
 
   if (isLoading || !establishment) return <Skeleton className="h-64 w-full" />;
+
+  if (!isPremium(establishment.plan)) {
+    return (
+      <div className="space-y-4">
+        <PageTitle icon={Bot}>Atendente de IA no WhatsApp</PageTitle>
+        <Card>
+          <CardContent className="space-y-2 p-4">
+            <p className="font-semibold">Disponível no plano Premium</p>
+            <p className="text-sm text-muted-foreground">
+              O atendente de IA responde seus clientes no WhatsApp, mostra horários livres e cria
+              agendamentos sozinho. Faça upgrade para o plano Premium para ativar.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const status = agent?.connection_status ?? "disconnected";
 

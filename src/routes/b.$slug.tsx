@@ -477,6 +477,9 @@ export function PublicBooking({ slug, refCode }: { slug: string; refCode: string
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Ao agendar, você aceita receber avisos deste agendamento pelo WhatsApp.
+                </p>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="email">E-mail (opcional)</Label>

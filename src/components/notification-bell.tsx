@@ -4,6 +4,7 @@ import { Bell, Check, CheckCheck, MessageCircle, Trash2, X } from "lucide-react"
 
 import type { Establishment } from "@/hooks/use-establishment";
 import { useNotifications } from "@/hooks/use-notifications";
+import { hasManualWhatsApp } from "@/lib/plans";
 import { dateTimeInZone, timeInZone } from "@/lib/booking";
 import {
   DEFAULT_MESSAGE_1,
@@ -38,6 +39,7 @@ export function NotificationBell({ establishment }: { establishment: Establishme
     notifyPendingEnabled: establishment.notify_pending_enabled,
     notifyFinishableEnabled: establishment.notify_finishable_enabled,
     notifyRemindersEnabled: establishment.notify_reminders_enabled,
+    manualWhatsappEnabled: hasManualWhatsApp(establishment.plan),
   });
 
   // Controla o popover na mão: ao aceitar, o botão que estava com foco some
