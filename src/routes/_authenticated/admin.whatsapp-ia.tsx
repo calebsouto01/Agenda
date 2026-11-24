@@ -30,10 +30,16 @@ type AgentRow = {
   connected_phone: string | null;
 };
 
-type ConnectResponse = { ok?: boolean; status?: ConnectionStatus; qr?: string | null; message?: string };
+type ConnectResponse = {
+  ok?: boolean;
+  status?: ConnectionStatus;
+  qr?: string | null;
+  message?: string;
+};
 
 // As tabelas do agente ainda não estão em types.ts (gerado); usa client sem tipagem de tabela.
 const db = supabase as unknown as {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   from: (t: string) => any;
 };
 
@@ -133,7 +139,9 @@ function WhatsappAiPage() {
   }, [connecting, establishmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useMutation({
-    mutationFn: async (patch: Partial<Pick<AgentRow, "enabled" | "agent_name" | "instructions">>) => {
+    mutationFn: async (
+      patch: Partial<Pick<AgentRow, "enabled" | "agent_name" | "instructions">>,
+    ) => {
       const { error } = await db.from("whatsapp_agents").update(patch).eq("id", agent!.id);
       if (error) throw error;
     },
