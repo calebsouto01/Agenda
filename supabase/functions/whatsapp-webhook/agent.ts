@@ -1,36 +1,24 @@
-// Recebe eventos da Evolution API (mensagens e estado da conexão) e responde
-// os clientes com um agente Claude que consulta serviços, horários livres,
-// cria agendamentos e pode transferir para um humano.
-//
-// Secrets: EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_WEBHOOK_SECRET,
-// ANTHROPIC_API_KEY (opcional: ANTHROPIC_MODEL).
+// Agente de IA (Claude) que atende clientes pelo WhatsApp Cloud API oficial:
+// consulta serviços, horários livres, cria agendamentos e transfere para humano.
+// Secrets: ANTHROPIC_API_KEY (opcional: ANTHROPIC_MODEL).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const EVOLUTION_API_URL = (Deno.env.get("EVOLUTION_API_URL") ?? "").replace(/\/$/, "");
-const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
-const WEBHOOK_SECRET = Deno.env.get("EVOLUTION_WEBHOOK_SECRET") ?? "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
 const HISTORY_LIMIT = 20;
 const MAX_TOOL_ROUNDS = 6;
+const GRAPH = "https://graph.facebook.com/v21.0";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-function safeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-async function sendText(instance: string, number: string, text: string) {
-  const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instance}`, {
+async function sendText(phoneNumberId: string, accessToken: string, to: string, text: string) {
+  const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
-    body: JSON.stringify({ number, text }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: text } }),
   });
   if (!res.ok) console.error("sendText failed", res.status, await res.text().catch(() => ""));
 }
@@ -50,7 +38,7 @@ type Agent = {
   enabled: boolean;
   agent_name: string;
   instructions: string | null;
-  instance_name: string;
+  phone_number_id: string;
 };
 
 function fmtSlot(iso: string, tz: string) {
@@ -205,7 +193,12 @@ async function claude(messages: unknown[], system: string) {
   return data;
 }
 
-async function respond(agent: Agent, est: Establishment, conv: { id: string; contact_phone: string }) {
+async function respond(
+  agent: Agent,
+  accessToken: string,
+  est: Establishment,
+  conv: { id: string; contact_phone: string },
+) {
   const { data: rows } = await supabase
     .from("whatsapp_messages")
     .select("role, content")
@@ -255,28 +248,28 @@ async function respond(agent: Agent, est: Establishment, conv: { id: string; con
 
   await supabase.from("whatsapp_messages").insert({ conversation_id: conv.id, role: "assistant", content: reply });
   await supabase.from("whatsapp_conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conv.id);
-  await sendText(agent.instance_name, conv.contact_phone, reply);
+  await sendText(agent.phone_number_id, accessToken, conv.contact_phone, reply);
 }
 
-function extractText(message: any): string {
-  return (
-    message?.conversation ??
-    message?.extendedTextMessage?.text ??
-    message?.imageMessage?.caption ??
-    message?.videoMessage?.caption ??
-    ""
-  ).trim();
-}
+/** Processa uma mensagem de texto recebida no número `phoneNumberId`. */
+export async function handleIncomingText(opts: {
+  phoneNumberId: string;
+  from: string;
+  name: string | null;
+  text: string;
+  waMessageId: string;
+}) {
+  if (!ANTHROPIC_API_KEY) return;
+  const { data: agent } = await supabase
+    .from("whatsapp_agents")
+    .select("id, establishment_id, enabled, agent_name, instructions, phone_number_id")
+    .eq("phone_number_id", opts.phoneNumberId)
+    .maybeSingle<Agent>();
+  if (!agent || !agent.enabled) return;
 
-async function handleMessage(agent: Agent, data: any) {
-  const key = data?.key;
-  if (!key || key.fromMe) return;
-  const jid: string = key.remoteJid ?? "";
-  // Só conversas individuais (ignora grupos, status e canais).
-  if (!jid.endsWith("@s.whatsapp.net")) return;
-  const phone = jid.replace(/@.*/, "");
-  const text = extractText(data.message);
-  if (!text) return; // áudio/imagem sem legenda: ignorado nesta versão
+  const { data: cred } = await supabase
+    .from("whatsapp_credentials").select("access_token").eq("agent_id", agent.id).maybeSingle();
+  if (!cred) return;
 
   const { data: est } = await supabase
     .from("establishments")
@@ -290,8 +283,8 @@ async function handleMessage(agent: Agent, data: any) {
     .upsert(
       {
         establishment_id: est.id,
-        contact_phone: phone,
-        contact_name: data.pushName ?? null,
+        contact_phone: opts.from,
+        contact_name: opts.name,
         last_message_at: new Date().toISOString(),
       },
       { onConflict: "establishment_id,contact_phone" },
@@ -300,52 +293,12 @@ async function handleMessage(agent: Agent, data: any) {
     .single();
   if (!conv) return;
 
-  await supabase.from("whatsapp_messages").insert({ conversation_id: conv.id, role: "user", content: text });
+  // A Meta reenvia webhooks; a unicidade do id da mensagem evita responder em dobro.
+  const { error: dup } = await supabase.from("whatsapp_messages").insert({
+    conversation_id: conv.id, role: "user", content: opts.text, wa_message_id: opts.waMessageId,
+  });
+  if (dup) return;
   if (conv.ai_paused) return; // atendimento humano em andamento
 
-  await respond(agent, est, conv);
+  await respond(agent, cred.access_token, est, conv);
 }
-
-Deno.serve(async (req) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  const secret = new URL(req.url).searchParams.get("secret") ?? "";
-  if (!WEBHOOK_SECRET || !safeEqual(secret, WEBHOOK_SECRET)) return new Response("Forbidden", { status: 403 });
-
-  let payload: any;
-  try {
-    payload = await req.json();
-  } catch {
-    return new Response("Bad request", { status: 400 });
-  }
-
-  const instance: string | undefined = payload?.instance;
-  const event = String(payload?.event ?? "").toLowerCase().replace(/_/g, ".");
-  if (!instance) return new Response("ok");
-
-  const { data: agent } = await supabase
-    .from("whatsapp_agents")
-    .select("id, establishment_id, enabled, agent_name, instructions, instance_name")
-    .eq("instance_name", instance)
-    .maybeSingle<Agent>();
-  if (!agent) return new Response("ok");
-
-  try {
-    if (event === "connection.update") {
-      const state = payload.data?.state;
-      if (state === "open") {
-        const owner = String(payload.data?.wuid ?? payload.sender ?? "").replace(/@.*/, "") || null;
-        await supabase.from("whatsapp_agents")
-          .update({ connection_status: "connected", connected_phone: owner }).eq("id", agent.id);
-      } else if (state === "close") {
-        await supabase.from("whatsapp_agents")
-          .update({ connection_status: "disconnected", connected_phone: null }).eq("id", agent.id);
-      }
-    } else if (event === "messages.upsert" && agent.enabled && ANTHROPIC_API_KEY) {
-      const items = Array.isArray(payload.data) ? payload.data : [payload.data];
-      for (const item of items) await handleMessage(agent, item);
-    }
-  } catch (e) {
-    console.error("webhook error", e);
-  }
-  return new Response("ok");
-});

@@ -1,5 +1,1 @@
 project_id = "upgrvovpyibbcdhqkbuv"
-
-# Webhook da Evolution API não envia JWT do Supabase; autentica por segredo na URL.
-[functions.whatsapp-agent-webhook]
-verify_jwt = false
