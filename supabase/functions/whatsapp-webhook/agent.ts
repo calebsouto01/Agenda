@@ -8,6 +8,8 @@ const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
 const HISTORY_LIMIT = 20;
 const MAX_TOOL_ROUNDS = 6;
 const GRAPH = "https://graph.facebook.com/v21.0";
+const FALLBACK_REPLY =
+  "Olá! Recebemos sua mensagem, mas não consegui responder agora. Nossa equipe retorna em breve. Obrigado pela paciência!";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -300,5 +302,14 @@ export async function handleIncomingText(opts: {
   if (dup) return;
   if (conv.ai_paused) return; // atendimento humano em andamento
 
-  await respond(agent, cred.access_token, est, conv);
+  try {
+    await respond(agent, cred.access_token, est, conv);
+  } catch (e) {
+    // Falha da IA (ex.: sem crédito, instabilidade): o cliente não fica sem resposta.
+    console.error("agent failed, sending fallback", e);
+    await supabase.from("whatsapp_messages").insert({
+      conversation_id: conv.id, role: "assistant", content: FALLBACK_REPLY,
+    });
+    await sendText(agent.phone_number_id, cred.access_token, conv.contact_phone, FALLBACK_REPLY);
+  }
 }
