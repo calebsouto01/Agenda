@@ -16,13 +16,32 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+/** Brasil: o webhook costuma trazer celulares sem o 9 extra (55 + DDD + 8 dígitos); a Meta usa com o 9. */
+function brMobileWith9(num: string): string {
+  const m = num.match(/^55(\d{2})([6-9]\d{7})$/);
+  return m ? `55${m[1]}9${m[2]}` : num;
+}
+
+/** Telefone nacional (sem 55, com o 9) para gravar no agendamento. */
+function localPhone(num: string): string {
+  const full = brMobileWith9(num);
+  return full.startsWith("55") && full.length === 13 ? full.slice(2) : full;
+}
+
 async function sendText(phoneNumberId: string, accessToken: string, to: string, text: string) {
-  const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: text } }),
-  });
-  if (!res.ok) console.error("sendText failed", res.status, await res.text().catch(() => ""));
+  // Tenta com o 9 e, se a Meta disser que o destinatário não está na lista (131030), o formato original.
+  const candidates = [...new Set([brMobileWith9(to), to])];
+  for (const target of candidates) {
+    const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: target, type: "text", text: { body: text } }),
+    });
+    if (res.ok) return;
+    const body = await res.text().catch(() => "");
+    console.error("sendText failed", res.status, body);
+    if (!body.includes("131030")) return;
+  }
 }
 
 type Establishment = {
@@ -158,7 +177,7 @@ async function runTool(
       p_professional_id: input.professional_id ?? null,
       p_starts_at: input.starts_at,
       p_customer_name: input.customer_name,
-      p_customer_phone: ctx.phone,
+      p_customer_phone: localPhone(ctx.phone),
       p_customer_email: null,
       p_notes: "Agendado pelo atendente de IA no WhatsApp",
       p_service_ids: ids.length > 1 ? ids : null,
