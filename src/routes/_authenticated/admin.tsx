@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Bell,
+  Bot,
   CalendarDays,
   CalendarCheck,
   Check,
@@ -95,6 +96,7 @@ const NAV: NavEntry[] = [
       { to: "/admin/notificacoes", label: "Central", tab: "central" },
     ],
   },
+  { kind: "link", to: "/admin/whatsapp-ia", label: "Atendente IA", icon: Bot },
   { kind: "link", to: "/admin/settings", label: "Dados da empresa", icon: Settings },
 ];
 

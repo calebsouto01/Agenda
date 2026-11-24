@@ -27,6 +27,7 @@ import { Route as AuthenticatedAdminNotificacoesRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminProfessionalsRouteImport } from './routes/_authenticated/admin.professionals'
 import { Route as AuthenticatedAdminServicesRouteImport } from './routes/_authenticated/admin.services'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminWhatsappIaRouteImport } from './routes/_authenticated/admin.whatsapp-ia'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -124,6 +125,12 @@ const AuthenticatedAdminSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminWhatsappIaRoute =
+  AuthenticatedAdminWhatsappIaRouteImport.update({
+    id: '/whatsapp-ia',
+    path: '/whatsapp-ia',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/whatsapp-ia': typeof AuthenticatedAdminWhatsappIaRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -160,6 +168,7 @@ export interface FileRoutesByTo {
   '/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/admin/services': typeof AuthenticatedAdminServicesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/whatsapp-ia': typeof AuthenticatedAdminWhatsappIaRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -181,6 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/professionals': typeof AuthenticatedAdminProfessionalsRoute
   '/_authenticated/admin/services': typeof AuthenticatedAdminServicesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/whatsapp-ia': typeof AuthenticatedAdminWhatsappIaRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/admin/professionals'
     | '/admin/services'
     | '/admin/settings'
+    | '/admin/whatsapp-ia'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/admin/professionals'
     | '/admin/services'
     | '/admin/settings'
+    | '/admin/whatsapp-ia'
     | '/admin'
   id:
     | '__root__'
@@ -240,6 +252,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/professionals'
     | '/_authenticated/admin/services'
     | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/whatsapp-ia'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/whatsapp-ia': {
+      id: '/_authenticated/admin/whatsapp-ia'
+      path: '/whatsapp-ia'
+      fullPath: '/admin/whatsapp-ia'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappIaRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
@@ -394,6 +414,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminProfessionalsRoute: typeof AuthenticatedAdminProfessionalsRoute
   AuthenticatedAdminServicesRoute: typeof AuthenticatedAdminServicesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminWhatsappIaRoute: typeof AuthenticatedAdminWhatsappIaRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
@@ -407,6 +428,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminProfessionalsRoute: AuthenticatedAdminProfessionalsRoute,
   AuthenticatedAdminServicesRoute: AuthenticatedAdminServicesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminWhatsappIaRoute: AuthenticatedAdminWhatsappIaRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
