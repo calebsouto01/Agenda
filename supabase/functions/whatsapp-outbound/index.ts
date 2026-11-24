@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
 const CONFIRMATION_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_CONFIRMATION") ?? "confirmacao_agendamento";
+const CONFIRMED_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_CONFIRMED") ?? "agendamento_confirmado";
 const REMINDER_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_REMINDER") ?? "lembrete_agendamento";
 
 const supabase = createClient(
@@ -59,7 +60,13 @@ async function processOne(notificationId: string) {
   if (error || !notif) throw new Error("notification not found");
   if (notif.status !== "queued") return { skipped: true };
 
-  if (notif.event !== "appointment_created" || !notif.appointment_id) {
+  // appointment_created: cliente acabou de pedir o horário. appointment_confirmed: o estabelecimento aceitou.
+  const templateByEvent: Record<string, string> = {
+    appointment_created: CONFIRMATION_TEMPLATE,
+    appointment_confirmed: CONFIRMED_TEMPLATE,
+  };
+  const template = templateByEvent[notif.event];
+  if (!template || !notif.appointment_id) {
     await supabase.from("notification_queue").update({ status: "skipped" }).eq("id", notif.id);
     return { skipped: true };
   }
@@ -82,7 +89,7 @@ async function processOne(notificationId: string) {
   const { date, time } = formatDateTime(appt.starts_at as string, tz);
 
   try {
-    await sendTemplate(phone, CONFIRMATION_TEMPLATE, [
+    await sendTemplate(phone, template, [
       name.split(" ")[0] || name,
       establishment?.name ?? "",
       date,
