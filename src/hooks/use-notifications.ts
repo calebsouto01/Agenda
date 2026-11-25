@@ -34,7 +34,7 @@ export function useNotifications({
 
   const { data: pending } = useQuery({
     queryKey: ["pending-appointments", establishmentId],
-    enabled: notifyPendingEnabled,
+    enabled: notifyPendingEnabled && Boolean(establishmentId),
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,7 +54,7 @@ export function useNotifications({
   // (pagamento registrado) — avisa o dono pra fechar o atendimento.
   const { data: finishable } = useQuery({
     queryKey: ["finishable-appointments", establishmentId],
-    enabled: notifyFinishableEnabled,
+    enabled: notifyFinishableEnabled && Boolean(establishmentId),
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase

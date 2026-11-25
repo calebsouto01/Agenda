@@ -155,7 +155,7 @@ function ManualBooking() {
         queryClient.invalidateQueries({ queryKey: ["pending-appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["today-confirmations"] }),
       ]);
-      navigate({ to: "/admin" });
+      navigate({ to: "/admin/agenda" });
     },
     onError: (error: Error) => toast.error(error.message),
   });
