@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { WhatsAppLink } from "@/components/whatsapp-link";
 
 /** Etapas do funil de vendas — genéricas, independentes de canal (WhatsApp, ligação etc.). */
 export type LeadStage = "novo" | "contato" | "agendado" | "convertido" | "perdido";
@@ -45,8 +44,6 @@ export type Lead = {
   responsavel_id: string | null;
   notes: string | null;
   motivo_perda: string | null;
-  whatsapp_msg1_sent_at?: string | null;
-  whatsapp_confirmacao_sent_at?: string | null;
   next_contact_at?: string | null;
 };
 
@@ -183,14 +180,6 @@ export function LeadCard({
             <p className="truncate text-sm font-semibold">{lead.name}</p>
             <p className="truncate text-xs text-muted-foreground">{lead.phone}</p>
           </div>
-          <WhatsAppLink
-            phone={lead.phone}
-            message={`Oi ${lead.name.split(" ")[0]}! `}
-            ariaLabel="Conversar no WhatsApp"
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-success hover:bg-success/10"
-          >
-            <MessageCircle className="size-4" />
-          </WhatsAppLink>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="outline" className="border-0 bg-primary/10 text-[10px] text-primary">

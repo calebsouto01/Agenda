@@ -1,65 +1,28 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bell, Check, CheckCheck, MessageCircle, Trash2, X } from "lucide-react";
+import { Bell, Check, CheckCheck, X } from "lucide-react";
 
 import type { Establishment } from "@/hooks/use-establishment";
 import { useNotifications } from "@/hooks/use-notifications";
-import { hasManualWhatsApp } from "@/lib/plans";
 import { dateTimeInZone, timeInZone } from "@/lib/booking";
-import {
-  DEFAULT_MESSAGE_1,
-  DEFAULT_MESSAGE_CONFIRMACAO,
-  fillTemplate,
-} from "@/lib/message-templates";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { WhatsAppLink } from "@/components/whatsapp-link";
-import { ConfirmationTag, FinalizeTag, TodayReminderTag } from "@/components/notification-tags";
+import { FinalizeTag } from "@/components/notification-tags";
 
+/** Sino do topo: agendamentos pendentes (aceitar ou recusar) e atendimentos a finalizar. */
 export function NotificationBell({ establishment }: { establishment: Establishment }) {
-  const { id: establishmentId, name: establishmentName, timezone } = establishment;
-  const message1Template = establishment.whatsapp_message_1;
-  const confirmationTemplate = establishment.whatsapp_message_confirmacao;
-  const {
-    combinedPending,
-    pendingCount,
-    justAccepted,
-    confirmations,
-    confirmationCount,
-    finishable,
-    finishableCount,
-    count,
-    accept,
-    decline,
-    markMsg1Sent,
-    markConfirmationSent,
-  } = useNotifications({
-    establishmentId,
-    timezone,
-    notifyPendingEnabled: establishment.notify_pending_enabled,
-    notifyFinishableEnabled: establishment.notify_finishable_enabled,
-    notifyRemindersEnabled: establishment.notify_reminders_enabled,
-    manualWhatsappEnabled: hasManualWhatsApp(establishment.plan),
-  });
+  const { id: establishmentId, timezone } = establishment;
+  const { pending, pendingCount, finishable, finishableCount, count, accept, decline } =
+    useNotifications({
+      establishmentId,
+      notifyPendingEnabled: establishment.notify_pending_enabled,
+      notifyFinishableEnabled: establishment.notify_finishable_enabled,
+    });
 
-  // Controla o popover na mão: ao aceitar, o botão que estava com foco some
-  // do DOM (vira o card de enviar mensagem) e, por um bug conhecido do
-  // Radix, isso pode disparar um fechamento automático do popover. Em vez
-  // de tentar acertar qual mecanismo interno dispara isso (ou depender de
-  // uma janela de tempo, que pode ser curta demais numa rede lenta),
-  // bloqueia qualquer fechamento não solicitado pelo usuário enquanto
-  // houver um agendamento aceito aguardando o envio da mensagem — só volta
-  // a fechar normalmente depois que o dono envia ou dispensa (Excluir).
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && Object.keys(justAccepted).length > 0) return;
-        setOpen(next);
-      }}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -84,87 +47,35 @@ export function NotificationBell({ establishment }: { establishment: Establishme
                 <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
                   Agendamentos pendentes
                 </p>
-                {combinedPending.map((a) => {
-                  const accepted = Boolean(justAccepted[a.id]);
-                  return (
-                    <div key={a.id} className="rounded-lg border p-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold">
-                          {a.customers?.name ?? "Cliente"}
-                        </p>
-                        {accepted ? <ConfirmationTag /> : null}
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {a.service_names ?? ""} · {dateTimeInZone(a.starts_at, timezone)}
-                      </p>
-                      {accepted ? (
-                        a.customers?.phone ? (
-                          <div className="mt-1.5 flex gap-1.5">
-                            <WhatsAppLink
-                              phone={a.customers.phone}
-                              message={fillTemplate(message1Template ?? DEFAULT_MESSAGE_1, {
-                                nome: a.customers.name.split(" ")[0] || a.customers.name,
-                                data: dateTimeInZone(a.starts_at, timezone).split(" ")[0] ?? "",
-                                hora: timeInZone(a.starts_at, timezone),
-                                estabelecimento: establishmentName,
-                              })}
-                              onSend={() => markMsg1Sent.mutate(a.id)}
-                              className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                            >
-                              <MessageCircle className="size-3" /> Enviar mensagem
-                            </WhatsAppLink>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                              disabled={markMsg1Sent.isPending}
-                              title="Excluir notificação"
-                              onClick={() => markMsg1Sent.mutate(a.id)}
-                            >
-                              <Trash2 className="size-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="mt-1.5 flex items-center justify-between gap-2">
-                            <p className="text-xs text-muted-foreground">
-                              Aceito. Cliente sem telefone cadastrado.
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                              disabled={markMsg1Sent.isPending}
-                              title="Excluir notificação"
-                              onClick={() => markMsg1Sent.mutate(a.id)}
-                            >
-                              <Trash2 className="size-3" />
-                            </Button>
-                          </div>
-                        )
-                      ) : (
-                        <div className="mt-1.5 flex gap-1.5">
-                          <Button
-                            size="sm"
-                            className="h-7 flex-1 text-xs"
-                            disabled={accept.isPending}
-                            onClick={() => accept.mutate(a)}
-                          >
-                            <Check className="size-3" /> Aceitar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 flex-1 text-xs text-destructive"
-                            disabled={decline.isPending}
-                            onClick={() => decline.mutate(a.id)}
-                          >
-                            <X className="size-3" /> Recusar
-                          </Button>
-                        </div>
-                      )}
+                {pending.map((a) => (
+                  <div key={a.id} className="rounded-lg border p-2.5">
+                    <p className="truncate text-sm font-semibold">
+                      {a.customers?.name ?? "Cliente"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {a.service_names ?? ""} · {dateTimeInZone(a.starts_at, timezone)}
+                    </p>
+                    <div className="mt-1.5 flex gap-1.5">
+                      <Button
+                        size="sm"
+                        className="h-7 flex-1 text-xs"
+                        disabled={accept.isPending}
+                        onClick={() => accept.mutate(a)}
+                      >
+                        <Check className="size-3" /> Aceitar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 flex-1 text-xs text-destructive"
+                        disabled={decline.isPending}
+                        onClick={() => decline.mutate(a.id)}
+                      >
+                        <X className="size-3" /> Recusar
+                      </Button>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             ) : null}
 
@@ -199,84 +110,8 @@ export function NotificationBell({ establishment }: { establishment: Establishme
                 ))}
               </div>
             ) : null}
-
-            {confirmationCount > 0 ? (
-              <div className="space-y-1.5">
-                <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
-                  Lembretes de hoje
-                </p>
-                {confirmations.map((lead) => {
-                  const appt = lead.appointment!;
-                  const message = fillTemplate(
-                    confirmationTemplate ?? DEFAULT_MESSAGE_CONFIRMACAO,
-                    {
-                      nome: lead.name.split(" ")[0] || lead.name,
-                      data: "",
-                      hora: timeInZone(appt.starts_at, timezone),
-                      estabelecimento: establishmentName,
-                    },
-                  );
-                  return (
-                    <div key={lead.id} className="rounded-lg border p-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold">{lead.name}</p>
-                        <TodayReminderTag />
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {appt.service_names ?? ""} · hoje às {timeInZone(appt.starts_at, timezone)}
-                      </p>
-                      {lead.phone ? (
-                        <div className="mt-1.5 flex gap-1.5">
-                          <WhatsAppLink
-                            phone={lead.phone}
-                            message={message}
-                            onSend={() => markConfirmationSent.mutate(lead.id)}
-                            className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                          >
-                            <MessageCircle className="size-3" /> Enviar mensagem
-                          </WhatsAppLink>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                            disabled={markConfirmationSent.isPending}
-                            title="Excluir notificação"
-                            onClick={() => markConfirmationSent.mutate(lead.id)}
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
-                          <p className="text-xs text-muted-foreground">
-                            Cliente sem telefone cadastrado
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                            disabled={markConfirmationSent.isPending}
-                            title="Excluir notificação"
-                            onClick={() => markConfirmationSent.mutate(lead.id)}
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
           </div>
         )}
-        <Link
-          to="/admin/notificacoes"
-          onClick={() => setOpen(false)}
-          className="mt-2 block rounded-md px-2 py-1.5 text-center text-xs font-semibold text-primary hover:bg-muted"
-        >
-          Ver central de notificações
-        </Link>
       </PopoverContent>
     </Popover>
   );

@@ -5,14 +5,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { normalizePhone } from "@/lib/booking";
-import {
-  DEFAULT_MESSAGE_ATENCAO,
-  DEFAULT_MESSAGE_REENGAJAMENTO,
-  fillTemplate,
-} from "@/lib/message-templates";
 import { isNativeApp, pickAllDeviceContacts } from "@/lib/native-contacts";
 import type { Establishment } from "@/hooks/use-establishment";
-import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,19 +82,6 @@ export function ContactsTab({
       }),
     [contacts],
   );
-
-  function reengagementMessage(recency: Recency, name: string) {
-    const template =
-      recency === "60dias"
-        ? (establishment.whatsapp_message_reengajamento ?? DEFAULT_MESSAGE_REENGAJAMENTO)
-        : (establishment.whatsapp_message_atencao ?? DEFAULT_MESSAGE_ATENCAO);
-    return fillTemplate(template, {
-      nome: name.split(" ")[0] || name,
-      data: "",
-      hora: "",
-      estabelecimento: establishment.name,
-    });
-  }
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -328,16 +309,6 @@ export function ContactsTab({
                     </Badge>
                   ) : null}
                 </p>
-              ) : null}
-              {lead.recency ? (
-                <WhatsAppLink
-                  phone={lead.phone}
-                  message={reengagementMessage(lead.recency, lead.name)}
-                  className="flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
-                >
-                  <Send className="size-3 shrink-0" />
-                  {lead.recency === "60dias" ? "Reengajar" : "Sugerir retorno"}
-                </WhatsAppLink>
               ) : null}
               <button
                 type="button"

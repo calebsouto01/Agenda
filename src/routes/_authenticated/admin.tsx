@@ -77,26 +77,6 @@ const NAV: NavEntry[] = [
   { kind: "link", to: "/admin/professionals", label: "Profissionais", icon: UserRound },
   { kind: "link", to: "/admin/hours", label: "Funcionamento", icon: Clock },
   { kind: "link", to: "/admin/finance", label: "Financeiro", icon: Wallet },
-  {
-    kind: "group",
-    label: "Marketing",
-    icon: Megaphone,
-    basePath: "/admin/marketing",
-    leaves: [
-      { to: "/admin/marketing", label: "Links personalizados", tab: "links" },
-      { to: "/admin/marketing", label: "Mensagem", tab: "mensagem" },
-    ],
-  },
-  {
-    kind: "group",
-    label: "Notificações",
-    icon: Bell,
-    basePath: "/admin/notificacoes",
-    leaves: [
-      { to: "/admin/notificacoes", label: "Console", tab: "console" },
-      { to: "/admin/notificacoes", label: "Central", tab: "central" },
-    ],
-  },
   { kind: "link", to: "/admin/whatsapp-ia", label: "WhatsApp automático", icon: Bot },
   { kind: "link", to: "/admin/settings", label: "Dados da empresa", icon: Settings },
 ];
