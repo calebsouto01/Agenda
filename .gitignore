@@ -34,3 +34,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Segredos do servidor da Evolution
+infra/evolution/.env

@@ -8,19 +8,68 @@ const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
 const HISTORY_LIMIT = 20;
 const MAX_TOOL_ROUNDS = 6;
 const GRAPH = "https://graph.facebook.com/v21.0";
+const FALLBACK_REPLY =
+  "Olá! Recebemos sua mensagem, mas não consegui responder agora. Nossa equipe retorna em breve. Obrigado pela paciência!";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-async function sendText(phoneNumberId: string, accessToken: string, to: string, text: string) {
-  const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
+/** Brasil: o webhook costuma trazer celulares sem o 9 extra (55 + DDD + 8 dígitos); a Meta usa com o 9. */
+function brMobileWith9(num: string): string {
+  const m = num.match(/^55(\d{2})([6-9]\d{7})$/);
+  return m ? `55${m[1]}9${m[2]}` : num;
+}
+
+/** Telefone nacional (sem 55, com o 9) para gravar no agendamento. */
+function localPhone(num: string): string {
+  const full = brMobileWith9(num);
+  return full.startsWith("55") && full.length === 13 ? full.slice(2) : full;
+}
+
+export async function sendText(phoneNumberId: string, accessToken: string, to: string, text: string) {
+  // Tenta com o 9 e, se a Meta disser que o destinatário não está na lista (131030), o formato original.
+  const candidates = [...new Set([brMobileWith9(to), to])];
+  for (const target of candidates) {
+    const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: target, type: "text", text: { body: text } }),
+    });
+    if (res.ok) return;
+    const body = await res.text().catch(() => "");
+    console.error("sendText failed", res.status, body);
+    if (!body.includes("131030")) return;
+  }
+}
+
+const EVOLUTION_API_URL = (Deno.env.get("EVOLUTION_API_URL") ?? "").replace(/\/$/, "");
+const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
+
+/** Conexão rápida (QR code): responde pelo número ligado à instância da Evolution API. */
+export async function sendEvolutionText(instance: string, to: string, text: string) {
+  const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instance}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: text } }),
+    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+    body: JSON.stringify({ number: to, text }),
   });
-  if (!res.ok) console.error("sendText failed", res.status, await res.text().catch(() => ""));
+  if (!res.ok) console.error("evolution sendText failed", res.status, await res.text().catch(() => ""));
+}
+
+const ENV_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
+const ENV_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
+
+/** Token do número que recebeu a mensagem: o do estabelecimento conectado ou, nos testes, o da plataforma. */
+export async function tokenForPhoneNumberId(phoneNumberId: string): Promise<string | null> {
+  const { data: agent } = await supabase
+    .from("whatsapp_agents").select("id").eq("phone_number_id", phoneNumberId).maybeSingle();
+  if (agent) {
+    const { data: cred } = await supabase
+      .from("whatsapp_credentials").select("access_token").eq("agent_id", agent.id).maybeSingle();
+    if (cred) return cred.access_token;
+  }
+  return phoneNumberId === ENV_PHONE_NUMBER_ID && ENV_TOKEN ? ENV_TOKEN : null;
 }
 
 type Establishment = {
@@ -30,6 +79,7 @@ type Establishment = {
   phone: string | null;
   address: string | null;
   timezone: string;
+  plan: string;
 };
 
 type Agent = {
@@ -38,8 +88,12 @@ type Agent = {
   enabled: boolean;
   agent_name: string;
   instructions: string | null;
-  phone_number_id: string;
+  provider: "official" | "qr";
+  phone_number_id: string | null;
+  instance_name: string | null;
 };
+
+type Send = (text: string) => Promise<void>;
 
 function fmtSlot(iso: string, tz: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -156,7 +210,7 @@ async function runTool(
       p_professional_id: input.professional_id ?? null,
       p_starts_at: input.starts_at,
       p_customer_name: input.customer_name,
-      p_customer_phone: ctx.phone,
+      p_customer_phone: localPhone(ctx.phone),
       p_customer_email: null,
       p_notes: "Agendado pelo atendente de IA no WhatsApp",
       p_service_ids: ids.length > 1 ? ids : null,
@@ -195,7 +249,7 @@ async function claude(messages: unknown[], system: string) {
 
 async function respond(
   agent: Agent,
-  accessToken: string,
+  send: Send,
   est: Establishment,
   conv: { id: string; contact_phone: string },
 ) {
@@ -248,35 +302,103 @@ async function respond(
 
   await supabase.from("whatsapp_messages").insert({ conversation_id: conv.id, role: "assistant", content: reply });
   await supabase.from("whatsapp_conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conv.id);
-  await sendText(agent.phone_number_id, accessToken, conv.contact_phone, reply);
+  await send(reply);
 }
 
-/** Processa uma mensagem de texto recebida no número `phoneNumberId`. */
+/** Resposta por texto ao lembrete do dia ("1" confirma, "2" cancela), para quem não tem botões (QR). */
+async function handleReminderTextReply(est: Establishment, from: string, text: string, send: Send) {
+  const t = text.trim().toLowerCase();
+  const confirm = ["1", "confirmar", "confirmo", "confirmado"].includes(t);
+  const cancel = ["2", "cancelar", "cancelo"].includes(t);
+  if (!confirm && !cancel) return false;
+
+  const digits = from.replace(/\D/g, "").slice(-8);
+  const { data: customers } = await supabase
+    .from("customers")
+    .select("id, name")
+    .eq("establishment_id", est.id)
+    .ilike("phone", `%${digits}`);
+  if (!customers?.length) return false;
+
+  const { data: appt } = await supabase
+    .from("appointments")
+    .select("id, customer_id")
+    .in("customer_id", customers.map((c) => c.id))
+    .eq("status", "confirmed")
+    .is("customer_confirmed_at", null)
+    .gte("whatsapp_reminder_sent_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!appt) return false; // não há lembrete esperando resposta: segue para o agente
+
+  const firstName = customers.find((c) => c.id === appt.customer_id)?.name?.split(" ")[0] ?? "";
+  if (confirm) {
+    await supabase.from("appointments").update({ customer_confirmed_at: new Date().toISOString() }).eq("id", appt.id);
+    await send(`Obrigado, ${firstName}! Presença confirmada. Te esperamos na ${est.name}!`);
+  } else {
+    await supabase
+      .from("appointments")
+      .update({ status: "cancelled", customer_cancelled_at: new Date().toISOString() })
+      .eq("id", appt.id);
+    await send(`Tudo bem, ${firstName}. Seu agendamento foi cancelado. Quando quiser remarcar, é só nos chamar por aqui!`);
+  }
+  return true;
+}
+
+/**
+ * Processa uma mensagem de texto recebida.
+ * Oficial (Meta): identificada por `phoneNumberId`. Conexão rápida (QR): por `instanceName`.
+ */
 export async function handleIncomingText(opts: {
-  phoneNumberId: string;
+  phoneNumberId?: string;
+  instanceName?: string;
   from: string;
   name: string | null;
   text: string;
   waMessageId: string;
 }) {
-  if (!ANTHROPIC_API_KEY) return;
+  const lookupColumn = opts.instanceName ? "instance_name" : "phone_number_id";
+  const lookupValue = opts.instanceName ?? opts.phoneNumberId;
+  if (!lookupValue) return;
+
   const { data: agent } = await supabase
     .from("whatsapp_agents")
-    .select("id, establishment_id, enabled, agent_name, instructions, phone_number_id")
-    .eq("phone_number_id", opts.phoneNumberId)
+    .select("id, establishment_id, enabled, agent_name, instructions, provider, phone_number_id, instance_name")
+    .eq(lookupColumn, lookupValue)
     .maybeSingle<Agent>();
-  if (!agent || !agent.enabled) return;
+  if (!agent) return;
 
-  const { data: cred } = await supabase
-    .from("whatsapp_credentials").select("access_token").eq("agent_id", agent.id).maybeSingle();
-  if (!cred) return;
+  // Como responder: pela API oficial (token do cliente) ou pela Evolution (QR).
+  let send: Send;
+  if (agent.provider === "qr") {
+    if (!agent.instance_name) return;
+    const instance = agent.instance_name;
+    send = (text) => sendEvolutionText(instance, opts.from, text);
+  } else {
+    if (!agent.phone_number_id) return;
+    const { data: cred } = await supabase
+      .from("whatsapp_credentials").select("access_token").eq("agent_id", agent.id).maybeSingle();
+    if (!cred) return;
+    const phoneNumberId = agent.phone_number_id;
+    send = (text) => sendText(phoneNumberId, cred.access_token, opts.from, text);
+  }
 
   const { data: est } = await supabase
     .from("establishments")
-    .select("id, name, description, phone, address, timezone")
+    .select("id, name, description, phone, address, timezone, plan")
     .eq("id", agent.establishment_id)
     .single<Establishment>();
   if (!est) return;
+  if (est.plan !== "pro" && est.plan !== "premium") return;
+
+  // Resposta "1"/"2" ao lembrete vale em Pro e Premium (não depende da IA).
+  const isReminderReply = await handleReminderTextReply(est, opts.from, opts.text, send);
+  if (isReminderReply) return;
+
+  // O agente de IA é do plano Premium e só responde se estiver ligado.
+  if (est.plan !== "premium" || !agent.enabled || !ANTHROPIC_API_KEY) return;
 
   const { data: conv } = await supabase
     .from("whatsapp_conversations")
@@ -300,5 +422,14 @@ export async function handleIncomingText(opts: {
   if (dup) return;
   if (conv.ai_paused) return; // atendimento humano em andamento
 
-  await respond(agent, cred.access_token, est, conv);
+  try {
+    await respond(agent, send, est, conv);
+  } catch (e) {
+    // Falha da IA (ex.: sem crédito, instabilidade): o cliente não fica sem resposta.
+    console.error("agent failed, sending fallback", e);
+    await supabase.from("whatsapp_messages").insert({
+      conversation_id: conv.id, role: "assistant", content: FALLBACK_REPLY,
+    });
+    await send(FALLBACK_REPLY);
+  }
 }

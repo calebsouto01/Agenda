@@ -25,10 +25,7 @@ import {
   weekdayOf,
 } from "@/lib/booking";
 
-const searchSchema = z.object({ ref: z.string().trim().max(40).optional() });
-
 export const Route = createFileRoute("/b/$slug")({
-  validateSearch: searchSchema,
   loader: async ({ params }) => {
     const { data } = await supabase
       .from("establishments")
@@ -57,8 +54,7 @@ export const Route = createFileRoute("/b/$slug")({
 
 function BSlugRouteComponent() {
   const { slug } = Route.useParams();
-  const { ref } = Route.useSearch();
-  return <PublicBooking slug={slug} refCode={ref} />;
+  return <PublicBooking slug={slug} />;
 }
 
 const customerSchema = z.object({
@@ -73,7 +69,7 @@ const customerSchema = z.object({
   notes: z.string().trim().max(400, "Observação muito longa"),
 });
 
-export function PublicBooking({ slug, refCode }: { slug: string; refCode: string | undefined }) {
+export function PublicBooking({ slug }: { slug: string }) {
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
@@ -164,7 +160,6 @@ export function PublicBooking({ slug, refCode }: { slug: string; refCode: string
         p_customer_email: parsed.data.email || null,
         p_notes: parsed.data.notes || null,
         p_service_ids: serviceIds,
-        p_marketing_link_code: refCode || null,
       } as never);
       if (error) throw new Error(error.message);
       return data as unknown as { starts_at: string };
@@ -477,6 +472,9 @@ export function PublicBooking({ slug, refCode }: { slug: string; refCode: string
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Ao agendar, você aceita receber avisos deste agendamento pelo WhatsApp.
+                </p>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="email">E-mail (opcional)</Label>

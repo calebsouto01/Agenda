@@ -4,12 +4,6 @@ import { Send, UserPlus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Establishment } from "@/hooks/use-establishment";
-import {
-  DEFAULT_MESSAGE_ATENCAO,
-  DEFAULT_MESSAGE_REENGAJAMENTO,
-  fillTemplate,
-} from "@/lib/message-templates";
-import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LeadCard, type Lead } from "./lead-shared";
@@ -71,19 +65,6 @@ export function PipelineTab({ establishment }: { establishment: Establishment })
     return result;
   }, [rows]);
 
-  function reengagementMessage(bucket: "reativar30" | "reativar60", name: string) {
-    const template =
-      bucket === "reativar60"
-        ? (establishment.whatsapp_message_reengajamento ?? DEFAULT_MESSAGE_REENGAJAMENTO)
-        : (establishment.whatsapp_message_atencao ?? DEFAULT_MESSAGE_ATENCAO);
-    return fillTemplate(template, {
-      nome: name.split(" ")[0] || name,
-      data: "",
-      hora: "",
-      estabelecimento: establishment.name,
-    });
-  }
-
   if (isLoading) return <Skeleton className="h-40 w-full" />;
 
   const total = buckets.novos.length + buckets.reativar30.length + buckets.reativar60.length;
@@ -123,18 +104,7 @@ export function PipelineTab({ establishment }: { establishment: Establishment })
 
           <div className="space-y-2">
             {buckets[bucket].map((lead) => (
-              <LeadCard key={lead.id} lead={lead} responsavelNome={null} showSchedule>
-                {bucket !== "novos" ? (
-                  <WhatsAppLink
-                    phone={lead.phone}
-                    message={reengagementMessage(bucket, lead.name)}
-                    className="flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
-                  >
-                    <Send className="size-3 shrink-0" />
-                    {bucket === "reativar60" ? "Reengajar" : "Sugerir retorno"}
-                  </WhatsAppLink>
-                ) : null}
-              </LeadCard>
+              <LeadCard key={lead.id} lead={lead} responsavelNome={null} showSchedule />
             ))}
             {buckets[bucket].length === 0 ? (
               <p className="px-1 text-xs text-muted-foreground">Nenhum aqui.</p>

@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
 import { NotificationBell } from "@/components/notification-bell";
+import { AppointmentAlerts } from "@/components/appointment-alerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,27 +77,7 @@ const NAV: NavEntry[] = [
   { kind: "link", to: "/admin/professionals", label: "Profissionais", icon: UserRound },
   { kind: "link", to: "/admin/hours", label: "Funcionamento", icon: Clock },
   { kind: "link", to: "/admin/finance", label: "Financeiro", icon: Wallet },
-  {
-    kind: "group",
-    label: "Marketing",
-    icon: Megaphone,
-    basePath: "/admin/marketing",
-    leaves: [
-      { to: "/admin/marketing", label: "Links personalizados", tab: "links" },
-      { to: "/admin/marketing", label: "Mensagem", tab: "mensagem" },
-    ],
-  },
-  {
-    kind: "group",
-    label: "Notificações",
-    icon: Bell,
-    basePath: "/admin/notificacoes",
-    leaves: [
-      { to: "/admin/notificacoes", label: "Console", tab: "console" },
-      { to: "/admin/notificacoes", label: "Central", tab: "central" },
-    ],
-  },
-  { kind: "link", to: "/admin/whatsapp-ia", label: "Atendente IA", icon: Bot },
+  { kind: "link", to: "/admin/whatsapp-ia", label: "WhatsApp automático", icon: Bot },
   { kind: "link", to: "/admin/settings", label: "Dados da empresa", icon: Settings },
 ];
 
@@ -166,6 +147,7 @@ function AdminLayout() {
         </Sheet>
 
         <main className="mx-auto w-full max-w-5xl px-4 py-6">
+          <AppointmentAlerts establishment={establishment} />
           <Outlet />
         </main>
       </div>

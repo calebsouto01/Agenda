@@ -28,8 +28,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Reveal } from "@/components/reveal";
 import { PublicBooking } from "@/routes/b.$slug";
 
-const searchSchema = z.object({ ref: z.string().trim().max(40).optional() });
-
 // Release fixa (tag "debug-latest") gerada automaticamente pelo CI a cada
 // mudança no app nativo — sempre aponta pro build mais recente.
 const ANDROID_APK_URL =
@@ -88,7 +86,6 @@ const STRUCTURED_DATA = {
 
 export const Route = createFileRoute("/")({
   ssr: true,
-  validateSearch: searchSchema,
   loader: async () => ({ customDomain: await resolveCustomDomain() }),
   head: ({ loaderData }) => {
     if (loaderData?.customDomain) {
@@ -221,10 +218,9 @@ function ChatChaosPreview() {
 
 function Home() {
   const { customDomain } = Route.useLoaderData();
-  const { ref } = Route.useSearch();
 
   if (customDomain) {
-    return <PublicBooking slug={customDomain.slug} refCode={ref} />;
+    return <PublicBooking slug={customDomain.slug} />;
   }
 
   return <HomeLanding />;

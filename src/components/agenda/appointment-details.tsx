@@ -33,15 +33,10 @@ export function AppointmentInfo({ appointment: a, tz }: { appointment: Row; tz: 
         {` · ${formatPrice(totalPriceCents(a))}`}
       </p>
       {a.customers?.phone ? (
-        <a
-          href={`https://wa.me/${a.customers.phone.replace(/\D/g, "")}`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary"
-        >
+        <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
           <Phone className="size-3" />
           {formatPhone(a.customers.phone)}
-        </a>
+        </p>
       ) : null}
       {a.notes ? <p className="mt-1 text-xs italic text-muted-foreground">{a.notes}</p> : null}
     </div>
