@@ -26,7 +26,7 @@ import { Share } from "@capacitor/share";
 import { supabase } from "@/integrations/supabase/client";
 import { useEstablishment, type Establishment } from "@/hooks/use-establishment";
 import { slugify, WEEKDAYS } from "@/lib/booking";
-import { NotificationBell } from "@/components/notification-bell";
+import { useNotifications } from "@/hooks/use-notifications";
 import { AppointmentAlerts } from "@/components/appointment-alerts";
 import { useNotificationsEnabled } from "@/lib/notification-preference";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,15 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type NavLeaf = { to: string; label: string; tab: string };
 type NavEntry =
-  | { kind: "link"; to: string; label: string; icon: typeof CalendarDays; exact?: boolean }
+  | {
+      kind: "link";
+      to: string;
+      label: string;
+      icon: typeof CalendarDays;
+      exact?: boolean;
+      /** Mostra no menu o número de pendências a atender. */
+      badge?: boolean;
+    }
   | {
       kind: "group";
       label: string;
@@ -55,7 +63,8 @@ type NavEntry =
 
 /** Menu em cascata: cada categoria abaixo mostra suas telas como sub-itens sempre visíveis. */
 const NAV: NavEntry[] = [
-  { kind: "link", to: "/admin", label: "Agenda", icon: CalendarDays, exact: true },
+  { kind: "link", to: "/admin/notificacoes", label: "Notificações", icon: Bell, badge: true },
+  { kind: "link", to: "/admin/agenda", label: "Agenda", icon: CalendarDays },
   {
     kind: "group",
     label: "Clientes",
@@ -81,6 +90,11 @@ function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.search as { tab?: string } });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { count: pendingTotal } = useNotifications({
+    establishmentId: establishment?.id ?? "",
+    notifyPendingEnabled: establishment?.notify_pending_enabled ?? true,
+    notifyFinishableEnabled: establishment?.notify_finishable_enabled ?? true,
+  });
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -113,8 +127,19 @@ function AdminLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-card/95 px-4 py-3 backdrop-blur md:hidden">
-          <Button variant="ghost" size="sm" onClick={() => setMobileNavOpen(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="relative"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Menu"
+          >
             <Menu className="size-5" />
+            {pendingTotal > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-4 text-destructive-foreground">
+                {pendingTotal > 9 ? "9+" : pendingTotal}
+              </span>
+            ) : null}
           </Button>
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -122,7 +147,6 @@ function AdminLayout() {
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
           </span>
-          <NotificationBell establishment={establishment} />
         </header>
 
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -134,7 +158,6 @@ function AdminLayout() {
               search={search}
               onSignOut={signOut}
               onNavigate={() => setMobileNavOpen(false)}
-              showNotifications={false}
               mobile
             />
           </SheetContent>
@@ -155,7 +178,6 @@ function NavContent({
   search,
   onSignOut,
   onNavigate,
-  showNotifications = true,
   mobile = false,
 }: {
   establishment: Establishment;
@@ -163,13 +185,17 @@ function NavContent({
   search: { tab?: string };
   onSignOut: () => void;
   onNavigate?: () => void;
-  showNotifications?: boolean;
   /** Menu do celular (gaveta): compartilhar link sem a caixa com o endereço. */
   mobile?: boolean;
 }) {
   // Categorias começam recolhidas; a da página atual sempre fica aberta.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Clientes: true });
   const { enabled: notificationsOn, setEnabled: setNotificationsOn } = useNotificationsEnabled();
+  const { count: pendingCount } = useNotifications({
+    establishmentId: establishment.id,
+    notifyPendingEnabled: establishment.notify_pending_enabled,
+    notifyFinishableEnabled: establishment.notify_finishable_enabled,
+  });
   const [linkCopied, setLinkCopied] = useState(false);
   const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/b/${establishment.slug}`;
 
@@ -182,16 +208,11 @@ function NavContent({
 
   return (
     <>
-      <div
-        className={`flex items-center gap-2.5 border-b px-4 py-3.5 ${
-          showNotifications ? "" : "pr-11"
-        }`}
-      >
+      <div className={`flex items-center gap-2.5 border-b px-4 py-3.5 ${mobile ? "pr-11" : ""}`}>
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow">
           <CalendarCheck className="size-4" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold">{establishment.name}</span>
-        {showNotifications ? <NotificationBell establishment={establishment} /> : null}
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {NAV.map((item) => {
@@ -210,6 +231,11 @@ function NavContent({
               >
                 <item.icon className="size-4" />
                 {item.label}
+                {item.badge && pendingCount > 0 ? (
+                  <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[11px] font-bold leading-none text-destructive-foreground">
+                    {pendingCount > 99 ? "99+" : pendingCount}
+                  </span>
+                ) : null}
               </Link>
             );
           }

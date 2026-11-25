@@ -52,6 +52,7 @@ export function useAppointmentAlerts(establishment: { id: string; timezone: stri
           queryClient.invalidateQueries({ queryKey: ["pending-appointments"] });
           queryClient.invalidateQueries({ queryKey: ["finishable-appointments"] });
           queryClient.invalidateQueries({ queryKey: ["appointments"] });
+          queryClient.invalidateQueries({ queryKey: ["today-appointments"] });
 
           let kind: "pending" | "confirmed" | "cancelled" | null = null;
           if (payload.eventType === "INSERT" && row.status === "pending") kind = "pending";
