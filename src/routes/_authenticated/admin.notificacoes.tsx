@@ -16,6 +16,7 @@ import {
   zonedDateTimeToIso,
   type AppointmentStatus,
 } from "@/lib/booking";
+import { NotificationsToggle } from "@/components/appointment-alerts";
 import { FinalizeTag } from "@/components/notification-tags";
 import { PageTitle } from "@/components/page-title";
 import { Badge } from "@/components/ui/badge";
@@ -93,12 +94,15 @@ function NotificationsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-1">
-        <PageTitle icon={Bell}>Notificações</PageTitle>
-        <p className="px-1 text-sm text-muted-foreground">
-          Hoje, {formatDateLabel(todayIso)} ·{" "}
-          {total > 0 ? `${total} ${total === 1 ? "pendência" : "pendências"}` : "tudo em dia"}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="space-y-1">
+          <PageTitle icon={Bell}>Notificações</PageTitle>
+          <p className="px-1 text-sm text-muted-foreground">
+            Hoje, {formatDateLabel(todayIso)} ·{" "}
+            {total > 0 ? `${total} ${total === 1 ? "pendência" : "pendências"}` : "tudo em dia"}
+          </p>
+        </div>
+        <NotificationsToggle />
       </div>
 
       {pending.length > 0 ? (

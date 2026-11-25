@@ -1,14 +1,11 @@
-import { Bell, BellOff } from "lucide-react";
-
 import { useAppointmentAlerts } from "@/hooks/use-appointment-alerts";
 import { useNotificationsEnabled } from "@/lib/notification-preference";
-import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 
 /**
- * Painel fixo de notificações: liga os avisos em tempo real e deixa o usuário ligar ou
- * desligar as notificações neste aparelho (computador ou celular). Ao ligar, o navegador
- * pede a autorização.
+ * Mantém os avisos em tempo real ligados em qualquer tela do admin (novo agendamento e
+ * respostas dos clientes). Não desenha nada: o botão de ligar e desligar fica só na aba
+ * Notificações.
  */
 export function AppointmentAlerts({
   establishment,
@@ -16,30 +13,26 @@ export function AppointmentAlerts({
   establishment: { id: string; timezone: string };
 }) {
   useAppointmentAlerts(establishment);
+  return null;
+}
+
+/** Chave de ligar e desligar as notificações neste aparelho, com a explicação ao lado. */
+export function NotificationsToggle() {
   const { enabled, setEnabled } = useNotificationsEnabled();
 
   return (
-    <Card className={`mb-4 ${enabled ? "border-primary/30 bg-primary/5" : "bg-muted/40"}`}>
-      <CardContent className="flex items-center gap-3 p-3">
-        {enabled ? (
-          <Bell className="size-5 shrink-0 text-primary" />
-        ) : (
-          <BellOff className="size-5 shrink-0 text-muted-foreground" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Notificações {enabled ? "ligadas" : "desligadas"}</p>
-          <p className="text-xs text-muted-foreground">
-            {enabled
-              ? "Você será avisado de novos agendamentos e das respostas dos clientes."
-              : "Ligue para ser avisado de novos agendamentos e das respostas dos clientes."}
-          </p>
-        </div>
-        <Switch
-          checked={enabled}
-          onCheckedChange={(v) => void setEnabled(v)}
-          aria-label="Ligar ou desligar notificações"
-        />
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 text-right">
+        <p className="text-sm font-semibold">{enabled ? "Desligar" : "Ligar"}</p>
+        <p className="max-w-xs text-xs text-muted-foreground">
+          Você será avisado de novos agendamentos e das respostas dos clientes.
+        </p>
+      </div>
+      <Switch
+        checked={enabled}
+        onCheckedChange={(v) => void setEnabled(v)}
+        aria-label={enabled ? "Desligar notificações" : "Ligar notificações"}
+      />
+    </div>
   );
 }
