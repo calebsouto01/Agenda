@@ -64,16 +64,7 @@ const NAV: NavEntry[] = [
       { to: "/admin/customers", label: "Funil", tab: "funil" },
     ],
   },
-  {
-    kind: "group",
-    label: "Serviços e produtos",
-    icon: Scissors,
-    basePath: "/admin/services",
-    leaves: [
-      { to: "/admin/services", label: "Serviços", tab: "servicos" },
-      { to: "/admin/services", label: "Produtos", tab: "produtos" },
-    ],
-  },
+  { kind: "link", to: "/admin/services", label: "Serviços", icon: Scissors },
   { kind: "link", to: "/admin/professionals", label: "Profissionais", icon: UserRound },
   { kind: "link", to: "/admin/hours", label: "Funcionamento", icon: Clock },
   { kind: "link", to: "/admin/finance", label: "Financeiro", icon: Wallet },

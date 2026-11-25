@@ -34,7 +34,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer } from "@/components/ui/chart";
-import { CashFlowTab } from "@/components/finance/cash-flow-tab";
 import { ForecastTab } from "@/components/finance/forecast-tab";
 
 export const Route = createFileRoute("/_authenticated/admin/finance")({
@@ -131,7 +130,7 @@ function FinancePage() {
   const tz = establishment?.timezone ?? "America/Sao_Paulo";
   const [range, setRange] = useState<Range>("month");
   const [anchor, setAnchor] = useState(() => isoDateInZone(new Date(), tz));
-  const [section, setSection] = useState<"resumo" | "caixa" | "previsao">("resumo");
+  const [section, setSection] = useState<"resumo" | "previsao">("resumo");
 
   const bounds = useMemo(() => rangeBounds(anchor, range), [anchor, range]);
   const prevBounds = useMemo(() => previousBounds(bounds), [bounds]);
@@ -324,7 +323,6 @@ function FinancePage() {
       <Tabs value={section} onValueChange={(v) => setSection(v as typeof section)}>
         <TabsList>
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
-          <TabsTrigger value="caixa">Fluxo de caixa</TabsTrigger>
           <TabsTrigger value="previsao">Previsão</TabsTrigger>
         </TabsList>
 
@@ -503,13 +501,6 @@ function FinancePage() {
               ) : null}
             </>
           )}
-        </TabsContent>
-
-        <TabsContent value="caixa" className="space-y-4 pt-4">
-          {dateNav}
-          {establishment ? (
-            <CashFlowTab establishmentId={establishment.id} tz={tz} bounds={bounds} />
-          ) : null}
         </TabsContent>
 
         <TabsContent value="previsao" className="space-y-4 pt-4">

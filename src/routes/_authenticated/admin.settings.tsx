@@ -104,7 +104,6 @@ function SettingsPage() {
     address: "",
     customDomain: "",
     timezone: "America/Sao_Paulo",
-    sellsProducts: false,
   });
 
   useEffect(() => {
@@ -117,7 +116,6 @@ function SettingsPage() {
       address: establishment.address ?? "",
       customDomain: establishment.custom_domain ?? "",
       timezone: establishment.timezone,
-      sellsProducts: establishment.sells_products,
     });
   }, [establishment]);
 
@@ -135,7 +133,6 @@ function SettingsPage() {
           phone: parsed.data.phone || null,
           address: parsed.data.address || null,
           timezone: form.timezone,
-          sells_products: form.sellsProducts,
         })
         .eq("id", establishment!.id);
       if (error) throw new Error(error.message);
@@ -264,7 +261,7 @@ function SettingsPage() {
               {[
                 "Profissionais ilimitados",
                 "Agendamentos ilimitados",
-                "Financeiro completo (caixa, previsão, estoque)",
+                "Financeiro (resumo e previsão)",
                 "Confirmação e lembrete automático por WhatsApp",
               ].map((item) => (
                 <p
@@ -393,19 +390,6 @@ function SettingsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <Label htmlFor="e-products">Vende produtos</Label>
-              <p className="text-xs text-muted-foreground">
-                Ativa o controle de estoque na aba Financeiro.
-              </p>
-            </div>
-            <Switch
-              id="e-products"
-              checked={form.sellsProducts}
-              onCheckedChange={(v) => setForm({ ...form, sellsProducts: v })}
-            />
           </div>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? "Salvando..." : "Salvar alterações"}
