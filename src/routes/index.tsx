@@ -437,7 +437,7 @@ function HomeLanding() {
                 {[
                   "Profissionais ilimitados",
                   "Agendamentos ilimitados",
-                  "Financeiro completo (caixa, previsão, estoque)",
+                  "Financeiro (resumo e previsão)",
                   "Confirmação e lembrete automático por WhatsApp",
                   "Suporte prioritário",
                 ].map((item) => (

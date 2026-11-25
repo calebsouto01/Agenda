@@ -15,7 +15,6 @@ export type Establishment = {
   custom_domain: string | null;
   timezone: string;
   slot_step_minutes: number;
-  sells_products: boolean;
   plan: Plan;
   plan_status: PlanStatus;
   plan_renews_at: string | null;
@@ -33,7 +32,7 @@ export function useEstablishment() {
       const { data, error } = await supabase
         .from("establishments")
         .select(
-          "id, owner_id, name, slug, description, phone, address, custom_domain, timezone, slot_step_minutes, sells_products, plan, plan_status, plan_renews_at, notify_pending_enabled, notify_finishable_enabled",
+          "id, owner_id, name, slug, description, phone, address, custom_domain, timezone, slot_step_minutes, plan, plan_status, plan_renews_at, notify_pending_enabled, notify_finishable_enabled",
         )
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: true })
