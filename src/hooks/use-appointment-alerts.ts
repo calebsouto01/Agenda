@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { dateTimeInZone } from "@/lib/booking";
+import { readNotificationsEnabled } from "@/lib/notification-preference";
 
 type AppointmentRow = {
   id?: string;
@@ -57,6 +58,7 @@ export function useAppointmentAlerts(establishment: { id: string; timezone: stri
           else if (payload.eventType === "UPDATE" && row.customer_cancelled_at) kind = "cancelled";
           else if (payload.eventType === "UPDATE" && row.customer_confirmed_at) kind = "confirmed";
           if (!kind) return;
+          if (!readNotificationsEnabled()) return; // notificações desligadas neste aparelho
 
           const key = `${row.id}:${kind}`;
           if (seen.current.has(key)) return;
