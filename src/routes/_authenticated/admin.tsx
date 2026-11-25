@@ -28,11 +28,13 @@ import { useEstablishment, type Establishment } from "@/hooks/use-establishment"
 import { slugify, WEEKDAYS } from "@/lib/booking";
 import { NotificationBell } from "@/components/notification-bell";
 import { AppointmentAlerts } from "@/components/appointment-alerts";
+import { useNotificationsEnabled } from "@/lib/notification-preference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -133,6 +135,7 @@ function AdminLayout() {
               onSignOut={signOut}
               onNavigate={() => setMobileNavOpen(false)}
               showNotifications={false}
+              mobile
             />
           </SheetContent>
         </Sheet>
@@ -153,6 +156,7 @@ function NavContent({
   onSignOut,
   onNavigate,
   showNotifications = true,
+  mobile = false,
 }: {
   establishment: Establishment;
   pathname: string;
@@ -160,10 +164,12 @@ function NavContent({
   onSignOut: () => void;
   onNavigate?: () => void;
   showNotifications?: boolean;
+  /** Menu do celular (gaveta): compartilhar link sem a caixa com o endereço. */
+  mobile?: boolean;
 }) {
-  // Retraído por padrão só quando o usuário fecha na mão; a categoria da
-  // página atual sempre fica aberta, mesmo se tiver sido retraída antes.
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Categorias começam recolhidas; a da página atual sempre fica aberta.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Clientes: true });
+  const { enabled: notificationsOn, setEnabled: setNotificationsOn } = useNotificationsEnabled();
   const [linkCopied, setLinkCopied] = useState(false);
   const publicUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/b/${establishment.slug}`;
 
@@ -253,36 +259,54 @@ function NavContent({
         })}
       </nav>
       <div className="space-y-1 border-t p-3">
-        <div className="mb-1 flex items-center gap-1.5">
-          <Input readOnly value={publicUrl} className="h-8 truncate text-xs" />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 px-2"
-            onClick={copyPublicLink}
-            title="Copiar link público"
-          >
-            {linkCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          </Button>
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+          <label htmlFor="notifications-switch" className="flex items-center gap-2 text-sm">
+            <Bell className="size-4" />
+            Notificações
+          </label>
+          <Switch
+            id="notifications-switch"
+            checked={notificationsOn}
+            onCheckedChange={(v) => void setNotificationsOn(v)}
+          />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
-          onClick={async () => {
-            const url = `${window.location.origin}/b/${establishment.slug}`;
-            try {
-              await Share.share({ title: establishment.name, url, dialogTitle: "Compartilhar" });
-            } catch (e) {
-              if (e instanceof Error && e.name === "AbortError") return; // usuário cancelou
-              await navigator.clipboard.writeText(url);
-              toast.success("Link copiado");
-            }
-          }}
-        >
-          <Share2 className="size-4" />
-          Compartilhar
-        </Button>
+        {mobile ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            onClick={async () => {
+              const url = `${window.location.origin}/b/${establishment.slug}`;
+              try {
+                await Share.share({
+                  title: establishment.name,
+                  url,
+                  dialogTitle: "Compartilhar link",
+                });
+              } catch (e) {
+                if (e instanceof Error && e.name === "AbortError") return; // usuário cancelou
+                await navigator.clipboard.writeText(url);
+                toast.success("Link copiado");
+              }
+            }}
+          >
+            <Share2 className="size-4" />
+            Compartilhar link
+          </Button>
+        ) : (
+          <div className="mb-1 flex items-center gap-1.5">
+            <Input readOnly value={publicUrl} className="h-8 truncate text-xs" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 px-2"
+              onClick={copyPublicLink}
+              title="Copiar link público"
+            >
+              {linkCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            </Button>
+          </div>
+        )}
         <Button
           variant="ghost"
           size="sm"

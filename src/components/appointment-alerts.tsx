@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import { BellRing } from "lucide-react";
-import { toast } from "sonner";
 
 import { useAppointmentAlerts } from "@/hooks/use-appointment-alerts";
+import { readNotificationsPref, useNotificationsEnabled } from "@/lib/notification-preference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-const DISMISS_KEY = "notification-banner-dismissed";
-
 /**
- * Liga os avisos em tempo real e, uma única vez, pede ao dono a autorização para
- * notificar neste aparelho (celular ou computador). O pedido precisa vir de um clique.
+ * Liga os avisos em tempo real e, enquanto o usuário não escolheu, oferece ativar as
+ * notificações neste aparelho. Depois, o interruptor "Notificações" do menu controla tudo.
  */
 export function AppointmentAlerts({
   establishment,
@@ -18,38 +16,14 @@ export function AppointmentAlerts({
   establishment: { id: string; timezone: string };
 }) {
   useAppointmentAlerts(establishment);
-
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
-    "unsupported",
-  );
-  const [dismissed, setDismissed] = useState(true);
+  const { setEnabled } = useNotificationsEnabled();
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    setPermission(Notification.permission);
-    try {
-      setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
-    } catch {
-      setDismissed(false);
-    }
+    setShow(readNotificationsPref() === null);
   }, []);
 
-  if (permission !== "default" || dismissed) return null;
-
-  async function enable() {
-    const result = await Notification.requestPermission();
-    setPermission(result);
-    if (result === "granted") toast.success("Avisos ativados neste aparelho");
-  }
-
-  function dismiss() {
-    setDismissed(true);
-    try {
-      localStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      /* sem armazenamento: o aviso reaparece na próxima visita */
-    }
-  }
+  if (!show) return null;
 
   return (
     <Card className="mb-4 border-primary/30 bg-primary/5">
@@ -59,10 +33,23 @@ export function AppointmentAlerts({
           Receba um aviso quando chegar um novo agendamento ou o cliente confirmar ou cancelar.
         </p>
         <div className="flex gap-2">
-          <Button size="sm" onClick={enable}>
+          <Button
+            size="sm"
+            onClick={async () => {
+              await setEnabled(true);
+              setShow(false);
+            }}
+          >
             Ativar avisos
           </Button>
-          <Button size="sm" variant="ghost" onClick={dismiss}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              await setEnabled(false);
+              setShow(false);
+            }}
+          >
             Agora não
           </Button>
         </div>

@@ -148,47 +148,6 @@ export type Database = {
           },
         ];
       };
-      cash_movements: {
-        Row: {
-          amount_cents: number;
-          category: string;
-          created_at: string;
-          description: string | null;
-          establishment_id: string;
-          id: string;
-          occurred_at: string;
-          type: Database["public"]["Enums"]["cash_movement_type"];
-        };
-        Insert: {
-          amount_cents: number;
-          category: string;
-          created_at?: string;
-          description?: string | null;
-          establishment_id: string;
-          id?: string;
-          occurred_at?: string;
-          type: Database["public"]["Enums"]["cash_movement_type"];
-        };
-        Update: {
-          amount_cents?: number;
-          category?: string;
-          created_at?: string;
-          description?: string | null;
-          establishment_id?: string;
-          id?: string;
-          occurred_at?: string;
-          type?: Database["public"]["Enums"]["cash_movement_type"];
-        };
-        Relationships: [
-          {
-            foreignKeyName: "cash_movements_establishment_id_fkey";
-            columns: ["establishment_id"];
-            isOneToOne: false;
-            referencedRelation: "establishments";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       customers: {
         Row: {
           created_at: string;
@@ -282,7 +241,6 @@ export type Database = {
           plan: string;
           plan_renews_at: string | null;
           plan_status: string;
-          sells_products: boolean;
           slot_step_minutes: number;
           slug: string;
           timezone: string;
@@ -306,7 +264,6 @@ export type Database = {
           plan?: string;
           plan_renews_at?: string | null;
           plan_status?: string;
-          sells_products?: boolean;
           slot_step_minutes?: number;
           slug: string;
           timezone?: string;
@@ -330,7 +287,6 @@ export type Database = {
           plan?: string;
           plan_renews_at?: string | null;
           plan_status?: string;
-          sells_products?: boolean;
           slot_step_minutes?: number;
           slug?: string;
           timezone?: string;
@@ -493,101 +449,6 @@ export type Database = {
           },
           {
             foreignKeyName: "payment_entries_establishment_id_fkey";
-            columns: ["establishment_id"];
-            isOneToOne: false;
-            referencedRelation: "establishments";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      product_movements: {
-        Row: {
-          created_at: string;
-          establishment_id: string;
-          id: string;
-          note: string | null;
-          product_id: string;
-          qty: number;
-          type: Database["public"]["Enums"]["product_movement_type"];
-          unit_price_cents: number;
-        };
-        Insert: {
-          created_at?: string;
-          establishment_id: string;
-          id?: string;
-          note?: string | null;
-          product_id: string;
-          qty: number;
-          type: Database["public"]["Enums"]["product_movement_type"];
-          unit_price_cents?: number;
-        };
-        Update: {
-          created_at?: string;
-          establishment_id?: string;
-          id?: string;
-          note?: string | null;
-          product_id?: string;
-          qty?: number;
-          type?: Database["public"]["Enums"]["product_movement_type"];
-          unit_price_cents?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "product_movements_establishment_id_fkey";
-            columns: ["establishment_id"];
-            isOneToOne: false;
-            referencedRelation: "establishments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "product_movements_product_id_fkey";
-            columns: ["product_id"];
-            isOneToOne: false;
-            referencedRelation: "products";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      products: {
-        Row: {
-          active: boolean;
-          cost_cents: number;
-          created_at: string;
-          establishment_id: string;
-          id: string;
-          min_stock_qty: number;
-          name: string;
-          price_cents: number;
-          sku: string | null;
-          stock_qty: number;
-        };
-        Insert: {
-          active?: boolean;
-          cost_cents?: number;
-          created_at?: string;
-          establishment_id: string;
-          id?: string;
-          min_stock_qty?: number;
-          name: string;
-          price_cents?: number;
-          sku?: string | null;
-          stock_qty?: number;
-        };
-        Update: {
-          active?: boolean;
-          cost_cents?: number;
-          created_at?: string;
-          establishment_id?: string;
-          id?: string;
-          min_stock_qty?: number;
-          name?: string;
-          price_cents?: number;
-          sku?: string | null;
-          stock_qty?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "products_establishment_id_fkey";
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";
@@ -764,7 +625,6 @@ export type Database = {
     };
     Enums: {
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled";
-      cash_movement_type: "entrada" | "saida";
       crm_activity_status: "pendente" | "concluida" | "cancelada";
       crm_activity_type: "ligacao" | "whatsapp" | "visita" | "email" | "outro";
       crm_lead_stage:
@@ -776,7 +636,6 @@ export type Database = {
         | "mensagem_1"
         | "confirmacao_dia";
       marketing_channel: "instagram" | "facebook" | "whatsapp" | "anuncio" | "outro";
-      product_movement_type: "entrada" | "saida" | "venda" | "ajuste";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -899,7 +758,6 @@ export const Constants = {
   public: {
     Enums: {
       appointment_status: ["pending", "confirmed", "completed", "cancelled"],
-      cash_movement_type: ["entrada", "saida"],
       crm_activity_status: ["pendente", "concluida", "cancelada"],
       crm_activity_type: ["ligacao", "whatsapp", "visita", "email", "outro"],
       crm_lead_stage: [
@@ -912,7 +770,6 @@ export const Constants = {
         "confirmacao_dia",
       ],
       marketing_channel: ["instagram", "facebook", "whatsapp", "anuncio", "outro"],
-      product_movement_type: ["entrada", "saida", "venda", "ajuste"],
     },
   },
 } as const;
