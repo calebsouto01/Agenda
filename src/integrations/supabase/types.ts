@@ -27,7 +27,6 @@ export type Database = {
           status: Database["public"]["Enums"]["appointment_status"];
           total_price_cents: number | null;
           updated_at: string;
-          whatsapp_reminder_opt_in: boolean | null;
           whatsapp_reminder_sent_at: string | null;
         };
         Insert: {
@@ -48,7 +47,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"];
           total_price_cents?: number | null;
           updated_at?: string;
-          whatsapp_reminder_opt_in?: boolean | null;
           whatsapp_reminder_sent_at?: string | null;
         };
         Update: {
@@ -69,7 +67,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["appointment_status"];
           total_price_cents?: number | null;
           updated_at?: string;
-          whatsapp_reminder_opt_in?: boolean | null;
           whatsapp_reminder_sent_at?: string | null;
         };
         Relationships: [
