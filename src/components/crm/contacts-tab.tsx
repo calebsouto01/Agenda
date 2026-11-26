@@ -4,7 +4,7 @@ import { Plus, Send, Smartphone, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { normalizePhone } from "@/lib/booking";
+import { isoDateInZone, normalizePhone } from "@/lib/booking";
 import { isNativeApp, pickAllDeviceContacts } from "@/lib/native-contacts";
 import type { Establishment } from "@/hooks/use-establishment";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +22,27 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Recência da última visita concluída — de "30dias" em diante sugere reengajar, "60dias" recuperar. */
 type Recency = "30dias" | "60dias";
 
-const RECENCY_LABEL: Record<Recency, string> = { "30dias": "30 dias", "60dias": "60 dias" };
-const RECENCY_BADGE: Record<Recency, string> = {
+/** Cor do selo conforme o tempo sem atendimento; abaixo de 30 dias é o cliente em dia. */
+const RECENCY_BADGE: Record<Recency | "recente", string> = {
+  recente: "bg-success/15 text-success",
   "30dias": "bg-warning/20 text-warning-foreground",
   "60dias": "bg-muted text-muted-foreground",
 };
+
+/** Dias de calendário (no fuso do estabelecimento) entre a última visita e hoje. */
+function calendarDaysSince(iso: string, timeZone: string) {
+  const toUtcDay = (d: string) => Date.parse(`${d}T00:00:00Z`);
+  return Math.round(
+    (toUtcDay(isoDateInZone(new Date(), timeZone)) -
+      toUtcDay(isoDateInZone(new Date(iso), timeZone))) /
+      DAY_MS,
+  );
+}
+
+function daysLabel(days: number) {
+  if (days <= 0) return "Atendido hoje";
+  return `${days} ${days === 1 ? "dia" : "dias"} sem atendimento`;
+}
 
 type ContactRow = Lead & { appointments: { status: string; starts_at: string }[] };
 
@@ -78,9 +94,12 @@ export function ContactsTab({
               : daysSinceLastVisit >= 30
                 ? "30dias"
                 : null;
-        return { ...c, visits: completed.length, recency };
+        const daysSince = lastVisitAt
+          ? calendarDaysSince(lastVisitAt, establishment.timezone)
+          : null;
+        return { ...c, visits: completed.length, recency, daysSince };
       }),
-    [contacts],
+    [contacts, establishment.timezone],
   );
 
   function invalidate() {
@@ -300,12 +319,12 @@ export function ContactsTab({
                 <p className="text-xs text-muted-foreground">
                   {lead.visits} atendimento{lead.visits === 1 ? "" : "s"} concluído
                   {lead.visits === 1 ? "" : "s"}
-                  {lead.recency ? (
+                  {lead.daysSince != null ? (
                     <Badge
                       variant="outline"
-                      className={`ml-1.5 border-0 text-[10px] ${RECENCY_BADGE[lead.recency]}`}
+                      className={`ml-1.5 border-0 text-[10px] ${RECENCY_BADGE[lead.recency ?? "recente"]}`}
                     >
-                      {RECENCY_LABEL[lead.recency]} sem voltar
+                      {daysLabel(lead.daysSince)}
                     </Badge>
                   ) : null}
                 </p>
