@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarCheck, CheckCircle2, MapPin, Phone } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -110,14 +110,45 @@ export function PublicBooking({ slug }: { slug: string }) {
       if (professionals.error) throw professionals.error;
       if (hours.error) throw hours.error;
 
+      // Quem realiza cada serviço.
+      const professionalIds = (professionals.data ?? []).map((p) => p.id);
+      let links: { professional_id: string; service_id: string }[] = [];
+      if (professionalIds.length > 0) {
+        const res = await supabase
+          .from("professional_services")
+          .select("professional_id, service_id")
+          .in("professional_id", professionalIds);
+        if (res.error) throw res.error;
+        links = res.data ?? [];
+      }
+
       return {
         establishment,
         services: services.data ?? [],
         professionals: professionals.data ?? [],
+        links,
         hours: hours.data ?? [],
       };
     },
   });
+
+  // Só aparecem os profissionais que realizam TODOS os serviços escolhidos.
+  const eligibleProfessionals = useMemo(() => {
+    if (!shop) return [];
+    return shop.professionals.filter((p) =>
+      serviceIds.every((sid) =>
+        shop.links.some((l) => l.professional_id === p.id && l.service_id === sid),
+      ),
+    );
+  }, [shop, serviceIds]);
+
+  // Se a troca de serviços tirou o profissional escolhido, volta para "sem preferência".
+  useEffect(() => {
+    if (professionalId && !eligibleProfessionals.some((p) => p.id === professionalId)) {
+      setProfessionalId(null);
+      setSlot(null);
+    }
+  }, [eligibleProfessionals, professionalId]);
 
   const tz = shop?.establishment.timezone ?? "America/Sao_Paulo";
   const dates = useMemo(() => {
@@ -350,6 +381,11 @@ export function PublicBooking({ slug }: { slug: string }) {
         {/* 2. Profissional */}
         {serviceIds.length > 0 && shop.professionals.length > 0 ? (
           <Step number={2} title="Escolha o profissional">
+            {eligibleProfessionals.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum profissional realiza essa combinação de serviços. Escolha outros serviços.
+              </p>
+            ) : null}
             <div className="grid grid-cols-2 gap-2">
               <SelectChip
                 active={professionalId === null}
@@ -359,7 +395,7 @@ export function PublicBooking({ slug }: { slug: string }) {
                 }}
                 label="Sem preferência"
               />
-              {shop.professionals.map((p) => (
+              {eligibleProfessionals.map((p) => (
                 <SelectChip
                   key={p.id}
                   active={professionalId === p.id}
