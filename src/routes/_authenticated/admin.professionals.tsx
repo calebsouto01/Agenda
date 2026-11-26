@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/admin/professionals")({
@@ -27,7 +28,10 @@ const schema = z.object({
   role: z.string().trim().max(80),
 });
 
-const EMPTY = { id: "", name: "", role: "", active: true };
+type ServiceOption = { id: string; name: string };
+type Link = { professional_id: string; service_id: string };
+
+const EMPTY = { id: "", name: "", role: "", active: true, serviceIds: [] as string[] };
 
 function ProfessionalsPage() {
   const { data: establishment } = useEstablishment();
@@ -49,6 +53,43 @@ function ProfessionalsPage() {
     },
   });
 
+  const { data: services } = useQuery({
+    queryKey: ["professional-form-services", establishment?.id],
+    enabled: Boolean(establishment?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("services")
+        .select("id, name")
+        .eq("establishment_id", establishment!.id)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as ServiceOption[];
+    },
+  });
+
+  const { data: links } = useQuery({
+    queryKey: ["professional-links", professionals?.map((p) => p.id)],
+    enabled: Boolean(professionals && professionals.length > 0),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_services")
+        .select("professional_id, service_id")
+        .in(
+          "professional_id",
+          professionals!.map((p) => p.id),
+        );
+      if (error) throw error;
+      return (data ?? []) as Link[];
+    },
+  });
+
+  const serviceNames = new Map((services ?? []).map((s) => [s.id, s.name]));
+  const servicesOf = (professionalId: string) =>
+    (links ?? [])
+      .filter((l) => l.professional_id === professionalId && serviceNames.has(l.service_id))
+      .map((l) => serviceNames.get(l.service_id)!);
+
   const atFreeLimit =
     Boolean(establishment) &&
     !isPro(establishment!.plan) &&
@@ -67,16 +108,41 @@ function ProfessionalsPage() {
         role: parsed.data.role || null,
         active: form.active,
       };
-      const { error } = form.id
-        ? await supabase.from("professionals").update(payload).eq("id", form.id)
-        : await supabase.from("professionals").insert(payload);
-      if (error) throw new Error(error.message);
+      let professionalId = form.id;
+      if (form.id) {
+        const { error } = await supabase.from("professionals").update(payload).eq("id", form.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { data, error } = await supabase
+          .from("professionals")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error || !data) throw new Error(error?.message ?? "Não foi possível salvar");
+        professionalId = data.id;
+      }
+
+      // Substitui os serviços que ele realiza pelos marcados.
+      const del = await supabase
+        .from("professional_services")
+        .delete()
+        .eq("professional_id", professionalId);
+      if (del.error) throw new Error(del.error.message);
+      if (form.serviceIds.length > 0) {
+        const ins = await supabase
+          .from("professional_services")
+          .insert(
+            form.serviceIds.map((service_id) => ({ professional_id: professionalId, service_id })),
+          );
+        if (ins.error) throw new Error(ins.error.message);
+      }
     },
     onSuccess: () => {
       toast.success("Profissional salvo");
       setForm({ ...EMPTY });
       setOpen(false);
       queryClient.invalidateQueries({ queryKey: ["professionals"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-links"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -101,7 +167,8 @@ function ProfessionalsPage() {
           size="sm"
           disabled={atFreeLimit}
           onClick={() => {
-            setForm({ ...EMPTY });
+            // Novo profissional começa realizando todos os serviços (o dono desmarca o que não faz).
+            setForm({ ...EMPTY, serviceIds: (services ?? []).map((s) => s.id) });
             setOpen(true);
           }}
         >
@@ -144,6 +211,34 @@ function ProfessionalsPage() {
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
               />
             </div>
+            {services && services.length > 0 ? (
+              <div className="grid gap-2">
+                <Label>Serviços que realiza</Label>
+                <div className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2">
+                  {services.map((s) => (
+                    <label key={s.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={form.serviceIds.includes(s.id)}
+                        onCheckedChange={(v) =>
+                          setForm({
+                            ...form,
+                            serviceIds: v
+                              ? [...form.serviceIds, s.id]
+                              : form.serviceIds.filter((id) => id !== s.id),
+                          })
+                        }
+                      />
+                      {s.name}
+                    </label>
+                  ))}
+                </div>
+                {form.serviceIds.length === 0 ? (
+                  <p className="text-xs text-destructive">
+                    Sem nenhum serviço marcado, este profissional não aparece para agendamento.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex items-center justify-between rounded-lg border p-3">
               <Label htmlFor="p-active">Aceitando agendamentos</Label>
               <Switch
@@ -184,13 +279,32 @@ function ProfessionalsPage() {
                     ) : null}
                   </p>
                   {p.role ? <p className="text-xs text-muted-foreground">{p.role}</p> : null}
+                  {links && services ? (
+                    servicesOf(p.id).length > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Faz: {servicesOf(p.id).join(", ")}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-destructive">
+                        Nenhum serviço marcado: não aparece para agendamento.
+                      </p>
+                    )
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setForm({ id: p.id, name: p.name, role: p.role ?? "", active: p.active });
+                      setForm({
+                        id: p.id,
+                        name: p.name,
+                        role: p.role ?? "",
+                        active: p.active,
+                        serviceIds: (links ?? [])
+                          .filter((l) => l.professional_id === p.id)
+                          .map((l) => l.service_id),
+                      });
                       setOpen(true);
                     }}
                   >

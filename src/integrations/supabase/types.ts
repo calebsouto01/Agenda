@@ -4,18 +4,19 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5";
+    PostgrestVersion: "14.17";
   };
   public: {
     Tables: {
       appointments: {
         Row: {
           created_at: string;
+          customer_cancelled_at: string | null;
+          customer_confirmed_at: string | null;
           customer_id: string;
           ends_at: string;
           establishment_id: string;
           id: string;
-          marketing_link_id: string | null;
           notes: string | null;
           paid: boolean;
           paid_at: string | null;
@@ -31,11 +32,12 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          customer_cancelled_at?: string | null;
+          customer_confirmed_at?: string | null;
           customer_id: string;
           ends_at: string;
           establishment_id: string;
           id?: string;
-          marketing_link_id?: string | null;
           notes?: string | null;
           paid?: boolean;
           paid_at?: string | null;
@@ -51,11 +53,12 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          customer_cancelled_at?: string | null;
+          customer_confirmed_at?: string | null;
           customer_id?: string;
           ends_at?: string;
           establishment_id?: string;
           id?: string;
-          marketing_link_id?: string | null;
           notes?: string | null;
           paid?: boolean;
           paid_at?: string | null;
@@ -82,13 +85,6 @@ export type Database = {
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "appointments_marketing_link_id_fkey";
-            columns: ["marketing_link_id"];
-            isOneToOne: false;
-            referencedRelation: "marketing_links";
             referencedColumns: ["id"];
           },
           {
@@ -164,8 +160,6 @@ export type Database = {
           responsavel_id: string | null;
           stage: Database["public"]["Enums"]["crm_lead_stage"];
           valor_estimado_cents: number | null;
-          whatsapp_confirmacao_sent_at: string | null;
-          whatsapp_msg1_sent_at: string | null;
         };
         Insert: {
           created_at?: string;
@@ -182,8 +176,6 @@ export type Database = {
           responsavel_id?: string | null;
           stage?: Database["public"]["Enums"]["crm_lead_stage"];
           valor_estimado_cents?: number | null;
-          whatsapp_confirmacao_sent_at?: string | null;
-          whatsapp_msg1_sent_at?: string | null;
         };
         Update: {
           created_at?: string;
@@ -200,8 +192,6 @@ export type Database = {
           responsavel_id?: string | null;
           stage?: Database["public"]["Enums"]["crm_lead_stage"];
           valor_estimado_cents?: number | null;
-          whatsapp_confirmacao_sent_at?: string | null;
-          whatsapp_msg1_sent_at?: string | null;
         };
         Relationships: [
           {
@@ -236,6 +226,8 @@ export type Database = {
           description: string | null;
           id: string;
           name: string;
+          notify_finishable_enabled: boolean;
+          notify_pending_enabled: boolean;
           owner_id: string;
           phone: string | null;
           plan: string;
@@ -245,11 +237,6 @@ export type Database = {
           slug: string;
           timezone: string;
           updated_at: string;
-          whatsapp_business_api_connected: boolean;
-          whatsapp_message_1: string | null;
-          whatsapp_message_atencao: string | null;
-          whatsapp_message_confirmacao: string | null;
-          whatsapp_message_reengajamento: string | null;
         };
         Insert: {
           accent?: string | null;
@@ -259,6 +246,8 @@ export type Database = {
           description?: string | null;
           id?: string;
           name: string;
+          notify_finishable_enabled?: boolean;
+          notify_pending_enabled?: boolean;
           owner_id: string;
           phone?: string | null;
           plan?: string;
@@ -268,11 +257,6 @@ export type Database = {
           slug: string;
           timezone?: string;
           updated_at?: string;
-          whatsapp_business_api_connected?: boolean;
-          whatsapp_message_1?: string | null;
-          whatsapp_message_atencao?: string | null;
-          whatsapp_message_confirmacao?: string | null;
-          whatsapp_message_reengajamento?: string | null;
         };
         Update: {
           accent?: string | null;
@@ -282,6 +266,8 @@ export type Database = {
           description?: string | null;
           id?: string;
           name?: string;
+          notify_finishable_enabled?: boolean;
+          notify_pending_enabled?: boolean;
           owner_id?: string;
           phone?: string | null;
           plan?: string;
@@ -291,77 +277,8 @@ export type Database = {
           slug?: string;
           timezone?: string;
           updated_at?: string;
-          whatsapp_business_api_connected?: boolean;
-          whatsapp_message_1?: string | null;
-          whatsapp_message_atencao?: string | null;
-          whatsapp_message_confirmacao?: string | null;
-          whatsapp_message_reengajamento?: string | null;
         };
         Relationships: [];
-      };
-      marketing_link_clicks: {
-        Row: {
-          clicked_at: string;
-          id: string;
-          link_id: string;
-        };
-        Insert: {
-          clicked_at?: string;
-          id?: string;
-          link_id: string;
-        };
-        Update: {
-          clicked_at?: string;
-          id?: string;
-          link_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "marketing_link_clicks_link_id_fkey";
-            columns: ["link_id"];
-            isOneToOne: false;
-            referencedRelation: "marketing_links";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      marketing_links: {
-        Row: {
-          active: boolean;
-          channel: Database["public"]["Enums"]["marketing_channel"];
-          code: string;
-          created_at: string;
-          establishment_id: string;
-          id: string;
-          label: string;
-        };
-        Insert: {
-          active?: boolean;
-          channel?: Database["public"]["Enums"]["marketing_channel"];
-          code?: string;
-          created_at?: string;
-          establishment_id: string;
-          id?: string;
-          label: string;
-        };
-        Update: {
-          active?: boolean;
-          channel?: Database["public"]["Enums"]["marketing_channel"];
-          code?: string;
-          created_at?: string;
-          establishment_id?: string;
-          id?: string;
-          label?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "marketing_links_establishment_id_fkey";
-            columns: ["establishment_id"];
-            isOneToOne: false;
-            referencedRelation: "establishments";
-            referencedColumns: ["id"];
-          },
-        ];
       };
       notification_queue: {
         Row: {
@@ -452,6 +369,36 @@ export type Database = {
             columns: ["establishment_id"];
             isOneToOne: false;
             referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      professional_services: {
+        Row: {
+          professional_id: string;
+          service_id: string;
+        };
+        Insert: {
+          professional_id: string;
+          service_id: string;
+        };
+        Update: {
+          professional_id?: string;
+          service_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "professional_services_professional_id_fkey";
+            columns: ["professional_id"];
+            isOneToOne: false;
+            referencedRelation: "professionals";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "professional_services_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
             referencedColumns: ["id"];
           },
         ];
@@ -577,6 +524,167 @@ export type Database = {
           },
         ];
       };
+      whatsapp_agents: {
+        Row: {
+          agent_name: string;
+          connected_phone: string | null;
+          connection_status: string;
+          created_at: string;
+          enabled: boolean;
+          establishment_id: string;
+          id: string;
+          instance_name: string | null;
+          instructions: string | null;
+          phone_number_id: string | null;
+          provider: string;
+          updated_at: string;
+          verified_name: string | null;
+          waba_id: string | null;
+        };
+        Insert: {
+          agent_name?: string;
+          connected_phone?: string | null;
+          connection_status?: string;
+          created_at?: string;
+          enabled?: boolean;
+          establishment_id: string;
+          id?: string;
+          instance_name?: string | null;
+          instructions?: string | null;
+          phone_number_id?: string | null;
+          provider?: string;
+          updated_at?: string;
+          verified_name?: string | null;
+          waba_id?: string | null;
+        };
+        Update: {
+          agent_name?: string;
+          connected_phone?: string | null;
+          connection_status?: string;
+          created_at?: string;
+          enabled?: boolean;
+          establishment_id?: string;
+          id?: string;
+          instance_name?: string | null;
+          instructions?: string | null;
+          phone_number_id?: string | null;
+          provider?: string;
+          updated_at?: string;
+          verified_name?: string | null;
+          waba_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_agents_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: true;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      whatsapp_conversations: {
+        Row: {
+          ai_paused: boolean;
+          contact_name: string | null;
+          contact_phone: string;
+          created_at: string;
+          establishment_id: string;
+          id: string;
+          last_message_at: string;
+          needs_human: boolean;
+        };
+        Insert: {
+          ai_paused?: boolean;
+          contact_name?: string | null;
+          contact_phone: string;
+          created_at?: string;
+          establishment_id: string;
+          id?: string;
+          last_message_at?: string;
+          needs_human?: boolean;
+        };
+        Update: {
+          ai_paused?: boolean;
+          contact_name?: string | null;
+          contact_phone?: string;
+          created_at?: string;
+          establishment_id?: string;
+          id?: string;
+          last_message_at?: string;
+          needs_human?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversations_establishment_id_fkey";
+            columns: ["establishment_id"];
+            isOneToOne: false;
+            referencedRelation: "establishments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      whatsapp_credentials: {
+        Row: {
+          access_token: string;
+          agent_id: string;
+          created_at: string;
+        };
+        Insert: {
+          access_token: string;
+          agent_id: string;
+          created_at?: string;
+        };
+        Update: {
+          access_token?: string;
+          agent_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_credentials_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: true;
+            referencedRelation: "whatsapp_agents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      whatsapp_messages: {
+        Row: {
+          content: string;
+          conversation_id: string;
+          created_at: string;
+          id: string;
+          role: string;
+          wa_message_id: string | null;
+        };
+        Insert: {
+          content: string;
+          conversation_id: string;
+          created_at?: string;
+          id?: string;
+          role: string;
+          wa_message_id?: string | null;
+        };
+        Update: {
+          content?: string;
+          conversation_id?: string;
+          created_at?: string;
+          id?: string;
+          role?: string;
+          wa_message_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -598,7 +706,6 @@ export type Database = {
           p_customer_name: string;
           p_customer_phone: string;
           p_establishment_id: string;
-          p_marketing_link_code?: string;
           p_notes?: string;
           p_professional_id: string;
           p_service_id: string;
@@ -607,21 +714,10 @@ export type Database = {
         };
         Returns: Json;
       };
-      marketing_link_stats: {
-        Args: { p_establishment_id: string };
-        Returns: {
-          agendamentos: number;
-          clicks: number;
-          comparecimentos: number;
-          faturamento_cents: number;
-          link_id: string;
-        }[];
-      };
       owns_establishment: {
         Args: { _establishment_id: string };
         Returns: boolean;
       };
-      resolve_marketing_link: { Args: { p_code: string }; Returns: Json };
     };
     Enums: {
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled";
@@ -635,7 +731,6 @@ export type Database = {
         | "perdido"
         | "mensagem_1"
         | "confirmacao_dia";
-      marketing_channel: "instagram" | "facebook" | "whatsapp" | "anuncio" | "outro";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -769,7 +864,6 @@ export const Constants = {
         "mensagem_1",
         "confirmacao_dia",
       ],
-      marketing_channel: ["instagram", "facebook", "whatsapp", "anuncio", "outro"],
     },
   },
 } as const;

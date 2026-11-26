@@ -116,6 +116,7 @@ Regras:
 - Responda em português do Brasil, de forma curta, cordial e natural, como numa conversa de WhatsApp. Sem markdown pesado.
 - Use SEMPRE as ferramentas para serviços, preços, profissionais e horários. Nunca invente informações.
 - Para agendar: confirme serviço(s), profissional (se houver mais de um), data e horário. Confirme o nome do cliente (o telefone do WhatsApp já é conhecido). Só chame create_appointment depois do cliente confirmar claramente.
+- Cada serviço só é feito por alguns profissionais: use a lista "professionals" de cada serviço e nunca ofereça um profissional que não realiza o serviço. Se o cliente não tiver preferência, deixe professional_id vazio (o sistema escolhe um livre).
 - Ofereça no máximo 5 horários por vez.
 - Se o cliente pedir para falar com uma pessoa, reclamar, ou se você não souber resolver, chame handoff_to_human.
 - Você não cancela nem remarca agendamentos: nesses casos use handoff_to_human.
@@ -179,10 +180,18 @@ async function runTool(
       supabase.from("professionals").select("id, name, role")
         .eq("establishment_id", est.id).eq("active", true).order("name"),
     ]);
+    // Quem realiza cada serviço.
+    const proIds = (pros ?? []).map((p) => p.id);
+    const { data: links } = proIds.length
+      ? await supabase.from("professional_services").select("professional_id, service_id").in("professional_id", proIds)
+      : { data: [] as { professional_id: string; service_id: string }[] };
     return {
       services: (services ?? []).map((s) => ({
         id: s.id, name: s.name, description: s.description,
         price_brl: (s.price_cents / 100).toFixed(2), duration_minutes: s.duration_minutes,
+        professionals: (pros ?? [])
+          .filter((p) => (links ?? []).some((l) => l.professional_id === p.id && l.service_id === s.id))
+          .map((p) => ({ id: p.id, name: p.name, role: p.role })),
       })),
       professionals: pros ?? [],
     };

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -105,6 +105,36 @@ function ManualBooking() {
     },
   });
 
+  const { data: links } = useQuery({
+    queryKey: ["admin-professional-links", professionals?.map((p) => p.id)],
+    enabled: Boolean(professionals && professionals.length > 0),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_services")
+        .select("professional_id, service_id")
+        .in(
+          "professional_id",
+          professionals!.map((p) => p.id),
+        );
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Só os profissionais que realizam TODOS os serviços escolhidos.
+  const eligibleProfessionals = (professionals ?? []).filter((p) =>
+    serviceIds.every((sid) =>
+      (links ?? []).some((l) => l.professional_id === p.id && l.service_id === sid),
+    ),
+  );
+
+  useEffect(() => {
+    if (professionalId && links && !eligibleProfessionals.some((p) => p.id === professionalId)) {
+      setProfessionalId(null);
+      setSlot(null);
+    }
+  }, [serviceIds, links]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const selectedServices = (services ?? []).filter((s) => serviceIds.includes(s.id));
   const totalDurationMinutes = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
   const totalPriceCents = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
@@ -128,9 +158,6 @@ function ManualBooking() {
   const booking = useMutation({
     mutationFn: async () => {
       if (serviceIds.length === 0) throw new Error("Escolha ao menos um serviço");
-      if (professionals && professionals.length > 0 && !professionalId) {
-        throw new Error("Escolha um profissional");
-      }
       if (!slot) throw new Error("Escolha um horário");
       if (form.name.trim().length < 2) throw new Error("Informe o nome do cliente");
       if (form.phone.replace(/\D/g, "").length < 10) throw new Error("Informe um telefone válido");
@@ -217,7 +244,21 @@ function ManualBooking() {
             <div className="space-y-2">
               <Label>Profissional</Label>
               <div className="flex flex-wrap gap-2">
-                {professionals.map((p) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfessionalId(null);
+                    setSlot(null);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    professionalId === null
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-card hover:bg-muted"
+                  }`}
+                >
+                  Qualquer disponível
+                </button>
+                {eligibleProfessionals.map((p) => (
                   <button
                     key={p.id}
                     type="button"
@@ -339,11 +380,7 @@ function ManualBooking() {
 
           <Button
             className="w-full"
-            disabled={
-              booking.isPending ||
-              !slot ||
-              Boolean(professionals && professionals.length > 0 && !professionalId)
-            }
+            disabled={booking.isPending || !slot}
             onClick={() => booking.mutate()}
           >
             {booking.isPending ? "Salvando…" : "Criar agendamento"}
