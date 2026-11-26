@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Send, Smartphone, Trash2, UserPlus } from "lucide-react";
+import { Filter, Plus, Send, Smartphone, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LeadCard, ORIGENS, type Lead } from "./lead-shared";
 
 const EMPTY_FORM = { name: "", phone: "", origem: "" };
@@ -57,6 +64,8 @@ export function ContactsTab({
   const [openNew, setOpenNew] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [search, setSearch] = useState("");
+  // Filtro por tempo sem atendimento: "todos" ou "há N dias ou mais".
+  const [minDays, setMinDays] = useState<"todos" | "30" | "60" | "90">("todos");
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["customers", establishmentId, "contatos"],
@@ -197,9 +206,15 @@ export function ContactsTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filteredLeads = leads.filter((c) =>
-    `${c.name} ${c.phone}`.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const countFrom = (days: number) =>
+    leads.filter((c) => c.daysSince != null && c.daysSince >= days).length;
+  const threshold = minDays === "todos" ? 0 : Number(minDays);
+
+  const filteredLeads = leads
+    .filter((c) => `${c.name} ${c.phone}`.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((c) => threshold === 0 || (c.daysSince != null && c.daysSince >= threshold))
+    // Com filtro ativo, quem está há mais tempo sem atendimento vem primeiro.
+    .sort((a, b) => (threshold === 0 ? 0 : (b.daysSince ?? 0) - (a.daysSince ?? 0)));
 
   return (
     <div className="space-y-4">
@@ -229,7 +244,28 @@ export function ContactsTab({
           >
             <Plus className="size-4 shrink-0" /> Novo contato
           </Button>
+          <Select value={minDays} onValueChange={(v) => setMinDays(v as typeof minDays)}>
+            <SelectTrigger
+              className="h-9 w-full sm:w-52"
+              aria-label="Filtrar por dias sem atendimento"
+            >
+              <Filter className="size-4 shrink-0 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos ({leads.length})</SelectItem>
+              <SelectItem value="30">+30 dias ({countFrom(30)})</SelectItem>
+              <SelectItem value="60">+60 dias ({countFrom(60)})</SelectItem>
+              <SelectItem value="90">+90 dias ({countFrom(90)})</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+        {threshold > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Clientes sem atendimento há {threshold} dias ou mais, do mais antigo para o mais
+            recente.
+          </p>
+        ) : null}
       </div>
 
       <div className="sticky top-14 z-10 bg-background py-2 md:top-0">

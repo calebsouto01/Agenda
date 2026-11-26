@@ -65,16 +65,7 @@ type NavEntry =
 const NAV: NavEntry[] = [
   { kind: "link", to: "/admin/notificacoes", label: "Notificações", icon: Bell, badge: true },
   { kind: "link", to: "/admin/agenda", label: "Agenda", icon: CalendarDays },
-  {
-    kind: "group",
-    label: "Clientes",
-    icon: Users,
-    basePath: "/admin/customers",
-    leaves: [
-      { to: "/admin/customers", label: "Contatos", tab: "contatos" },
-      { to: "/admin/customers", label: "Funil", tab: "funil" },
-    ],
-  },
+  { kind: "link", to: "/admin/customers", label: "Clientes", icon: Users },
   { kind: "link", to: "/admin/services", label: "Serviços", icon: Scissors },
   { kind: "link", to: "/admin/professionals", label: "Profissionais", icon: UserRound },
   { kind: "link", to: "/admin/hours", label: "Funcionamento", icon: Clock },
